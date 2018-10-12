@@ -56,10 +56,23 @@ def vectorize(data):
     return data_vect
 
 
+def convert_to_contact(data,cutoff):
+    """
+    Converts distances to contacts with a chosen cutoff
+    """
+    data_cont = np.zeros((data.shape[0],data.shape[1]))
+    for i in range(data.shape[0]):
+        ind_1 = np.where(data[i]<=cutoff)
+        data_cont[i,ind_1] = 1
+
+    return data_cont
+
+
 def scale(data,perc_2=None,perc_98=None,scaler=None):
     """
     Scales the input and removes outliers
     """
+
     if perc_2 is None and perc_98 is None:
         perc_2 = np.zeros(data.shape[1])
         perc_98 = np.zeros(data.shape[1])
@@ -136,7 +149,8 @@ def perform_relevance_propagation(data_vect,\
                        clustering,\
                        hidden_layer_sizes,\
                        n_iter,\
-                       n_halves):
+                       n_halves,\
+                       scaling=True):
 
     number_of_features = data_vect.shape[1]
     number_of_clusters = len(np.unique(clustering))
@@ -177,10 +191,12 @@ def perform_relevance_propagation(data_vect,\
                 clustering_train = np.copy(clustering_second_half)
                 clustering_test = np.copy(clustering_first_half)
 
-            logger.info("			Scaling the input dataset ...")
-
-            # Scale the input dataset using MinMaxScaler (change if needed) and remove outliers
-            data_train_scaled, perc_2, perc_98, scaler = scale(data_train)
+            if scaling==True:
+                logger.info("			Scaling the input dataset ...")
+                # Scale the input dataset using MinMaxScaler (change if needed) and remove outliers
+                data_train_scaled, perc_2, perc_98, scaler = scale(data_train)
+            else:
+                data_train_scaled = data_train
 
             # Transform clusters into probabilities
             clustering_train_prob = transform_to_matrix(clustering_train.astype(int))
@@ -196,10 +212,13 @@ def perform_relevance_propagation(data_vect,\
             logger.info("			Checking for overfit ...")
 
             # Check for overfitting
-            data_test_scaled, perc_2, perc_98, scaler = scale(data_test,\
-                                                              perc_2,\
-                                                              perc_98,\
-                                                              scaler)
+            if scaling==True:
+                data_test_scaled, perc_2, perc_98, scaler = scale(data_test,\
+                                                                  perc_2,\
+                                                                  perc_98,\
+                                                                  scaler)
+            else:
+                data_test_scaled = data_test
 
             clustering_test_prob = transform_to_matrix(clustering_test.astype(int))
 

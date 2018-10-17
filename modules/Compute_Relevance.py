@@ -11,6 +11,7 @@ from sklearn.utils import shuffle
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPClassifier
 import Relevance_Propagation
+from scipy.stats import entropy
 
 logger = logging.getLogger("Compute Relevance")
 
@@ -28,6 +29,8 @@ def keep_datapoints(data,clustering,points_to_keep=[]):
         data_keep = data
         clustering_keep = clustering
     else:
+        logger.info("Discarding points ...")
+        logger.info("Number of points before discarding is %s", data.shape[0])
         points_to_keep = np.asarray(points_to_keep)
         for i in range(len(points_to_keep)):
             if i==0:
@@ -36,6 +39,7 @@ def keep_datapoints(data,clustering,points_to_keep=[]):
             else:
                 data_keep = np.vstack((data_keep,data[points_to_keep[i,0]:points_to_keep[i,1]]))
                 clustering_keep = np.concatenate((clustering_keep,clustering[points_to_keep[i,0]:points_to_keep[i,1]]))
+        logger.info("Number of points after discarding is %s", data_keep.shape[0])
 
     return data_keep, clustering_keep
 
@@ -56,16 +60,89 @@ def vectorize(data):
     return data_vect
 
 
-def convert_to_contact(data,cutoff):
+def convert_to_contact(data,cutoff=0.5):
     """
     Converts distances to contacts with a chosen cutoff
     """
-    data_cont = np.zeros((data.shape[0],data.shape[1]))
-    for i in range(data.shape[0]):
-        ind_1 = np.where(data[i]<=cutoff)
-        data_cont[i,ind_1] = 1
+    logger.info("Converting distances to contacts with a %s nm cutoff ...", cutoff)
+    if len(data.shape)==2:
+        data_cont = np.zeros((data.shape[0],data.shape[1]))
+        for i in range(data.shape[0]):
+            ind_1 = np.where(data[i]<=cutoff)
+            data_cont[i,ind_1] = 1
+
+    elif len(data.shape)==3 and (data.shape[1]==data.shape[2]):
+        data_cont = np.zeros((data.shape[0],data.shape[1],data.shape[2]))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                ind_1 = np.where(data[i,j]<=cutoff)
+                data_cont[i,j,ind_1] = 1
+
+    else:
+        sys.exit("The input array has wrong dimensionality")
 
     return data_cont
+
+
+def KL_divergence(x,y,bin_size):
+    """
+    Compute Kullback-Leibler divergence
+    """
+    bin_min = np.min(np.concatenate((x,y)))
+    bin_max = np.max(np.concatenate((x,y)))
+    if bin_size>=(bin_max-bin_min):
+        DKL=0
+    else:
+        bin_n = int((bin_max-bin_min)/bin_size)
+        x_prob = np.histogram(x,bins=bin_n,range=(bin_min,bin_max),density=True)[0]+0.000000001
+        y_prob = np.histogram(y,bins=bin_n,range=(bin_min,bin_max),density=True)[0]+0.000000001
+        DKL = 0.5*(entropy(x_prob,y_prob)+entropy(y_prob,x_prob))
+    return DKL
+
+
+def filter_by_DKL(data,clustering,sigma=2,contacts=False):
+    """
+    DKL based filtering
+    """
+
+    if len(data.shape)!=2:
+        sys.exit("The input array has wrong dimensionality; Data should be vectorized first")
+
+    number_of_features = data.shape[1]
+    logger.info("Number of features before DKL based filtering is %s", number_of_features)
+
+    DKL = np.zeros(number_of_features)
+
+    if contacts==True:
+
+        for i in range(number_of_features):
+            var_uniq = list(set(data[:,i]))
+            if len(var_uniq)>1:
+                DKL[i] = 1
+        data_filtered_ind = np.where(DKL>0)[0]
+        logger.info("Number of features after DKL based filtering is %s", len(data_filtered_ind))
+        data_filtered = data[:,data_filtered_ind]
+
+    else:
+
+        std = np.zeros(number_of_features)
+        for i in range(number_of_features):
+            std[i] = np.std(data[:,i])
+
+        bin_size = np.mean(std)
+        logger.info("Bin size for probability calculation is %s", bin_size)
+
+        clustering_var = list(set(clustering))
+        for i in range(number_of_features):
+            ind_cluster_0 = np.where(clustering==clustering_var[0])[0]
+            ind_cluster_1 = np.where(clustering==clustering_var[1])[0]
+            DKL[i] = KL_divergence(data[ind_cluster_0,i],data[ind_cluster_1,i],bin_size)
+
+        data_filtered_ind = np.where(DKL>=(np.mean(DKL)+sigma*np.std(DKL)))[0]
+        logger.info("Number of features after DKL based filtering is %s", len(data_filtered_ind))
+        data_filtered = data[:,data_filtered_ind]
+
+    return DKL, data_filtered_ind, data_filtered
 
 
 def scale(data,perc_2=None,perc_98=None,scaler=None):
@@ -276,3 +353,47 @@ def perform_relevance_propagation(data_vect,\
     logger.info("Done with computing relevance!")
 
     return relevance_av_cluster_iter, error_array
+
+
+def write_results_input_matrix(relevance,home_dir,fid,only_significant=False,sigma=2):
+    '''
+    Write results if input is a set of square matrices
+    '''
+
+    logger.info("Writing the results ...")
+    logger.info("Sigma based filtering of relevances is %s",only_significant)
+
+    number_of_clusters = relevance.shape[0]
+    number_of_features = (squareform(relevance[0,:,0])).shape[0]
+
+    relevance_ave_per_residue = np.zeros((number_of_features,number_of_clusters))
+    relevance_std_per_residue = np.zeros((number_of_features,number_of_clusters))
+
+    for i in range(number_of_clusters):
+        if only_significant==True:
+            ind_nonzero = np.where(relevance[i,:,0]>0)
+            relevance_global_mean = np.mean(relevance[i,ind_nonzero,0])
+            relevance_global_sigma = np.std(relevance[i,ind_nonzero,0])
+
+        relevance_ave_matrix = squareform(relevance[i,:,0])
+        relevance_std_matrix = squareform(relevance[i,:,1])
+
+        for j in range(number_of_features):
+            if only_significant==True:
+                ind_above_sigma = np.where(relevance_ave_matrix[j,:]>=\
+                                      (relevance_global_mean+sigma*relevance_global_sigma))[0]
+                relevance_ave_per_residue[j,i] = np.sum(relevance_ave_matrix[j,ind_above_sigma])
+                relevance_std_per_residue[j,i] = np.sqrt(np.sum(relevance_std_matrix[j,ind_above_sigma]**2))
+            else:
+                relevance_ave_per_residue[j,i] = np.sum(relevance_ave_matrix[j,:])
+                relevance_std_per_residue[j,i] = np.sqrt(np.sum(relevance_std_matrix[j,:]**2))
+
+    results = np.zeros((number_of_features,number_of_clusters*2))
+
+    for i in np.arange(number_of_clusters):
+        results[:,2*i] = relevance_ave_per_residue[:,i]
+        results[:,2*i+1] = relevance_std_per_residue[:,i]
+
+    np.savetxt(home_dir+fid,results)
+
+    logger.info("Done!")

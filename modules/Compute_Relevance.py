@@ -64,6 +64,9 @@ def convert_to_contact(data,cutoff=0.5):
     """
     Converts distances to contacts with a chosen cutoff
     """
+
+    data = 1/data
+
     logger.info("Converting distances to contacts with a %s nm cutoff ...", cutoff)
     if len(data.shape)==2:
         data_cont = np.zeros((data.shape[0],data.shape[1]))
@@ -82,6 +85,34 @@ def convert_to_contact(data,cutoff=0.5):
         sys.exit("The input array has wrong dimensionality")
 
     return data_cont
+
+
+def filter_by_contact_cutoff(data,cutoff=0.5):
+    """
+    Contact cutoff based filtering
+    """
+
+    if len(data.shape)!=2:
+        sys.exit("The input array has wrong dimensionality; Data should be vectorized first")
+
+    number_of_features = data.shape[1]
+    logger.info("Number of features before contact cutoff based filtering is %s", number_of_features)
+
+    data = 1/data
+
+    data_filtered_ind = []
+    for i in range(data.shape[1]):
+        data_min = np.min(data[:,i])
+        if data_min<=cutoff:
+            data_filtered_ind.append(i)
+
+    logger.info("Number of features after contact cutoff based filtering is %s", len(data_filtered_ind))
+
+    data_filtered = data[:,data_filtered_ind]
+
+    data_filtered = 1/data_filtered
+
+    return data_filtered_ind, data_filtered
 
 
 def KL_divergence(x,y,bin_size):
@@ -133,9 +164,9 @@ def filter_by_DKL(data,clustering,sigma=2,contacts=False):
         logger.info("Bin size for probability calculation is %s", bin_size)
 
         clustering_var = list(set(clustering))
+        ind_cluster_0 = np.where(clustering==clustering_var[0])[0]
+        ind_cluster_1 = np.where(clustering==clustering_var[1])[0]
         for i in range(number_of_features):
-            ind_cluster_0 = np.where(clustering==clustering_var[0])[0]
-            ind_cluster_1 = np.where(clustering==clustering_var[1])[0]
             DKL[i] = KL_divergence(data[ind_cluster_0,i],data[ind_cluster_1,i],bin_size)
 
         data_filtered_ind = np.where(DKL>=(np.mean(DKL)+sigma*np.std(DKL)))[0]
@@ -355,7 +386,7 @@ def perform_relevance_propagation(data_vect,\
     return relevance_av_cluster_iter, error_array
 
 
-def write_results_input_matrix(relevance,home_dir,fid,only_significant=False,sigma=2):
+def write_results_input_matrix(relevance,home_dir,fid,DKL=None,only_significant=False,sigma=2):
     '''
     Write results if input is a set of square matrices
     '''
@@ -395,5 +426,18 @@ def write_results_input_matrix(relevance,home_dir,fid,only_significant=False,sig
         results[:,2*i+1] = relevance_std_per_residue[:,i]
 
     np.savetxt(home_dir+fid,results)
+
+    if DKL is not None:
+        DKL_square = squareform(DKL)
+        DKL_mean = np.mean(DKL)
+        DKL_std = np.std(DKL)
+        DKL_out = []
+        for i in range(DKL_square.shape[0]):
+            DKL_ind_above_sigma = np.where(DKL_square[i,:]>=DKL_mean+2*DKL_std)[0]
+            DKL_out.append(np.sum(DKL_square[i,DKL_ind_above_sigma]))
+
+        DKL_out = np.asarray(DKL_out).T
+
+        np.savetxt(home_dir+'DKL.'+fid,DKL_out)
 
     logger.info("Done!")

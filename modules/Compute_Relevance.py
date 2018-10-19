@@ -261,7 +261,8 @@ def perform_relevance_propagation(data_vect,\
                        scaling=True):
 
     number_of_features = data_vect.shape[1]
-    number_of_clusters = len(np.unique(clustering))
+    clustering_labels = np.unique(clustering)
+    number_of_clusters = len(clustering_labels)
     relevance_av_cluster = np.zeros((n_iter*n_halves,number_of_clusters,number_of_features))
     error_array = np.zeros((n_iter*n_halves))
     ind_to_keep = []
@@ -369,7 +370,7 @@ def perform_relevance_propagation(data_vect,\
                 # Average relevance over each cluster
                 for k in range(number_of_clusters):
                     relevance_av_cluster[i*n_halves+j,k,:] = \
-                                                    np.mean(relevance[np.where(clustering_train==k+1)[0]],axis=0)
+                                                    np.mean(relevance[np.where(clustering_train==clustering_labels[k])[0]],axis=0)
 
     logger.info("Done with iterations!")
     logger.info("Computing relevance average and std over all iterations ...")

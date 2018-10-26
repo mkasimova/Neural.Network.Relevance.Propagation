@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import Compute_Relevance as CR
 from sklearn.model_selection import KFold
 

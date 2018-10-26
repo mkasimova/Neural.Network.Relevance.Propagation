@@ -15,13 +15,14 @@ logger = logging.getLogger("Extracting feature")
 
 class FeatureExtractor(object):
     
-    def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3):
+    def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3, name=None):
         # Setting parameters
         self.samples = samples
         self.labels = labels
         self.n_splits = n_splits
         self.n_iterations = n_iterations
         self.scaling = scaling
+        self.name = name
         return
     
     def split_train_test(self):
@@ -87,21 +88,21 @@ class FeatureExtractor(object):
                 if self.scaling:
                     train_set, perc_2, perc_98, scaler = utils.scale(train_set)
                 
-                    test_set, perc_2, perc_98, scaler = scale(test_set,\
+                    test_set, perc_2, perc_98, scaler = utils.scale(test_set,\
                                                          perc_2, perc_98,scaler)
                 
                 # Train model
                 model = self.train(train_set, train_labels)
                 
-                if self.labels is not None:
+                if self.labels is not None and model is not None:
                     # Test classifier
                     error = utils.check_for_overfit(test_set, test_labels, model)
                     errors[i_split*self.n_iterations + i_iter] = error
                     
-                    logger.info("Error: %s",errors[i_split*self.n_iterations + i_iter])
+                    logger.warn("Error: %s",errors[i_split*self.n_iterations + i_iter])
                 
                 if errors[i_split*self.n_iterations + i_iter] < 5:
-                    logger.info("Error below 5% - computing feature importance.")
+                    logger.debug("Error below 5% - computing feature importance.")
                     # Get feature importances
                     feature_importance = self.get_feature_importance(model, train_set, train_labels)
                     summed_FI = self.summed_feature_importance(feature_importance)

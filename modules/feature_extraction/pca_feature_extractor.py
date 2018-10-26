@@ -11,7 +11,7 @@ from modules.feature_extraction.feature_extractor import FeatureExtractor
 class PCA_feature_extract(FeatureExtractor):
 	
 	def __init__(self,samples, labels=None, n_components=None, n_splits=10, n_iterations=3, scaling=False):
-		FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, scaling=scaling)
+		FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, scaling=scaling, name="PCA")
 		self.n_components = n_components
 		return
 	

@@ -19,14 +19,14 @@ logger = logging.getLogger("RF featurizer")
 
 class RF_feature_extract(FeatureExtractor):
 	
-	def __init__(self,samples, labels, n_splits=10, scaling=True, n_estimators=20, njobs=4):
-		FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, scaling=scaling, name="RF")
+	def __init__(self,samples, labels, n_splits=10, scaling=True, n_estimators=20, njobs=4, n_iterations=3):
+		FeatureExtractor.__init__(self, samples, labels, n_iterations=n_iterations, n_splits=n_splits, scaling=scaling, name="RF")
 		self.n_estimators = n_estimators
 		self.njobs = njobs
 		return
 	
 	def train(self, train_set, train_labels):
-		print('Training RF')
+		logger.info('Training RF')
 		# Construct and train classifier
 		classifier = RandomForestClassifier(n_estimators=self.n_estimators, n_jobs=self.njobs)
 		classifier.fit(train_set, train_labels)

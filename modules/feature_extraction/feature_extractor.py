@@ -1,12 +1,13 @@
+from __future__ import absolute_import, division, print_function
+
 import sys
-import numpy as np
 import logging
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
-
+import numpy as np
 import modules.utils as utils
 from sklearn.model_selection import KFold
 from scipy.spatial.distance import squareform
@@ -15,14 +16,14 @@ logger = logging.getLogger("Extracting feature")
 
 class FeatureExtractor(object):
 	
-	def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3):
+	def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3, name=None):
 		# Setting parameters
 		self.samples = samples
 		self.labels = labels
 		self.n_splits = n_splits
 		self.n_iterations = n_iterations
 		self.scaling = scaling
-		return
+		self.name = name
 	
 	def split_train_test(self):
 		"""
@@ -72,16 +73,14 @@ class FeatureExtractor(object):
 		for i_split in range(self.n_splits):
 			for i_iter in range(self.n_iterations):
 				
-				logger.info("Iteration %s of %s", i_split*self.n_iterations+i_iter+1, self.n_splits*self.n_iterations)
-				
+				logger.debug("Iteration %s of %s", i_split*self.n_iterations+i_iter+1, self.n_splits*self.n_iterations)
 				train_set, test_set, train_labels, test_labels = \
-									self.get_train_test_set(train_inds[i_iter],\
-									test_inds[i_iter])
+									self.get_train_test_set(train_inds[i_split], test_inds[i_split])
 				
 				if self.scaling:
 					train_set, perc_2, perc_98, scaler = utils.scale(train_set)
 					
-					test_set, perc_2, perc_98, scaler = scale(test_set,\
+					test_set, perc_2, perc_98, scaler = utils.scale(test_set,\
 		                                                 perc_2, perc_98,scaler)
 				
 				# Train model
@@ -92,13 +91,15 @@ class FeatureExtractor(object):
 					error = utils.check_for_overfit(test_set, test_labels, model)
 					errors[i_split*self.n_iterations + i_iter] = error
 					
-					logger.info("Error: %s",errors[i_split*self.n_iterations + i_iter])
+					logger.debug("Error: %s",errors[i_split*self.n_iterations + i_iter])
 				
 				if errors[i_split*self.n_iterations + i_iter] < 5:
-					logger.info("Error below 5% - computing feature importance.")
+					logger.debug("Error below 5% - computing feature importance.");
 					# Get feature importances
 					feature_importance = self.get_feature_importance(model, train_set, train_labels)
 					feats.append(feature_importance)
+				else:
+					logger.warn("Error too high - not computing feature importance.");                 
 		
 		feats = np.asarray(feats)
 		

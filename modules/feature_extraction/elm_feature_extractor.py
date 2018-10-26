@@ -14,17 +14,17 @@ logger = logging.getLogger("elm")
 
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
-    def __init__(self, samples, labels, n_splits=10, scaling=True, n_nodes=None, alpha=1):
-        MlpFeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, scaling=scaling, name="ELM")
+    def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True, n_nodes=None, alpha=1):
+        MlpFeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, name="ELM")
         self.n_nodes = n_nodes
         self.alpha = alpha
 
-    def train(self, train_set):
+    def train(self, train_set, train_labels):
         elm = SingleLayerELMClassifier(n_nodes=self.n_nodes,
                                        activation_func="hard_relu",
                                        alpha=self.alpha)
 
-        elm.fit(train_set, self.labels)
+        elm.fit(train_set, train_labels)
         return elm
 
 
@@ -77,7 +77,7 @@ class SingleLayerELMClassifier(object):
     def fit(self, x, t):
         (N, n) = x.shape
         if self.n_nodes is None:
-            self.n_nodes = n
+            self.n_nodes = min(4000, n)
             logger.info("Automatically settings number of nodes in first layer to %s", self.n_nodes)
         W1 = random_matrix(n, self.n_nodes)
         b1 = random_matrix(1, self.n_nodes)

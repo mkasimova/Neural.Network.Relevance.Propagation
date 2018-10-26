@@ -36,7 +36,7 @@ def vectorize(data):
     elif (len(data.shape))==2:
         data_vect = data
     else:
-        sys.exit("The input array has wrong dimensionality")
+        raise Exception("The input array has wrong dimensionality")
     return data_vect
 
 
@@ -177,7 +177,7 @@ def perform_relevance_propagation(data_vect,\
         data_second_half = X[1::2,:]
         clustering_first_half = Y[0::2]
         clustering_second_half = Y[1::2]
-
+        
         # How many halves you want to use to estimate relevance - one or two?
         for j in range(n_halves):
             if j==0:

@@ -19,7 +19,7 @@ logger = logging.getLogger("PCA featurizer")
 class PCA_feature_extract(FeatureExtractor):
 	
 	def __init__(self,samples, labels=None, n_components=None, n_splits=10, n_iterations=3, scaling=False):
-		FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, scaling=scaling, name="PCA")
+		FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, name="PCA")
 		self.n_components = n_components
 		return
 	
@@ -44,7 +44,7 @@ class PCA_feature_extract(FeatureExtractor):
 		logger.info('Selecting %s components',n_components)
 		return n_components
 	
-	def get_feature_importance(self, model):
+	def get_feature_importance(self, model, samples, labels):
 		
 		n_components = self.n_components
 		if (self.n_components is None) or (self.n_components > 1):

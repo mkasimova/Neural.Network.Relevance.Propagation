@@ -15,7 +15,7 @@ logger = logging.getLogger("Extracting feature")
 
 class FeatureExtractor(object):
 	
-	def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3):
+	def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3, name=''):
 		# Setting parameters
 		self.samples = samples
 		self.labels = labels
@@ -75,13 +75,13 @@ class FeatureExtractor(object):
 				logger.info("Iteration %s of %s", i_split*self.n_iterations+i_iter+1, self.n_splits*self.n_iterations)
 				
 				train_set, test_set, train_labels, test_labels = \
-									self.get_train_test_set(train_inds[i_iter],\
-									test_inds[i_iter])
+									self.get_train_test_set(train_inds[i_split],\
+									test_inds[i_split])
 				
 				if self.scaling:
 					train_set, perc_2, perc_98, scaler = utils.scale(train_set)
 					
-					test_set, perc_2, perc_98, scaler = scale(test_set,\
+					test_set, perc_2, perc_98, scaler = utils.scale(test_set,\
 		                                                 perc_2, perc_98,scaler)
 				
 				# Train model

@@ -9,10 +9,37 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 from scipy.spatial.distance import squareform
-import Relevance_Propagation
+
 from scipy.stats import entropy
 
 logger = logging.getLogger("filtering")
+
+def filter_feature_importance(relevances, n_sigma_threshold=2):
+	"""
+	Filter feature importances based on significance.
+	Return filtered residue feature importances (average + std within the states/clusters).
+	"""
+	if len(relevances.shape) == 1:
+		n_states = 1
+		relevances = relevances[:,np.newaxis].T
+	else:
+		n_states = relevances.shape[0]
+
+	n_features = relevances.shape[1]
+	
+	for i in range(n_states):
+		ind_nonzero = np.where(relevances[i,:]>0)
+		global_mean = np.mean(relevances[i,ind_nonzero])
+		global_sigma = np.std(relevances[i,ind_nonzero])
+		
+		# Identify insignificant features			
+		ind_above_sigma = np.where(relevances[i,:] <\
+	                                 (global_mean + n_sigma_threshold*global_sigma))[0]
+		
+		# Remove insignificant features
+		relevances[i,ind_above_sigma] = 0
+	
+	return relevances
 
 def filter_by_contact_cutoff(data,cutoff=0.5):
     """

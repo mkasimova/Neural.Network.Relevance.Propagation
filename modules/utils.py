@@ -12,7 +12,7 @@ from scipy.spatial.distance import squareform
 from sklearn.utils import shuffle
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPClassifier
-import modules.relevance_propagation
+#import modules.relevance_propagation
 
 logger = logging.getLogger("utils")
 
@@ -95,7 +95,7 @@ def scale(data,perc_2=None,perc_98=None,scaler=None):
     return data_scaled, perc_2, perc_98, scaler
 
 
-def transform_to_matrix(clustering):
+def create_class_labels(clustering):
     """
     Transforms a vector of cluster indices to a matrix where a 1 on the ij element means that the ith frame was in cluster state j+1
     """

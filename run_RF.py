@@ -1,5 +1,5 @@
 import argparse
-from modules import random_forest_features
+from modules.feature_extraction import RF_feature_extract
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,7 +15,7 @@ args = parser.parse_args()
 samples = np.load(args.feature_list)
 cluster_indices = np.loadtxt(args.cluster_indices)
 
-RF = random_forest_features.RF_feature_extract(samples, cluster_indices, n_iterations=args.number_of_iterations)
+RF = RF_feature_extract(samples, cluster_indices, n_iterations=args.number_of_iterations)
 
 feature_importances, summed_FI = RF.extract_features()
 

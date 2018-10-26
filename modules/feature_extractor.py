@@ -1,6 +1,7 @@
 import numpy as np
 import Compute_Relevance as CR
 from sklearn.model_selection import KFold
+from scipy.spatial.distance import squareform
 
 class feature_extractor(object):
 	

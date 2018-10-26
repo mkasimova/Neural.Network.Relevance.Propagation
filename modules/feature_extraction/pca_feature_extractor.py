@@ -6,12 +6,12 @@ import time
 import numpy as np
 from sklearn.decomposition import PCA
 
-import feature_extractor as FE
+from modules.feature_extraction.feature_extractor import FeatureExtractor
 
-class PCA_feature_extract(FE.feature_extractor):
+class PCA_feature_extract(FeatureExtractor):
 	
 	def __init__(self,samples, labels=None, n_components=None, n_splits=10, n_iterations=3, scaling=False):
-		FE.feature_extractor.__init__(self, samples, labels, n_splits=n_splits, scaling=scaling)
+		FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, scaling=scaling, name="PCA")
 		self.n_components = n_components
 		return
 	

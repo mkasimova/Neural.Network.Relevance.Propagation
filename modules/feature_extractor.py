@@ -62,20 +62,6 @@ class feature_extractor(object):
 	def get_feature_importance(self, model):
 		pass
 
-	def rescale_feature_importance(self, feature_importance):
-		"""
-		Min-max rescale feature importances
-		"""
-		if len(feature_importance.shape) == 1:
-				feature_importance = (feature_importance-np.min(feature_importance))/\
-            		(np.max(feature_importance)-np.min(feature_importance)+1e-9)
-		else:
-			for i in range(feature_importance.shape[0]):
-				feature_importance[i,:] = (feature_importance[i,:]-np.min(feature_importance[i,:]))/\
-            		(np.max(feature_importance[i,:])-np.min(feature_importance[i,:])+1e-9)
-		
-		return feature_importance
-
 	def summed_feature_importance(self,feature_importance):
 		"""
 		Get residue feature importance

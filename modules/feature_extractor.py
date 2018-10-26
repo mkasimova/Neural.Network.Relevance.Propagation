@@ -15,11 +15,12 @@ logger = logging.getLogger("Extracting feature")
 
 class feature_extractor(object):
 	
-	def __init__(self,samples, labels=None, scaling=True, n_splits=20):
+	def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3):
 		# Setting parameters
 		self.samples = samples
 		self.labels = labels
 		self.n_splits = n_splits
+		self.n_iterations = n_iterations
 		self.scaling = scaling
 		return
 	
@@ -57,9 +58,23 @@ class feature_extractor(object):
 	
 	def train(self, train_set, train_labels):
 		pass
-
-	def get_feature_importance(self, classifier):
+	
+	def get_feature_importance(self, model):
 		pass
+
+	def rescale_feature_importance(self, feature_importance):
+		"""
+		Min-max rescale feature importances
+		"""
+		if len(feature_importance.shape) == 1:
+				feature_importance = (feature_importance-np.min(feature_importance))/\
+            		(np.max(feature_importance)-np.min(feature_importance)+1e-9)
+		else:
+			for i in range(feature_importance.shape[0]):
+				feature_importance[i,:] = (feature_importance[i,:]-np.min(feature_importance[i,:]))/\
+            		(np.max(feature_importance[i,:])-np.min(feature_importance[i,:])+1e-9)
+		
+		return feature_importance
 
 	def summed_feature_importance(self,feature_importance):
 		"""
@@ -70,41 +85,46 @@ class feature_extractor(object):
 	def extract_features(self):
 		
 		train_inds, test_inds = self.split_train_test()
-
-		errors = np.zeros(self.n_splits)
+		errors = np.zeros(self.n_splits*self.n_iterations)
+		summed_feats = []
+		feats = []
 		
-		for i_iter in range(self.n_splits):
-			logger.info("Iteration %s of %s", i_iter+1, self.n_splits)
-			
-			train_set, test_set, train_labels, test_labels = \
-								self.get_train_test_set(train_inds[i_iter],\
-								test_inds[i_iter])
-			
-			if self.scaling:
-				train_set, perc_2, perc_98, scaler = CR.scale(train_set)
+		for i_split in range(self.n_splits):
+			for i_iter in range(self.n_iterations):
 				
-				test_set, perc_2, perc_98, scaler = scale(test_set,\
-                                                                  perc_2,\
-                                                                  perc_98,\
-                  		                                          scaler)
-			# Train model
-			model = self.train(train_set, train_labels)
-			
-			if self.labels is not None:
-				# Test classifier
-				errors[i_iter] = CR.check_for_overfit(test_set, test_labels, model)
-				logger.info("Error: %s",errors[i_iter])
-			
-			# Get feature importances
-			feature_importance = self.get_feature_importance(model)
-			summed_FI = self.summed_feature_importance(feature_importance)
-			
-			if i_iter == 0:
-				summed_feats = np.zeros((self.n_splits,summed_FI.shape[0]))
-				feats = np.zeros((self.n_splits,feature_importance.shape[0]))
-			
-			summed_feats[i_iter,:] = summed_FI
-			feats[i_iter,:] = feature_importance
+				logger.info("Iteration %s of %s", i_split*self.n_iterations+i_iter+1, self.n_splits*self.n_iterations)
+				
+				train_set, test_set, train_labels, test_labels = \
+									self.get_train_test_set(train_inds[i_iter],\
+									test_inds[i_iter])
+				
+				if self.scaling:
+					train_set, perc_2, perc_98, scaler = CR.scale(train_set)
+				
+					test_set, perc_2, perc_98, scaler = scale(test_set,\
+		                                                 perc_2, perc_98,scaler)
+				
+				# Train model
+				model = self.train(train_set, train_labels)
+				
+				if self.labels is not None:
+					# Test classifier
+					error = CR.check_for_overfit(test_set, test_labels, model)
+					errors[i_split*self.n_iterations + i_iter] = error
+					
+					logger.info("Error: %s",errors[i_split*self.n_iterations + i_iter])
+				
+				if errors[i_split*self.n_iterations + i_iter] < 5:
+					logger.info("Error below 5% - computing feature importance.")
+					# Get feature importances
+					feature_importance = self.get_feature_importance(model)
+					summed_FI = self.summed_feature_importance(feature_importance)
+					
+					summed_feats.append(summed_FI)
+					feats.append(feature_importance)
+		
+		summed_feats = np.asarray(summed_feats)
+		feats = np.asarray(feats)
 		
 		return feats, summed_feats, errors
 

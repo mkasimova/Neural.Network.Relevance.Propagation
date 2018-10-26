@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 import sys
 import logging
 logging.basicConfig(
@@ -10,38 +12,15 @@ from scipy.spatial.distance import squareform
 from sklearn.utils import shuffle
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPClassifier
-import Relevance_Propagation
-from scipy.stats import entropy
+import modules.relevance_propagation
 
-logger = logging.getLogger("Compute Relevance")
+logger = logging.getLogger("utils")
 
 '''
 
 CODE BODY
 
 '''
-
-def keep_datapoints(data,clustering,points_to_keep=[]):
-    """
-    Keeps selected datapoints in a sample (used when clustering is not clean)
-    """
-    if len(points_to_keep)==0:
-        data_keep = data
-        clustering_keep = clustering
-    else:
-        logger.info("Discarding points ...")
-        logger.info("Number of points before discarding is %s", data.shape[0])
-        points_to_keep = np.asarray(points_to_keep)
-        for i in range(len(points_to_keep)):
-            if i==0:
-                data_keep = data[points_to_keep[i,0]:points_to_keep[i,1]]
-                clustering_keep = clustering[points_to_keep[i,0]:points_to_keep[i,1]]
-            else:
-                data_keep = np.vstack((data_keep,data[points_to_keep[i,0]:points_to_keep[i,1]]))
-                clustering_keep = np.concatenate((clustering_keep,clustering[points_to_keep[i,0]:points_to_keep[i,1]]))
-        logger.info("Number of points after discarding is %s", data_keep.shape[0])
-
-    return data_keep, clustering_keep
 
 
 def vectorize(data):
@@ -85,95 +64,6 @@ def convert_to_contact(data,cutoff=0.5):
         sys.exit("The input array has wrong dimensionality")
 
     return data_cont
-
-
-def filter_by_contact_cutoff(data,cutoff=0.5):
-    """
-    Contact cutoff based filtering
-    """
-
-    if len(data.shape)!=2:
-        sys.exit("The input array has wrong dimensionality; Data should be vectorized first")
-
-    number_of_features = data.shape[1]
-    logger.info("Number of features before contact cutoff based filtering is %s", number_of_features)
-
-    data = 1/data
-
-    data_filtered_ind = []
-    for i in range(data.shape[1]):
-        data_min = np.min(data[:,i])
-        if data_min<=cutoff:
-            data_filtered_ind.append(i)
-
-    logger.info("Number of features after contact cutoff based filtering is %s", len(data_filtered_ind))
-
-    data_filtered = data[:,data_filtered_ind]
-
-    data_filtered = 1/data_filtered
-
-    return data_filtered_ind, data_filtered
-
-
-def KL_divergence(x,y,bin_size):
-    """
-    Compute Kullback-Leibler divergence
-    """
-    bin_min = np.min(np.concatenate((x,y)))
-    bin_max = np.max(np.concatenate((x,y)))
-    if bin_size>=(bin_max-bin_min):
-        DKL=0
-    else:
-        bin_n = int((bin_max-bin_min)/bin_size)
-        x_prob = np.histogram(x,bins=bin_n,range=(bin_min,bin_max),density=True)[0]+0.000000001
-        y_prob = np.histogram(y,bins=bin_n,range=(bin_min,bin_max),density=True)[0]+0.000000001
-        DKL = 0.5*(entropy(x_prob,y_prob)+entropy(y_prob,x_prob))
-    return DKL
-
-
-def filter_by_DKL(data,clustering,sigma=2,contacts=False):
-    """
-    DKL based filtering
-    """
-
-    if len(data.shape)!=2:
-        sys.exit("The input array has wrong dimensionality; Data should be vectorized first")
-
-    number_of_features = data.shape[1]
-    logger.info("Number of features before DKL based filtering is %s", number_of_features)
-
-    DKL = np.zeros(number_of_features)
-
-    if contacts==True:
-
-        for i in range(number_of_features):
-            var_uniq = list(set(data[:,i]))
-            if len(var_uniq)>1:
-                DKL[i] = 1
-        data_filtered_ind = np.where(DKL>0)[0]
-        logger.info("Number of features after DKL based filtering is %s", len(data_filtered_ind))
-        data_filtered = data[:,data_filtered_ind]
-
-    else:
-
-        std = np.zeros(number_of_features)
-        for i in range(number_of_features):
-            std[i] = np.std(data[:,i])
-
-        bin_size = np.mean(std)
-        logger.info("Bin size for probability calculation is %s", bin_size)
-
-        clustering_var = list(set(clustering))
-        ind_cluster_0 = np.where(clustering==clustering_var[0])[0]
-        ind_cluster_1 = np.where(clustering==clustering_var[1])[0]
-        for i in range(number_of_features):
-            DKL[i] = KL_divergence(data[ind_cluster_0,i],data[ind_cluster_1,i],bin_size)
-
-        data_filtered_ind = np.where(DKL>=(np.mean(DKL)+sigma*np.std(DKL)))[0]
-        logger.info("Number of features after DKL based filtering is %s", len(data_filtered_ind))
-        data_filtered = data[:,data_filtered_ind]
-
-    return DKL, data_filtered_ind, data_filtered
 
 
 def scale(data,perc_2=None,perc_98=None,scaler=None):

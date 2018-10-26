@@ -1,5 +1,5 @@
 import numpy as np
-import Modules
+import heatmapping_modules as hm_modules
 
 
 def relevance_propagation(weights, biases, X, T):
@@ -11,19 +11,19 @@ def relevance_propagation(weights, biases, X, T):
     return D
 
 
-class Network(Modules.Network):
+class Network(hm_modules.Network):
     def relprop(self, R):
         for l in self.layers[::-1]:
             R = l.relprop(R)
         return R
 
 
-class ReLU(Modules.ReLU):
+class ReLU(hm_modules.ReLU):
     def relprop(self, R):
         return R
 
 
-class Linear(Modules.Linear):
+class Linear(hm_modules.Linear):
     def __init__(self, weight, bias):
         self.W = weight
         self.B = bias

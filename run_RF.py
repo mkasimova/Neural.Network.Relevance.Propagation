@@ -5,12 +5,9 @@ import sys
 python_path = os.path.dirname(__file__)
 sys.path.append(python_path + '/modules/')
 
-# from modules import post_processor
-
-from modules import utils, feature_extraction as fe, postprocessing as pp
+from modules import utils, feature_extraction as fe, postprocessing as pp, visualization
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def main(parser):
@@ -18,23 +15,24 @@ def main(parser):
     samples = np.load(args.feature_list)
     cluster_indices = np.loadtxt(args.cluster_indices)
     labels = utils.create_class_labels(cluster_indices)
-
+    working_dir = args.out_directory  # TODO set appropriately
     feature_extractors = [
         # fe.MlpFeatureExtractor(samples, labels, n_splits=4, scaling=True, hidden_layer_sizes=(100,)),
         # fe.ElmFeatureExtractor(samples, labels),
         fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits),
         fe.PCAFeatureExtractor(samples, n_components=1, n_splits=args.number_of_k_splits),
-        fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations)
+        fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
+                                        n_iterations=args.number_of_iterations)
     ]
 
-    plt.figure(1)
-    results = []
+    postprocessors = []
     for extractor in feature_extractors:
         feats, std_feats, errors = extractor.extract_features()
         # Post-process data (rescale and filter feature importances)
-        relevance, std_relevance = pp.residue_importances(feats, std_feats)
-        postprocessing.average_and_persist(extractor, feature_importance, std_feature_importance, cluster_indices,
-                                           working_dir, feature_to_resids=feature_to_resids, visualize=True)
+        p = pp.PostProcessor(extractor, feats, std_feats, cluster_indices,
+                             working_dir, feature_to_resids=None)
+        p.average().persist()
+        postprocessors.append(p)
 
         """ OLD VISUALIZATION CODE
         plt.figure(1)
@@ -44,9 +42,9 @@ def main(parser):
             plt.plot(relevance[:, i]-std_relevance[:, i])
         plt.show()
         results.append((extractor, relevance, std_relevance))
+        np.save(args.out_directory + 'relevance_results' + args.file_end_name + '.npy', results)
         """
-    np.save(args.out_directory + 'relevance_results' + args.file_end_name + '.npy', results)
-    plt.show()
+    visualization.visualize(postprocessors)
 
 
 parser = argparse.ArgumentParser(epilog='Random forest classifier for feature importance extraction.')

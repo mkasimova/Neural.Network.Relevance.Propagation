@@ -12,6 +12,64 @@ import matplotlib.pyplot as plt
 from biopandas.pdb import PandasPdb
 import pandas as pd
 import modules.utils as utils
+from scipy.spatial.distance import squareform
+
+
+def compute_relevance_per_cluster(all_relevances, class_indices):
+    """
+	Average relevance over each state/cluster. 
+	"""
+    if len(all_relevances) == 3:
+        class_labels = np.unique(class_indices)
+        n_classes = class_labels.shape[0]
+
+        class_relevance = np.zeros((all_relevances.shape[0], n_classes, all_relevances.shape[2]))
+
+        for k in range(n_classes):
+            class_relevance[:, k, :] = \
+                np.mean(all_relevances[:, np.where(clustering_train == \
+                                                   class_labels[k])[0], :], axis=0)
+
+        return class_relevance
+    else:
+        return all_relevances
+
+
+def rescale_feature_importance(feature_importance, std_feature_importance):
+    """
+	Min-max rescale feature importances
+	"""
+    if len(feature_importance.shape) == 3:
+        for i in range(feature_importance.shape[0]):
+            for j in range(feature_importance.shape[1]):
+                min_X = np.min(feature_importance[i, j, :])
+                max_X = np.max(feature_importance[i, j, :])
+                std_feature_importance[i,j,:] /= (max_X-min_X+1e-9)
+                feature_importance[i,j,:] = (feature_importance[i,j,:] - min_X) / \
+                                              (max_X - min_X + 1e-9)
+    return feature_importance, std_feature_importance
+
+
+def residue_importances(feature_importances, std_feature_importances):
+    """
+	Compute residue importance
+	"""
+    if len(feature_importances.shape) == 1:
+        n_states = 1
+        feature_importances = feature_importances[:, np.newaxis].T
+        std_feature_importances = std_feature_importances[:,np.newaxis].T
+    else:
+        n_states = feature_importances.shape[0]
+
+    n_residues = squareform(feature_importances[0, :]).shape[0]
+
+    resid_importance = np.zeros((n_states, n_residues))
+    std_resid_importance = np.zeros((n_states, n_residues))
+    print(resid_importance.shape)
+    for i_state in range(n_states):
+        resid_importance[i_state, :] = np.sum(squareform(feature_importances[i_state, :]), axis=1)
+        std_resid_importance[i_state,:] = np.sqrt(np.sum(squareform(std_feature_importances[i_state, :]**2),axis=1))
+    return resid_importance, std_resid_importance
 
 logger = logging.getLogger("postprocessing")
 
@@ -28,7 +86,7 @@ def average_and_persist(extractor, relevance_avg, relevance_std, cluster_indices
         plt.xlabel("Residue")
         plt.ylabel("Relevance")
         plt.legend()
-        
+
     return relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue
 
 def compute_relevance_per_residue_and_cluster(relevance):

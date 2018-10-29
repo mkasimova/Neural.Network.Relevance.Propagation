@@ -16,7 +16,7 @@ logger = logging.getLogger("Extracting feature")
 
 class FeatureExtractor(object):
 	
-	def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3, name=None):
+	def __init__(self,samples, labels=None, scaling=True, n_splits=20, n_iterations=3, name=''):
 		# Setting parameters
 		self.samples = samples
 		self.labels = labels
@@ -34,10 +34,9 @@ class FeatureExtractor(object):
 		train_inds = []
 		test_inds = []
 		
-		for train_ind, test_ind in kf.split(self.samples, self.labels):
+		for train_ind, test_ind in kf.split(self.samples):
 			train_inds.append(train_ind)
 			test_inds.append(test_ind)
-		
 		return train_inds, test_inds
 
 	def get_train_test_set(self, train_ind, test_ind):
@@ -67,7 +66,7 @@ class FeatureExtractor(object):
 		
 		train_inds, test_inds = self.split_train_test()
 		errors = np.zeros(self.n_splits*self.n_iterations)
-		summed_feats = []
+
 		feats = []
 		
 		for i_split in range(self.n_splits):
@@ -75,8 +74,7 @@ class FeatureExtractor(object):
 				
 				logger.debug("Iteration %s of %s", i_split*self.n_iterations+i_iter+1, self.n_splits*self.n_iterations)
 				train_set, test_set, train_labels, test_labels = \
-									self.get_train_test_set(train_inds[i_split], test_inds[i_split])
-				
+									self.get_train_test_set(train_inds[i_split], test_inds[i_split])	
 				if self.scaling:
 					train_set, perc_2, perc_98, scaler = utils.scale(train_set)
 					

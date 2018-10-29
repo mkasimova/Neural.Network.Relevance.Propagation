@@ -29,6 +29,12 @@ class FeatureExtractor(object):
 		"""
 		Split the data into n_splits training and test sets
 		"""
+		if self.n_splits < 2:
+			all_indices = np.empty((1, len(self.samples)))
+			for i in range(len(self.samples)):
+				all_indices[0,i] = i
+			return all_indices, all_indices
+
 		kf = KFold(n_splits=self.n_splits, shuffle=False)
 		
 		train_inds = []
@@ -84,17 +90,20 @@ class FeatureExtractor(object):
 				# Train model
 				model = self.train(train_set, train_labels)
 				
-				if self.labels is not None and model is not None:
+				if self.labels is not None and model is not None and hasattr(model, "predict"):
 					# Test classifier
 					error = utils.check_for_overfit(test_set, test_labels, model)
 					errors[i_split*self.n_iterations + i_iter] = error
 					
 					logger.debug("Error: %s",errors[i_split*self.n_iterations + i_iter])
-				
-				if errors[i_split*self.n_iterations + i_iter] < 5:
-					logger.debug("Error below 5% - computing feature importance.");
+					do_compute_importance = errors[i_split*self.n_iterations + i_iter] < 5
+				else:
+					do_compute_importance = True
+
+				if do_compute_importance:
+					logger.debug("Computing feature importance on all data.");
 					# Get feature importances
-					feature_importance = self.get_feature_importance(model, train_set, train_labels)
+					feature_importance = self.get_feature_importance(model, self.samples, self.labels)
 					feats.append(feature_importance)
 				else:
 					logger.warn("Error too high - not computing feature importance.");                 

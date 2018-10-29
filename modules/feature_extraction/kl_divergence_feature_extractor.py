@@ -59,7 +59,7 @@ class KLFeatureExtractor(FeatureExtractor):
             data_rest = data[labels[:,i_cluster]==0,:]
             feature_importances[i_cluster,:] = self.KL_divergence(data_cluster, data_rest)
 
-        return feature_importances
+        return feature_importances.T
 
     def _alternative_get_feature_importance(self, classifier, data, labels):
         """Alternative method comparing one vs one instead of one vs all"""
@@ -77,4 +77,4 @@ class KLFeatureExtractor(FeatureExtractor):
                 dkl =  KL_divergence(data_c1, data_c2, self.bin_size)
                 relevance[:,[c1,c2]] += dkl #add relevance for both these clusters
                 
-        return relevance        
+        return relevance.T        

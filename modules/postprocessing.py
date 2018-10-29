@@ -15,24 +15,46 @@ import modules.utils as utils
 from scipy.spatial.distance import squareform
 
 
-def compute_relevance_per_cluster(all_relevances, class_indices):
+logger = logging.getLogger("postprocessing")
+
+
+def average_and_persist(extractor, feature_importance, std_feature_importance, cluster_indices, working_dir, visualize=True,
+                        index_to_residue_mapping=None):
+    importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue = compute_average_importance(
+        #extractor, 
+        feature_importance,
+        cluster_indices)
+    if index_to_residue_mapping is None:
+        index_to_residue_mapping = [resSeq + 1 for resSeq in range(importance_per_residue.shape[0])]
+    persist(extractor, working_dir, feature_importance, importance_per_residue_and_cluster, importance_per_residue, index_to_residue_mapping)
+    if visualize:
+        #TODO visualize features too with std
+        plt.plot(index_to_residue_mapping, importance_per_residue, label=extractor.name)
+        plt.xlabel("Residue")
+        plt.ylabel("importance")
+        plt.legend()
+
+    return importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
+
+
+def compute_importance_per_cluster(all_importances, class_indices):
     """
-	Average relevance over each state/cluster. 
+	Average importance over each state/cluster. 
 	"""
-    if len(all_relevances) == 3:
+    if len(all_importances) == 3:
         class_labels = np.unique(class_indices)
         n_classes = class_labels.shape[0]
 
-        class_relevance = np.zeros((all_relevances.shape[0], n_classes, all_relevances.shape[2]))
+        class_importance = np.zeros((all_importances.shape[0], n_classes, all_importances.shape[2]))
 
         for k in range(n_classes):
-            class_relevance[:, k, :] = \
-                np.mean(all_relevances[:, np.where(clustering_train == \
+            class_importance[:, k, :] = \
+                np.mean(all_importances[:, np.where(clustering_train == \
                                                    class_labels[k])[0], :], axis=0)
 
-        return class_relevance
+        return class_importance
     else:
-        return all_relevances
+        return all_importances
 
 
 def rescale_feature_importance(feature_importance, std_feature_importance):
@@ -71,92 +93,75 @@ def residue_importances(feature_importances, std_feature_importances):
         std_resid_importance[i_state,:] = np.sqrt(np.sum(squareform(std_feature_importances[i_state, :]**2),axis=1))
     return resid_importance, std_resid_importance
 
-logger = logging.getLogger("postprocessing")
 
-def average_and_persist(extractor, relevance_avg, relevance_std, cluster_indices, working_dir, visualize=True,
-                        index_to_residue_mapping=None):
-    relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue = compute_average_relevance(
-        extractor, relevance_avg,
-        cluster_indices)
-    if index_to_residue_mapping is None:
-        index_to_residue_mapping = [resSeq + 1 for resSeq in range(relevance_per_residue.shape[0])]
-    persist(extractor, working_dir, relevance_avg, relevance_per_residue_and_cluster, relevance_per_residue, index_to_residue_mapping)
-    if visualize:
-        plt.plot(index_to_residue_mapping, relevance_per_residue, label=extractor.name)
-        plt.xlabel("Residue")
-        plt.ylabel("Relevance")
-        plt.legend()
-
-    return relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue
-
-def compute_relevance_per_residue_and_cluster(relevance):
-    logger.warn("Note that we should filter away small relevances here. Annie has code")
-    nclusters = 0 if len(relevance.shape) < 2 else relevance.shape[1] 
+def compute_importance_per_residue_and_cluster(importance):
+    logger.warn("Note that we should filter away small importances here. Annie has code")
+    nclusters = 0 if len(importance.shape) < 2 else importance.shape[1] 
     if nclusters < 2:
-        logger.debug("Not possible to compute relevance per cluster")
+        logger.debug("Not possible to compute importance per cluster")
         
-    n_features = relevance.shape[0]
+    n_features = importance.shape[0]
     n_residues = 0.5*(1+np.sqrt(8*n_features + 1))
     n_residues = int(n_residues)
-    relevance_per_residue_and_cluster = np.zeros((n_residues, nclusters))
+    importance_per_residue_and_cluster = np.zeros((n_residues, nclusters))
     feature_idx = 0
     for res1 in range(n_residues):
         for res2 in range(res1 +1, n_residues):
-            rel = relevance[feature_idx]
-            relevance_per_residue_and_cluster[res1,:] += rel
-            relevance_per_residue_and_cluster[res2,:] += rel
+            rel = importance[feature_idx]
+            importance_per_residue_and_cluster[res1,:] += rel
+            importance_per_residue_and_cluster[res2,:] += rel
             feature_idx += 1
-    return relevance_per_residue_and_cluster
+    return importance_per_residue_and_cluster
 
-def compute_relevance_per_residue(relevance):
-    if len(relevance.shape) < 2 or relevance.shape[1] < 2:
-        return relevance
-    return relevance.mean(axis=1)
+def compute_importance_per_residue(importance):
+    if len(importance.shape) < 2 or importance.shape[1] < 2:
+        return importance
+    return importance.mean(axis=1)
     
-def compute_average_relevance(extrator, relevance, cluster_indices):
-    relevance_per_cluster = relevance # compute_relevance_per_cluster(relevance, cluster_indices)
-    relevance_per_residue_and_cluster = compute_relevance_per_residue_and_cluster(relevance_per_cluster)
-    relevance_per_residue = compute_relevance_per_residue(relevance_per_residue_and_cluster)
-    return relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue
+def compute_average_importance(feature_importance, cluster_indices):
+    importance_per_cluster = feature_importance # compute_importance_per_cluster(importance, cluster_indices)
+    importance_per_residue_and_cluster = compute_importance_per_residue_and_cluster(importance_per_cluster)
+    importance_per_residue = compute_importance_per_residue(importance_per_residue_and_cluster)
+    return importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
 
 
-def persist(extractor, working_dir, relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue,
+def persist(extractor, working_dir, importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue,
             index_to_residue_mapping):
     directory = working_dir + "analysis/{}/".format(extractor.name)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    np.save(directory + "relevance_per_cluster", relevance_per_cluster)
-    np.save(directory + "relevance_per_residue_and_cluster", relevance_per_residue_and_cluster)
-    np.save(directory + "relevance_per_residue", relevance_per_residue)
+    np.save(directory + "importance_per_cluster", importance_per_cluster)
+    np.save(directory + "importance_per_residue_and_cluster", importance_per_residue_and_cluster)
+    np.save(directory + "importance_per_residue", importance_per_residue)
 
     pdb_file = working_dir + "analysis/all.pdb"  # TODO don't hard code
     pdb = PandasPdb()
     pdb.read_pdb(pdb_file)
-    save_to_pdb(pdb, directory + "all_relevance.pdb",
-                map_to_correct_residues(relevance_per_residue, index_to_residue_mapping))
-    for cluster_idx, relevance in enumerate(relevance_per_residue_and_cluster):
-        save_to_pdb(pdb, directory + "cluster_{}_relevance.pdb".format(cluster_idx),
-                    map_to_correct_residues(relevance, index_to_residue_mapping))
+    save_to_pdb(pdb, directory + "all_importance.pdb",
+                map_to_correct_residues(importance_per_residue, index_to_residue_mapping))
+    for cluster_idx, importance in enumerate(importance_per_residue_and_cluster):
+        save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
+                    map_to_correct_residues(importance, index_to_residue_mapping))
 
 
-def map_to_correct_residues(relevance_per_residue, index_to_residue_mapping):
-    residue_to_relevance = {}
-    for idx, rel in enumerate(relevance_per_residue):
+def map_to_correct_residues(importance_per_residue, index_to_residue_mapping):
+    residue_to_importance = {}
+    for idx, rel in enumerate(importance_per_residue):
         resSeq = index_to_residue_mapping[idx]
-        residue_to_relevance[resSeq] = rel
-    return residue_to_relevance
+        residue_to_importance[resSeq] = rel
+    return residue_to_importance
 
 
-def save_to_pdb(pdb, out_file, residue_to_relevance):
+def save_to_pdb(pdb, out_file, residue_to_importance):
     atom = pdb.df['ATOM']
     count = 0
     for i, line in atom.iterrows():
         resSeq = int(line['residue_number'])
-        relevance = residue_to_relevance.get(resSeq, None)
-        if relevance is None:
-            logger.warn("Relevance is None for residue %s", resSeq)
+        importance = residue_to_importance.get(resSeq, None)
+        if importance is None:
+            logger.warn("importance is None for residue %s", resSeq)
             continue
-        atom.set_value(i, 'b_factor', relevance)
+        atom.set_value(i, 'b_factor', importance)
     pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
 
@@ -166,3 +171,66 @@ def normalize(values):
     scale = max_val - min_val
     offset = min_val
     return (values - offset) / max(scale, 1e-10)
+
+
+def state_average(self, all_importances, class_indices):
+    """
+    Average importance over each state/cluster. 
+    """
+    if len(all_importances)==3:
+        class_labels = np.unique(class_indices)
+        n_classes = class_labels.shape[0]
+        
+        class_importance = np.zeros((all_importances.shape[0],n_classes,all_importances.shape[2]))
+        
+        for k in range(n_classes):
+            class_importance[:,k,:] = \
+                    np.mean(all_importances[:,np.where(clustering_train==\
+                    class_labels[k])[0],:],axis=0)
+        
+        return class_importance
+    else:
+        return all_importances
+    
+
+def filter_feature_importance(self, average_importance, std_importance=None, n_sigma_threshold=2):
+    """
+    Filter feature importances based on significance.
+    Return filtered residue feature importances (average + std within the states/clusters).
+    """
+    if len(average_importance.shape) == 1:
+        n_states = 1
+        n_features = squareform(average_importance[:]).shape[0]
+        average_importance = average_importance[:,np.newaxis].T
+    else:
+        n_states = average_importance.shape[0]
+        n_features = squareform(average_importance[0,:]).shape[0]
+    
+    residue_importance_ave = np.zeros((n_states,n_features))
+    residue_importance_std = np.zeros((n_states,n_features))
+    
+    for i in range(n_states):
+        ind_nonzero = np.where(average_importance[i,:]>0)
+        global_mean = np.mean(average_importance[i,ind_nonzero])
+        global_sigma = np.std(average_importance[i,ind_nonzero])
+        
+        average_importance_mat = squareform(average_importance[i,:])
+        
+        # If no standard deviation present, 
+        if std_importance is not None:
+            std_importance_mat = squareform(std_importance[i,:])
+        else:
+            residue_importance_std = np.zeros(residue_importance_ave.shape)
+        
+        for j in range(n_features):
+            # Identify significant features         
+            ind_above_sigma = np.where(average_importance_mat[j,:]>=\
+                                      (global_mean + n_sigma_threshold*global_sigma))[0]
+            
+            # Sum over significant features (=> per-residue importance)
+            residue_importance_ave[i,j] = np.sum(average_importance_mat[j,ind_above_sigma])
+            if std_importance is not None:
+                residue_importance_std[i,j] = np.sqrt(np.sum(std_importance_mat[j,ind_above_sigma]**2))
+    
+    return residue_importance_ave, residue_importance_std
+

@@ -71,7 +71,6 @@ def scale(data,perc_2=None,perc_98=None,scaler=None):
     """
     Scales the input and removes outliers
     """
-
     if perc_2 is None and perc_98 is None:
         perc_2 = np.zeros(data.shape[1])
         perc_98 = np.zeros(data.shape[1])
@@ -199,7 +198,7 @@ def perform_relevance_propagation(data_vect,\
                 data_train_scaled = data_train
 
             # Transform clusters into probabilities
-            clustering_train_prob = transform_to_matrix(clustering_train.astype(int))
+            clustering_train_prob = create_class_labels(clustering_train.astype(int))
 
             logger.info("			Training the neural network ...")
 
@@ -220,7 +219,7 @@ def perform_relevance_propagation(data_vect,\
             else:
                 data_test_scaled = data_test
 
-            clustering_test_prob = transform_to_matrix(clustering_test.astype(int))
+            clustering_test_prob = create_class_labels(clustering_test.astype(int))
 
             error = check_for_overfit(data_test_scaled,\
                                       clustering_test_prob,\

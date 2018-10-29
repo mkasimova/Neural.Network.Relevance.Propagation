@@ -38,5 +38,16 @@ class MlpFeatureExtractor(FeatureExtractor):
                                                                 biases, \
                                                                 data_propagation,
                                                                 labels_propagation)
-        print(relevance.shape)
-        return relevance
+        #average relevance per cluster
+        nclusters = labels.shape[1]
+        nfeatures = relevance.shape[1]
+        result = np.zeros((nfeatures, nclusters))
+        frames_per_cluster = np.zeros((nclusters,))
+        for frame in enumerate(labels):
+            cluster_idx = labels[frame_idx].argmax()
+            frames_per_cluster[cluster_idx] += 1
+
+        for frame_idx, rel in enumerate(relevance):
+            cluster_idx = labels[frame_idx].argmax()
+            result[:, cluster_idx] = rel/frames_per_cluster[cluster_idx]
+        return result

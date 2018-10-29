@@ -33,10 +33,9 @@ class FeatureExtractor(object):
 		train_inds = []
 		test_inds = []
 		
-		for train_ind, test_ind in kf.split(self.samples, self.labels):
+		for train_ind, test_ind in kf.split(self.samples):
 			train_inds.append(train_ind)
 			test_inds.append(test_ind)
-		
 		return train_inds, test_inds
 
 	def get_train_test_set(self, train_ind, test_ind):
@@ -66,7 +65,7 @@ class FeatureExtractor(object):
 		
 		train_inds, test_inds = self.split_train_test()
 		errors = np.zeros(self.n_splits*self.n_iterations)
-		summed_feats = []
+
 		feats = []
 		
 		for i_split in range(self.n_splits):

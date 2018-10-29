@@ -28,37 +28,41 @@ def compute_relevance_per_cluster(all_relevances, class_indices):
         return all_relevances
 
 
-def rescale_feature_importance(feature_importance):
+def rescale_feature_importance(feature_importance, std_feature_importance):
     """
 	Min-max rescale feature importances
 	"""
     if len(feature_importance.shape) == 3:
         for i in range(feature_importance.shape[0]):
             for j in range(feature_importance.shape[1]):
-                feature_importance[i, j, :] = (feature_importance[i, j, :] - np.min(feature_importance[i, j, :])) / \
-                                              (np.max(feature_importance[i, j, :]) - np.min(
-                                                  feature_importance[i, j, :]) + 1e-9)
+                min_X = np.min(feature_importance[i, j, :])
+                max_X = np.max(feature_importance[i, j, :])
+                std_feature_importance[i,j,:] /= (max_X-min_X+1e-9)
+                feature_importance[i,j,:] = (feature_importance[i,j,:] - min_X) / \
+                                              (max_X - min_X + 1e-9)
+    return feature_importance, std_feature_importance
 
-    return feature_importance
 
-
-def residue_importances(feature_importances):
+def residue_importances(feature_importances, std_feature_importances):
     """
 	Compute residue importance
 	"""
     if len(feature_importances.shape) == 1:
         n_states = 1
         feature_importances = feature_importances[:, np.newaxis].T
+        std_feature_importances = std_feature_importances[:,np.newaxis].T
     else:
         n_states = feature_importances.shape[0]
 
     n_residues = squareform(feature_importances[0, :]).shape[0]
 
     resid_importance = np.zeros((n_states, n_residues))
+    std_resid_importance = np.zeros((n_states, n_residues))
     print(resid_importance.shape)
     for i_state in range(n_states):
         resid_importance[i_state, :] = np.sum(squareform(feature_importances[i_state, :]), axis=1)
-    return resid_importance
+        std_resid_importance[i_state,:] = np.sqrt(np.sum(squareform(std_feature_importances[i_state, :]**2),axis=1))
+    return resid_importance, std_resid_importance
 
 
 def average_and_persist(extractor, relevance, cluster_indices, working_dir, visualize=True,

@@ -19,7 +19,7 @@ logger = logging.getLogger("RF featurizer")
 
 class RF_feature_extract(FeatureExtractor):
 	
-	def __init__(self,samples, labels, n_splits=10, scaling=True, n_estimators=20, njobs=4, n_iterations=3):
+	def __init__(self,samples, labels, n_splits=10, scaling=True, n_estimators=30, njobs=4, n_iterations=3):
 		FeatureExtractor.__init__(self, samples, labels, n_iterations=n_iterations, n_splits=n_splits, scaling=scaling, name="RF")
 		self.n_estimators = n_estimators
 		self.njobs = njobs

@@ -32,13 +32,13 @@ class PCA_feature_extract(FeatureExtractor):
 	
 	def get_n_components(self, model):
 		""" 
-		Decide the number of components to keep based on a 90% variance cutoff
+		Decide the number of components to keep based on a 75% variance cutoff
 		"""
 		explained_var = model.explained_variance_ratio_
 		n_components = 1
 		total_var_explained = explained_var[0]
 		for i in range(1,explained_var.shape[0]):
-			if total_var_explained + explained_var[i] < 0.9:
+			if total_var_explained + explained_var[i] < 0.75:
 				total_var_explained += explained_var[i]
 				n_components += 1
 		logger.info('Selecting %s components',n_components)

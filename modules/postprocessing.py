@@ -19,17 +19,19 @@ logger = logging.getLogger("postprocessing")
 
 
 def average_and_persist(extractor, feature_importance, std_feature_importance, cluster_indices, working_dir, visualize=True,
-                        index_to_residue_mapping=None):
-    importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue = compute_average_importance(
+                        feature_to_resids=None):
+    (nfeatures, nclusters) = feature_importance.shape
+    if feature_to_resids is None:
+        feature_to_resids = utils.get_default_feature_to_resids(nfeatures)
+    importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue, index_to_resid = compute_average_importance(
         #extractor, 
         feature_importance,
-        cluster_indices)
-    if index_to_residue_mapping is None:
-        index_to_residue_mapping = [resSeq + 1 for resSeq in range(importance_per_residue.shape[0])]
-    persist(extractor, working_dir, feature_importance, importance_per_residue_and_cluster, importance_per_residue, index_to_residue_mapping)
+        cluster_indices, 
+        feature_to_resids)
+    persist(extractor, working_dir, feature_importance, importance_per_residue_and_cluster, importance_per_residue, index_to_resid)
     if visualize:
         #TODO visualize features too with std
-        plt.plot(index_to_residue_mapping, importance_per_residue, label=extractor.name)
+        plt.plot(index_to_resid, importance_per_residue, label=extractor.name)
         plt.xlabel("Residue")
         plt.ylabel("importance")
         plt.legend()
@@ -87,46 +89,50 @@ def residue_importances(feature_importances, std_feature_importances):
 
     resid_importance = np.zeros((n_states, n_residues))
     std_resid_importance = np.zeros((n_states, n_residues))
-    print(resid_importance.shape)
     for i_state in range(n_states):
         resid_importance[i_state, :] = np.sum(squareform(feature_importances[i_state, :]), axis=1)
         std_resid_importance[i_state,:] = np.sqrt(np.sum(squareform(std_feature_importances[i_state, :]**2),axis=1))
     return resid_importance, std_resid_importance
 
 
-def compute_importance_per_residue_and_cluster(importance):
-    logger.warn("Note that we should filter away small importances here. Annie has code")
+def compute_importance_per_residue_and_cluster(importance, feature_to_resids):
     nclusters = 0 if len(importance.shape) < 2 else importance.shape[1] 
     if nclusters < 2:
         logger.debug("Not possible to compute importance per cluster")
         
     n_features = importance.shape[0]
-    n_residues = 0.5*(1+np.sqrt(8*n_features + 1))
+    index_to_resid = set(feature_to_resids.flatten()) #at index X we have residue number
+    index_to_resid = [r for r in index_to_resid]
+    res_id_to_index = {} # a map pointing back to the index in the array index_to_resid
+    for idx, resid in enumerate(index_to_resid):
+        res_id_to_index[resid] = idx
+    n_residues = len(index_to_resid)
     n_residues = int(n_residues)
     importance_per_residue_and_cluster = np.zeros((n_residues, nclusters))
-    feature_idx = 0
-    for res1 in range(n_residues):
-        for res2 in range(res1 +1, n_residues):
-            rel = importance[feature_idx]
-            importance_per_residue_and_cluster[res1,:] += rel
-            importance_per_residue_and_cluster[res2,:] += rel
-            feature_idx += 1
-    return importance_per_residue_and_cluster
+    for feature_idx, rel in enumerate(importance):
+        res1, res2 = feature_to_resids[feature_idx]
+        res1 = res_id_to_index[res1]
+        res2 = res_id_to_index[res2]
+        importance_per_residue_and_cluster[res1,:] += rel
+        importance_per_residue_and_cluster[res2,:] += rel
+    return importance_per_residue_and_cluster, index_to_resid
 
-def compute_importance_per_residue(importance):
-    if len(importance.shape) < 2 or importance.shape[1] < 2:
-        return importance
-    return importance.mean(axis=1)
+
+def compute_importance_per_residue(importance_per_residue_and_cluster):
+    if len(importance_per_residue_and_cluster.shape) < 2 or importance_per_residue_and_cluster.shape[1] < 2:
+        return importance_per_residue_and_cluster
+    return importance_per_residue_and_cluster.mean(axis=1)
     
-def compute_average_importance(feature_importance, cluster_indices):
+def compute_average_importance(feature_importance, cluster_indices, feature_to_resids):
     importance_per_cluster = feature_importance # compute_importance_per_cluster(importance, cluster_indices)
-    importance_per_residue_and_cluster = compute_importance_per_residue_and_cluster(importance_per_cluster)
+    importance_per_residue_and_cluster, index_to_resid = compute_importance_per_residue_and_cluster(importance_per_cluster, feature_to_resids)
     importance_per_residue = compute_importance_per_residue(importance_per_residue_and_cluster)
-    return importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
+    return importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue, index_to_resid
 
 
 def persist(extractor, working_dir, importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue,
-            index_to_residue_mapping):
+            index_to_resid):
+    # TODO don't hard code filepaths below!
     directory = working_dir + "analysis/{}/".format(extractor.name)
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -134,20 +140,20 @@ def persist(extractor, working_dir, importance_per_cluster, importance_per_resid
     np.save(directory + "importance_per_residue_and_cluster", importance_per_residue_and_cluster)
     np.save(directory + "importance_per_residue", importance_per_residue)
 
-    pdb_file = working_dir + "analysis/all.pdb"  # TODO don't hard code
+    pdb_file = working_dir + "analysis/all.pdb" 
     pdb = PandasPdb()
     pdb.read_pdb(pdb_file)
     save_to_pdb(pdb, directory + "all_importance.pdb",
-                map_to_correct_residues(importance_per_residue, index_to_residue_mapping))
-    for cluster_idx, importance in enumerate(importance_per_residue_and_cluster):
+                map_to_correct_residues(importance_per_residue, index_to_resid))
+    for cluster_idx, importance in enumerate(importance_per_residue_and_cluster.T):
         save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
-                    map_to_correct_residues(importance, index_to_residue_mapping))
+                    map_to_correct_residues(importance, index_to_resid))
 
 
-def map_to_correct_residues(importance_per_residue, index_to_residue_mapping):
+def map_to_correct_residues(importance_per_residue, index_to_resid):
     residue_to_importance = {}
     for idx, rel in enumerate(importance_per_residue):
-        resSeq = index_to_residue_mapping[idx]
+        resSeq = index_to_resid[idx]
         residue_to_importance[resSeq] = rel
     return residue_to_importance
 
@@ -158,8 +164,9 @@ def save_to_pdb(pdb, out_file, residue_to_importance):
     for i, line in atom.iterrows():
         resSeq = int(line['residue_number'])
         importance = residue_to_importance.get(resSeq, None)
+        #print(i, resSeq, importance)
         if importance is None:
-            logger.warn("importance is None for residue %s", resSeq)
+            logger.warn("importance is None for residue %s and line %s", resSeq, line)
             continue
         atom.set_value(i, 'b_factor', importance)
     pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)

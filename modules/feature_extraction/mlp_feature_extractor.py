@@ -43,7 +43,7 @@ class MlpFeatureExtractor(FeatureExtractor):
         nfeatures = relevance.shape[1]
         result = np.zeros((nfeatures, nclusters))
         frames_per_cluster = np.zeros((nclusters,))
-        for frame in enumerate(labels):
+        for frame_idx, frame in enumerate(labels):
             cluster_idx = labels[frame_idx].argmax()
             frames_per_cluster[cluster_idx] += 1
 

@@ -31,18 +31,17 @@ def main(parser):
     for extractor in feature_extractors:
         feats, std_feats, errors = extractor.extract_features()
         # Post-process data (rescale and filter feature importances)
-        feats, std_feats = pp.rescale_feature_importance(feats, std_feats)
-
-        feats, std_feats = filtering.filter_feature_importance(feats, std_feats)
         relevance, std_relevance = pp.residue_importances(feats, std_feats)
+        postprocessing.average_and_persist(extractor, feature_importance, std_feature_importance, cluster_indices, working_dir, feature_to_resids=feature_to_resids, visualize=True)
 
-        plt.figure(1)
-        for i in range(relevance.shape[0]):
-            plt.plot(relevance[i,:])
-            plt.plot(relevance[i, :]+std_relevance[i,:])
-            plt.plot(relevance[i, :]-std_relevance[i,:])
+        """plt.figure(1)
+        for i in range(relevance.shape[1]):
+            plt.plot(relevance[:, i])
+            plt.plot(relevance[:, i]+std_relevance[:, i])
+            plt.plot(relevance[:, i]-std_relevance[:, i])
         plt.show()
         results.append((extractor, relevance, std_relevance))
+        """
     np.save(args.out_directory + 'relevance_results'+args.file_end_name+'.npy', results)
     plt.show()
 

@@ -332,3 +332,16 @@ def write_results_input_matrix(relevance,home_dir,fid,DKL=None,only_significant=
         np.savetxt(home_dir+'DKL.'+fid,DKL_out)
 
     logger.info("Done!")
+
+
+def get_default_feature_to_resids(n_features):
+    n_residues = 0.5*(1+np.sqrt(8*n_features + 1))
+    n_residues= int(n_residues)
+    idx = 0
+    feature_to_resids = np.empty((n_features,2))
+    for res1 in range(n_residues):
+        for res2 in range(res1 +1 , n_residues):
+            feature_to_resids[idx, 0]= res1
+            feature_to_resids[idx, 1]= res1
+            idx += 1
+    return feature_to_resids

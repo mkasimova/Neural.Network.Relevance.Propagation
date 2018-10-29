@@ -23,25 +23,24 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
 	"""
     if len(relevances.shape) == 1:
         n_states = 1
-        relevances = relevances[:, np.newaxis].T
-        std_relevances = std_relevances[:,np.newaxis].T
+        #relevances = relevances[:, np.newaxis].T
+        #std_relevances = std_relevances[:,np.newaxis].T
     else:
-        n_states = relevances.shape[0]
+        n_states = relevances.shape[1]
 
-    n_features = relevances.shape[1]
+    n_features = relevances.shape[0]
 
     for i in range(n_states):
-        ind_nonzero = np.where(relevances[i, :] > 0)
-        global_mean = np.mean(relevances[i, ind_nonzero])
-        global_sigma = np.std(relevances[i, ind_nonzero])
+        ind_nonzero = np.where(relevances[:, i] > 0)
+        global_mean = np.mean(relevances[ind_nonzero, i])
+        global_sigma = np.std(relevances[ind_nonzero, i])
 
         # Identify insignificant features
-        ind_below_sigma = np.where(relevances[i, :] < \
+        ind_below_sigma = np.where(relevances[:, i] < \
                                    (global_mean + n_sigma_threshold * global_sigma))[0]
-
         # Remove insignificant features
-        relevances[i, ind_below_sigma] = 0
-        std_relevances[i, ind_below_sigma] = 0
+        relevances[ind_below_sigma, i] = 0
+        std_relevances[ind_below_sigma, i] = 0
     return relevances, std_relevances
 
 

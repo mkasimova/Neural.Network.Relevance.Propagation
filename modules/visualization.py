@@ -24,5 +24,5 @@ def visualize(postprocessors):
         plt.plot(pp.index_to_resid, pp.importance_per_residue, label=pp.extractor.name)
         plt.xlabel("Residue")
         plt.ylabel("Importance")
-        plt.legend()
+    plt.legend()
     plt.show()

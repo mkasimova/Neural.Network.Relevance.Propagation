@@ -29,7 +29,7 @@ class PostProcessor(object):
         :param std_feature_importance:
         :param cluster_indices:
         :param working_dir:
-        :param feature_to_resids:
+        :param feature_to_resids: an array of dimension nfeatures*2 which tells which two residues are involved in a feature
         """
         self.working_dir = working_dir
         self.cluster_indices = cluster_indices
@@ -84,6 +84,7 @@ class PostProcessor(object):
         if self.nclusters < 2:
             logger.debug("Not possible to compute importance per cluster")
         index_to_resid = set(self.feature_to_resids.flatten())  # at index X we have residue number
+        self.nresidues = len(index_to_resid)
         index_to_resid = [r for r in index_to_resid]
         res_id_to_index = {}  # a map pointing back to the index in the array index_to_resid
         for idx, resid in enumerate(index_to_resid):
@@ -95,6 +96,8 @@ class PostProcessor(object):
             res2 = res_id_to_index[res2]
             importance_per_residue_and_cluster[res1, :] += rel
             importance_per_residue_and_cluster[res2, :] += rel
+            
+        importance_per_residue_and_cluster, _ = rescale_feature_importance(importance_per_residue_and_cluster, None)
         self.importance_per_residue_and_cluster = importance_per_residue_and_cluster
         self.index_to_resid = index_to_resid
 
@@ -110,6 +113,7 @@ class PostProcessor(object):
             resSeq = self.index_to_resid[idx]
             residue_to_importance[resSeq] = rel
         self._residue_to_importance = residue_to_importance
+        return residue_to_importance
 
 
 def _save_to_pdb(pdb, out_file, residue_to_importance):
@@ -124,22 +128,32 @@ def _save_to_pdb(pdb, out_file, residue_to_importance):
     pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
 
-def rescale_feature_importance(feature_importance, std_feature_importance):
+def rescale_feature_importance(relevances, std_relevances):
     """
     Min-max rescale feature importances
     :param feature_importance: array of dimension nfeatures * nstates
     :param std_feature_importance: array of dimension nfeatures * nstates
     :return: rescaled versions of the inputs with values between 0 and 1
     """
-    if len(feature_importance.shape) == 3:
-        for i in range(feature_importance.shape[0]):
-            for j in range(feature_importance.shape[1]):
-                min_X = np.min(feature_importance[i, j, :])
-                max_X = np.max(feature_importance[i, j, :])
-                std_feature_importance[i, j, :] /= (max_X - min_X + 1e-9)
-                feature_importance[i, j, :] = (feature_importance[i, j, :] - min_X) / \
-                                              (max_X - min_X + 1e-9)
-    return feature_importance, std_feature_importance
+    if len(relevances.shape) == 1:
+        n_states = 1
+        relevances = relevances[:, np.newaxis]
+        std_relevances = std_relevances[:,np.newaxis]
+    else:
+        n_states = relevances.shape[1]
+
+    n_features = relevances.shape[0]
+
+    for i in range(n_states):
+        max_val, min_val = relevances[:,i].max(), relevances[:,i].min()
+        scale = max_val-min_val
+        offset = min_val
+        if scale < 1e-9:
+            scale = 1.
+        relevances[:,i] = (relevances[:,i] - offset)/scale
+        if std_relevances is not None:
+            std_relevances[:, i] /= scale #TODO correct?
+    return relevances, std_relevances
 
 
 def residue_importances(feature_importances, std_feature_importances):

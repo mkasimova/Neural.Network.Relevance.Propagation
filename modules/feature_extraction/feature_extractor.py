@@ -91,7 +91,7 @@ class FeatureExtractor(object):
                 train_set, test_set, train_labels, test_labels = \
                     self.get_train_test_set(train_inds[i_split], test_inds[i_split])
                 if self.scaling:
-                    train_set, perc_2, perc_98, scaler = utils.scale(train_set, perc_2, perc_98, scaler, scaler)
+                    train_set, perc_2, perc_98, scaler = utils.scale(train_set, perc_2, perc_98, scaler)
                     test_set, perc_2, perc_98, scaler = utils.scale(test_set, perc_2, perc_98, scaler)
 
                 # Train model

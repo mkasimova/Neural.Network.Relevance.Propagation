@@ -20,8 +20,8 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
 	"""
     if len(relevances.shape) == 1:
         n_states = 1
-        # relevances = relevances[:, np.newaxis].T
-        # std_relevances = std_relevances[:,np.newaxis].T
+        relevances = relevances[:, np.newaxis]
+        std_relevances = std_relevances[:,np.newaxis]
     else:
         n_states = relevances.shape[1]
 

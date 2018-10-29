@@ -15,7 +15,8 @@ logger = logging.getLogger("elm")
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
     def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True, n_nodes=None, alpha=1):
-        MlpFeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, name="ELM")
+        MlpFeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations,
+                                     scaling=scaling, name="ELM")
         self.n_nodes = n_nodes
         self.alpha = alpha
 

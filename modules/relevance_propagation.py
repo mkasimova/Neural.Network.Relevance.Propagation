@@ -1,4 +1,5 @@
 import numpy as np
+
 import heatmapping_modules as hm_modules
 
 
@@ -45,9 +46,10 @@ def create_layers(weights, biases, use_first_linear=True):
 
 class FirstLinear(Linear):
     """For z-beta rule"""
+
     def relprop(self, R):
         W, V, U = self.W, np.maximum(0, self.W), np.minimum(0, self.W)
-        X, L, H = self.X, self.X * 0 + np.min(self.X,axis=0), self.X * 0 + np.max(self.X,axis=0)
+        X, L, H = self.X, self.X * 0 + np.min(self.X, axis=0), self.X * 0 + np.max(self.X, axis=0)
         Z = np.dot(X, W) - np.dot(L, V) - np.dot(H, U) + 1e-9
         S = R / Z
         R = X * np.dot(S, W.T) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
@@ -56,6 +58,7 @@ class FirstLinear(Linear):
 
 class NextLinear(Linear):
     """For z+ rule"""
+
     def relprop(self, R):
         V = np.maximum(0, self.W)
         Z = np.dot(self.X, V) + 1e-9

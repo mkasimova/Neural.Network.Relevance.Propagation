@@ -1,16 +1,17 @@
+import argparse
 import os
 import sys
-import argparse
 
 python_path = os.path.dirname(__file__)
-sys.path.append(python_path+'/modules/')
+sys.path.append(python_path + '/modules/')
 
-#from modules import post_processor
+# from modules import post_processor
 
-from modules import utils, feature_extraction as fe, postprocessing as pp, filtering
+from modules import utils, feature_extraction as fe, postprocessing as pp
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 def main(parser):
     args = parser.parse_args()
@@ -19,11 +20,11 @@ def main(parser):
     labels = utils.create_class_labels(cluster_indices)
 
     feature_extractors = [
-        #fe.MlpFeatureExtractor(samples, labels, n_splits=4, scaling=True, hidden_layer_sizes=(100,)),
-        #fe.ElmFeatureExtractor(samples, labels),
+        # fe.MlpFeatureExtractor(samples, labels, n_splits=4, scaling=True, hidden_layer_sizes=(100,)),
+        # fe.ElmFeatureExtractor(samples, labels),
         fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits),
-        fe.PCA_feature_extract(samples, n_components=1, n_splits=args.number_of_k_splits),
-        fe.RF_feature_extract(samples, labels, n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations)
+        fe.PCAFeatureExtractor(samples, n_components=1, n_splits=args.number_of_k_splits),
+        fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations)
     ]
 
     plt.figure(1)
@@ -32,9 +33,11 @@ def main(parser):
         feats, std_feats, errors = extractor.extract_features()
         # Post-process data (rescale and filter feature importances)
         relevance, std_relevance = pp.residue_importances(feats, std_feats)
-        postprocessing.average_and_persist(extractor, feature_importance, std_feature_importance, cluster_indices, working_dir, feature_to_resids=feature_to_resids, visualize=True)
+        postprocessing.average_and_persist(extractor, feature_importance, std_feature_importance, cluster_indices,
+                                           working_dir, feature_to_resids=feature_to_resids, visualize=True)
 
-        """plt.figure(1)
+        """ OLD VISUALIZATION CODE
+        plt.figure(1)
         for i in range(relevance.shape[1]):
             plt.plot(relevance[:, i])
             plt.plot(relevance[:, i]+std_relevance[:, i])
@@ -42,17 +45,19 @@ def main(parser):
         plt.show()
         results.append((extractor, relevance, std_relevance))
         """
-    np.save(args.out_directory + 'relevance_results'+args.file_end_name+'.npy', results)
+    np.save(args.out_directory + 'relevance_results' + args.file_end_name + '.npy', results)
     plt.show()
 
+
 parser = argparse.ArgumentParser(epilog='Random forest classifier for feature importance extraction.')
-parser.add_argument('-fe','--file_end_name',help='End file label.',default='')
-parser.add_argument('-od','--out_directory',help='Folder where files are written.',default='')
-parser.add_argument('-y','--cluster_indices',help='Cluster indices.',default='')
-parser.add_argument('-f','--feature_list',help='Matrix with features [nSamples x nFeatures]',default='')
-parser.add_argument('-n_iter','--number_of_iterations',help='Number of iterations to average each k-split over.',type=int,default=3)
-parser.add_argument('-n_splits','--number_of_k_splits',help='Number of k splits in K-fold cross-validation.',type=int,default=10)
-parser.add_argument('-scale','--scale_data',help='Flag for scaling data.',action='store_true')
+parser.add_argument('-fe', '--file_end_name', help='End file label.', default='')
+parser.add_argument('-od', '--out_directory', help='Folder where files are written.', default='')
+parser.add_argument('-y', '--cluster_indices', help='Cluster indices.', default='')
+parser.add_argument('-f', '--feature_list', help='Matrix with features [nSamples x nFeatures]', default='')
+parser.add_argument('-n_iter', '--number_of_iterations', help='Number of iterations to average each k-split over.',
+                    type=int, default=3)
+parser.add_argument('-n_splits', '--number_of_k_splits', help='Number of k splits in K-fold cross-validation.',
+                    type=int, default=10)
+parser.add_argument('-scale', '--scale_data', help='Flag for scaling data.', action='store_true')
 
 main(parser)
-

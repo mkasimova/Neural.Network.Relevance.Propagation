@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import sys
 import logging
+import sys
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -9,9 +9,6 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-from scipy.spatial.distance import squareform
-
-from scipy.stats import entropy
 
 logger = logging.getLogger("filtering")
 
@@ -23,8 +20,8 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
 	"""
     if len(relevances.shape) == 1:
         n_states = 1
-        #relevances = relevances[:, np.newaxis].T
-        #std_relevances = std_relevances[:,np.newaxis].T
+        # relevances = relevances[:, np.newaxis].T
+        # std_relevances = std_relevances[:,np.newaxis].T
     else:
         n_states = relevances.shape[1]
 

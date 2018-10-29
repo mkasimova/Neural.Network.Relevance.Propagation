@@ -6,6 +6,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from biopandas.pdb import PandasPdb
@@ -21,7 +22,7 @@ def average_and_persist(extractor, relevance_avg, relevance_std, cluster_indices
         cluster_indices)
     if index_to_residue_mapping is None:
         index_to_residue_mapping = [resSeq + 1 for resSeq in range(relevance_per_residue.shape[0])]
-    persist(working_dir, relevance_avg, relevance_per_residue_and_cluster, relevance_per_residue, index_to_residue_mapping)
+    persist(extractor, working_dir, relevance_avg, relevance_per_residue_and_cluster, relevance_per_residue, index_to_residue_mapping)
     if visualize:
         plt.plot(index_to_residue_mapping, relevance_per_residue, label=extractor.name)
         plt.xlabel("Residue")
@@ -61,7 +62,7 @@ def compute_average_relevance(extrator, relevance, cluster_indices):
     return relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue
 
 
-def persist(working_dir, relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue,
+def persist(extractor, working_dir, relevance_per_cluster, relevance_per_residue_and_cluster, relevance_per_residue,
             index_to_residue_mapping):
     directory = working_dir + "analysis/{}/".format(extractor.name)
     if not os.path.exists(directory):

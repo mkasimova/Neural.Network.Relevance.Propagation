@@ -19,7 +19,7 @@ logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, cluster_indices, working_dir,
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir,
                  feature_to_resids=None):
         """
         Class which computes all the necessary averages and saves them as fields
@@ -48,6 +48,10 @@ class PostProcessor(object):
         self.std_importance_per_residue = None
         self.index_to_resid = None
 
+        self.entropy = None
+        self.average_std = None
+        self.test_set_errors = test_set_errors
+
     def average(self):
         """
         Computes average importance per cluster and residue and residue etc.
@@ -58,6 +62,8 @@ class PostProcessor(object):
         self.std_importance_per_cluster = self.std_feature_importance
         self._compute_importance_per_residue_and_cluster()
         self._compute_importance_per_residue()
+        self._compute_entropy()
+        self._compute_average_std()
         return self
 
     def persist(self, directory=None):
@@ -129,6 +135,16 @@ class PostProcessor(object):
         self._residue_to_importance = residue_to_importance
         return residue_to_importance
 
+    def _compute_entropy(self):
+        rel = self.importance_per_residue[self.importance_per_residue > 0]
+        rel /= rel.sum()
+        print('Rel size: '+str(rel.shape))
+        self.entropy = -np.sum(rel*np.log(rel))
+        return
+
+    def _compute_average_std(self):
+        self.average_std = self.std_importance_per_residue.mean()
+        return
 
 def _save_to_pdb(pdb, out_file, residue_to_importance):
     atom = pdb.df['ATOM']

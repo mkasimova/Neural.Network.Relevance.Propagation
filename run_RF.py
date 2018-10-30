@@ -19,17 +19,17 @@ def main(parser):
     feature_extractors = [
         # fe.MlpFeatureExtractor(samples, labels, n_splits=4, scaling=True, hidden_layer_sizes=(100,)),
         # fe.ElmFeatureExtractor(samples, labels),
-        fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits),
+        # fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits),
         fe.PCAFeatureExtractor(samples, n_components=1, n_splits=args.number_of_k_splits),
-        # fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits, \
-        #                                n_iterations=args.number_of_iterations)
+        fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits, \
+                                       n_iterations=args.number_of_iterations)
     ]
 
     postprocessors = []
     for extractor in feature_extractors:
         feats, std_feats, errors = extractor.extract_features()
         # Post-process data (rescale and filter feature importances)
-        p = pp.PostProcessor(extractor, feats, std_feats, cluster_indices,
+        p = pp.PostProcessor(extractor, feats, std_feats, errors, cluster_indices,
                              working_dir, feature_to_resids=None)
         p.average().persist()
         postprocessors.append(p)

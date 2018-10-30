@@ -20,6 +20,7 @@ def visualize(postprocessors):
     :param postprocessors:
     :return:
     """
+    plt.figure(figsize=(16,8))
     for pp in postprocessors:
         plt.plot(pp.index_to_resid, pp.importance_per_residue, label=pp.extractor.name)
         plt.xlabel("Residue")

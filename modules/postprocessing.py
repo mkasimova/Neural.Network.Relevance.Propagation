@@ -73,10 +73,10 @@ class PostProcessor(object):
         pdb = PandasPdb()
         pdb.read_pdb(pdb_file)
         _save_to_pdb(pdb, directory + "all_importance.pdb",
-                     self._map_to_correct_residues())
+                     self._map_to_correct_residues(self.importance_per_residue))
         for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
             _save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
-                         self._map_to_correct_residues())
+                         self._map_to_correct_residues(importance))
         return self
 
     def _compute_importance_per_residue_and_cluster(self):
@@ -107,24 +107,27 @@ class PostProcessor(object):
         else:
             self.importance_per_residue = self.importance_per_residue_and_cluster.mean(axis=1)
 
-    def _map_to_correct_residues(self):
+    def _map_to_correct_residues(self, importance_per_residue):
         residue_to_importance = {}
-        for idx, rel in enumerate(self.importance_per_residue):
+        for idx, rel in enumerate(importance_per_residue):
             resSeq = self.index_to_resid[idx]
             residue_to_importance[resSeq] = rel
-        self._residue_to_importance = residue_to_importance
         return residue_to_importance
 
 
 def _save_to_pdb(pdb, out_file, residue_to_importance):
     atom = pdb.df['ATOM']
+    missing_residues = []
     for i, line in atom.iterrows():
         resSeq = int(line['residue_number'])
         importance = residue_to_importance.get(resSeq, None)
         if importance is None:
-            logger.warn("importance is None for residue %s and line %s", resSeq, line)
-            continue
+            missing_residues.append(resSeq)
+            #logger.warn("importance is None for residue %s and line %s", resSeq, line)
+            importance = 0
         atom.set_value(i, 'b_factor', importance)
+    if len(missing_residues) > 0:
+        logger.warn("importance is None for residues %s", set(missing_residues))
     pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
 

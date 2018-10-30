@@ -41,8 +41,11 @@ class PostProcessor(object):
             feature_to_resids = utils.get_default_feature_to_resids(self.nfeatures)
         self.feature_to_resids = feature_to_resids
         self.importance_per_cluster = None
+        self.std_importance_per_cluster = None
         self.importance_per_residue_and_cluster = None
+        self.std_importance_per_residue_and_cluster = None
         self.importance_per_residue = None
+        self.std_importance_per_residue = None
         self.index_to_resid = None
 
     def average(self):
@@ -52,6 +55,7 @@ class PostProcessor(object):
         :return: itself
         """
         self.importance_per_cluster = self.feature_importance  # compute_importance_per_cluster(importance, cluster_indices)
+        self.std_importance_per_cluster = self.std_feature_importance
         self._compute_importance_per_residue_and_cluster()
         self._compute_importance_per_residue()
         return self
@@ -93,22 +97,29 @@ class PostProcessor(object):
         for idx, resid in enumerate(index_to_resid):
             res_id_to_index[resid] = idx
         importance_per_residue_and_cluster = np.zeros((self.nresidues, self.nclusters))
+        std_importance = np.zeros((self.nresidues, self.nclusters))
         for feature_idx, rel in enumerate(importance):
             res1, res2 = self.feature_to_resids[feature_idx]
             res1 = res_id_to_index[res1]
             res2 = res_id_to_index[res2]
             importance_per_residue_and_cluster[res1, :] += rel
             importance_per_residue_and_cluster[res2, :] += rel
-            
-        importance_per_residue_and_cluster, _ = rescale_feature_importance(importance_per_residue_and_cluster, None)
+            std_importance[res1,:] += self.std_importance_per_cluster[res1,:]**2
+            std_importance[res2, :] += self.std_importance_per_cluster[res2, :] ** 2
+        std_importance = np.sqrt(std_importance)
+        importance_per_residue_and_cluster, std_importance = rescale_feature_importance(importance_per_residue_and_cluster, std_importance)
+
         self.importance_per_residue_and_cluster = importance_per_residue_and_cluster
+        self.std_importance_per_residue_and_cluster = std_importance
         self.index_to_resid = index_to_resid
 
     def _compute_importance_per_residue(self):
         if len(self.importance_per_residue_and_cluster.shape) < 2:
             self.importance_per_residue = self.importance_per_residue_and_cluster
+            self.std_importance_per_residue = self.std_importance_per_residue_and_cluster
         else:
             self.importance_per_residue = self.importance_per_residue_and_cluster.mean(axis=1)
+            self.std_importance_per_residue = np.sqrt(np.mean(self.std_importance_per_residue_and_cluster**2,axis=1))
 
     def _map_to_correct_residues(self):
         residue_to_importance = {}

@@ -21,8 +21,8 @@ def main(parser):
         # fe.ElmFeatureExtractor(samples, labels),
         fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits),
         fe.PCAFeatureExtractor(samples, n_components=1, n_splits=args.number_of_k_splits),
-        fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
-                                        n_iterations=args.number_of_iterations)
+        # fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits, \
+        #                                n_iterations=args.number_of_iterations)
     ]
 
     postprocessors = []

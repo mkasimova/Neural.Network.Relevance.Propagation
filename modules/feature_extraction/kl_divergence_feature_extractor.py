@@ -17,13 +17,20 @@ logger = logging.getLogger("KL")
 
 class KLFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True, bin_size=None):
-        FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
+    def __init__(self, samples, labels, n_splits=10, scaling=True, bin_size=None):
+        FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=1, scaling=scaling,
                                   name="KL")
         self.bin_size = bin_size
+        self.feature_importances = None
 
-    def train(self, train_set, train_labels):
-        pass
+    def train(self, data, labels):
+        n_clusters = labels.shape[1]
+
+        self.feature_importances = np.zeros((n_clusters, data.shape[1]))
+        for i_cluster in range(n_clusters):
+            data_cluster = data[labels[:, i_cluster] == 1, :]
+            data_rest = data[labels[:, i_cluster] == 0, :]
+            self.feature_importances[i_cluster, :] = self.KL_divergence(data_cluster, data_rest)
 
     def KL_divergence(self, x, y):
         """
@@ -53,21 +60,13 @@ class KLFeatureExtractor(FeatureExtractor):
         """
         Get the feature importance of KL divergence by comparing each cluster to all other clusters.
         """
-        n_clusters = labels.shape[1]
+        return self.feature_importances.T
 
-        feature_importances = np.zeros((n_clusters, data.shape[1]))
-        for i_cluster in range(n_clusters):
-            data_cluster = data[labels[:, i_cluster] == 1, :]
-            data_rest = data[labels[:, i_cluster] == 0, :]
-            feature_importances[i_cluster, :] = self.KL_divergence(data_cluster, data_rest)
-
-        return feature_importances.T
-
-    def _alternative_get_feature_importance(self, classifier, data, labels):
+    def _alternative_train(self, model, data, labels):
         """Alternative method comparing one vs one instead of one vs all"""
         nclusters = labels.shape[1]
         nfeatures = data.shape[1]
-        relevance = np.zeros((nfeatures, nclusters))
+        self.feature_importances = np.zeros((nfeatures, nclusters))
         for c1 in range(nclusters):
             data_c1 = data[labels[:, c1] > 0]
             for c2 in range(c1 + 1, nclusters):
@@ -77,6 +76,6 @@ class KLFeatureExtractor(FeatureExtractor):
                     logger.warn("Unbalanced data partitioning. No data for one cluster. Ignoring...")
                     continue
                 dkl = self.KL_divergence(data_c1, data_c2)
-                relevance[:, [c1, c2]] += dkl  # add relevance for both these clusters
+                self.feature_importances[:, [c1, c2]] += dkl  # add relevance for both these clusters
 
-        return relevance.T
+        return self.feature_importances.T

@@ -18,8 +18,8 @@ logger = logging.getLogger("PCA featurizer")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, labels=None, n_components=None, n_splits=10, n_iterations=3, scaling=False):
-        FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
+    def __init__(self, samples, labels=None, n_components=None, n_splits=10, scaling=False):
+        FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=1, scaling=scaling,
                                   name="PCA")
         self.n_components = n_components
         return

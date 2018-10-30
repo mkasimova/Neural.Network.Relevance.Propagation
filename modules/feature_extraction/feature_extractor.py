@@ -70,7 +70,7 @@ class FeatureExtractor(object):
     def get_feature_importance(self, model, samples, labels):
         pass
 
-    def extract_features(self, rescale_results=False, filter_results=True):
+    def extract_features(self, rescale_results=True, filter_results=True):
 
         train_inds, test_inds = self.split_train_test()
         errors = np.zeros(self.n_splits * self.n_iterations)

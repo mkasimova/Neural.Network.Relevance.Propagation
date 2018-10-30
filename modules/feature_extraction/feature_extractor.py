@@ -113,13 +113,17 @@ class FeatureExtractor(object):
                     feature_importance = self.get_feature_importance(model, full_set, self.labels)
                     feats.append(feature_importance)
                 else:
-                    logger.warn("Error too high - not computing feature importance.");
+                    logger.warn("Error too high - not computing feature importance.")
 
-        feats = np.asarray(feats);
+        feats = np.asarray(feats)
+
         std_feats = np.std(feats, axis=0)
-        feats = np.mean(feats, axis=0);
+        feats = np.mean(feats, axis=0)
+
+
         if rescale_results:
-            feats, std_feats = pp.rescale_feature_importance(feats, std_feats);
+            feats, std_feats = pp.rescale_feature_importance(feats, std_feats)
         if filter_results:
-            feats, std_feats = filtering.filter_feature_importance(feats, std_feats);
+            feats, std_feats = filtering.filter_feature_importance(feats, std_feats)
+
         return feats, std_feats, errors

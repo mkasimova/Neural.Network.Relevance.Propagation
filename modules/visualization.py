@@ -17,13 +17,13 @@ def vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color):
     ax.plot(x_val, y_val, color=color, label=extractor_name)
     ax.plot(x_val, y_val + std_val, color=color, markersize=1)
     ax.plot(x_val, y_val - std_val, color=color, markersize=1)
-    plt.xlabel("Residue")
-    plt.ylabel("Importance")
+    ax.set_xlabel("Residue")
+    ax.set_ylabel("Importance")
 
-def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel,extractor_name):
-    ax.bar(x_val, y_val, label=extractor_name)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel,extractor_name, color):
+    ax.bar(x_val, y_val, label=extractor_name, color=color)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
 
 
 def visualize(postprocessors):
@@ -35,7 +35,7 @@ def visualize(postprocessors):
     """
 
     n_feature_extractors = len(postprocessors)
-    cols = np.asarray([[0,0,0],[0.5,0,0],[0,0.5,0],[0,0,0.5]])
+    cols = np.asarray([[0,0,0],[0.5,0,0],[0,0.5,0],[0,0,0.5], [0,0.5,0.5]]) #TODO: pick better colors
 
     fig1, axes1= plt.subplots(1,n_feature_extractors)
     fig2, axes2 = plt.subplots(1,3)
@@ -46,12 +46,17 @@ def visualize(postprocessors):
 
         vis_feature_importance(pp.index_to_resid, pp.importance_per_residue, pp.std_importance_per_residue,
                                ax, pp.extractor.name, cols[counter, :])
-        counter+=1
 
-        vis_performance_metrics(counter, pp.entropy, fig2.axes[0], 'Estimator', 'Relevance entropy', pp.extractor.name)
-        vis_performance_metrics(counter, pp.average_std, fig2.axes[1], 'Estimator', 'Average standard deviation', pp.extractor.name)
+
+        vis_performance_metrics(counter, pp.entropy, fig2.axes[0], 'Estimator', 'Relevance entropy',
+                                pp.extractor.name, cols[counter, :])
+
+        vis_performance_metrics(counter, pp.average_std, fig2.axes[1], 'Estimator', 'Average standard deviation',
+                                pp.extractor.name, cols[counter, :])
+
         vis_performance_metrics(counter, pp.test_set_errors, fig2.axes[2], 'Estimator', 'Test set error',
-                                pp.extractor.name)
-        print(pp.average_std)
+                                pp.extractor.name,cols[counter, :])
+
+        counter+=1
     plt.legend()
     plt.show()

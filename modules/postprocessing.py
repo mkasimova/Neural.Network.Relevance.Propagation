@@ -34,6 +34,7 @@ class PostProcessor(object):
         self.working_dir = working_dir
         self.cluster_indices = cluster_indices
         self.std_feature_importance = std_feature_importance
+
         self.feature_importance = feature_importance
         self.extractor = extractor
         self.nfeatures, self.nclusters = feature_importance.shape
@@ -93,6 +94,7 @@ class PostProcessor(object):
         return self
 
     def _compute_importance_per_residue_and_cluster(self):
+
         importance = self.importance_per_cluster
         if self.nclusters < 2:
             logger.debug("Not possible to compute importance per cluster")
@@ -110,8 +112,8 @@ class PostProcessor(object):
             res2 = res_id_to_index[res2]
             importance_per_residue_and_cluster[res1, :] += rel
             importance_per_residue_and_cluster[res2, :] += rel
-            std_importance[res1,:] += self.std_importance_per_cluster[res1,:]**2
-            std_importance[res2, :] += self.std_importance_per_cluster[res2, :] ** 2
+            std_importance[res1,:] += self.std_importance_per_cluster[feature_idx,:]**2
+            std_importance[res2, :] += self.std_importance_per_cluster[feature_idx, :] ** 2
         std_importance = np.sqrt(std_importance)
         importance_per_residue_and_cluster, std_importance = rescale_feature_importance(importance_per_residue_and_cluster, std_importance)
 
@@ -138,7 +140,6 @@ class PostProcessor(object):
     def _compute_entropy(self):
         rel = self.importance_per_residue[self.importance_per_residue > 0]
         rel /= rel.sum()
-        print('Rel size: '+str(rel.shape))
         self.entropy = -np.sum(rel*np.log(rel))
         return
 

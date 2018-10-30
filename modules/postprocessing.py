@@ -69,6 +69,9 @@ class PostProcessor(object):
         np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
         np.save(directory + "importance_per_residue", self.importance_per_residue)
 
+        if not os.path.exists(self.working_dir + "analysis/"):
+            os.makedirs(self.working_dir + "analysis/")
+		
         pdb_file = self.working_dir + "analysis/all.pdb"
         pdb = PandasPdb()
         pdb.read_pdb(pdb_file)

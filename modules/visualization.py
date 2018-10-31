@@ -37,8 +37,8 @@ def visualize(postprocessors):
     n_feature_extractors = len(postprocessors)
     cols = np.asarray([[0,0,0],[0.5,0,0],[0,0.5,0],[0,0,0.5], [0,0.5,0.5]]) #TODO: pick better colors
 
-    fig1, axes1= plt.subplots(1,n_feature_extractors)
-    fig2, axes2 = plt.subplots(1,3)
+    fig1, axes1= plt.subplots(1,n_feature_extractors, figsize=(16,8))
+    fig2, axes2 = plt.subplots(1,3, figsize=(16,8))
 
     counter = 0
     for pp, ax in zip(postprocessors, fig1.axes):

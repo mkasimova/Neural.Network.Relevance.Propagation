@@ -342,6 +342,6 @@ def get_default_feature_to_resids(n_features):
     for res1 in range(n_residues):
         for res2 in range(res1 + 1, n_residues):
             feature_to_resids[idx, 0] = res1
-            feature_to_resids[idx, 1] = res1
+            feature_to_resids[idx, 1] = res2
             idx += 1
     return feature_to_resids

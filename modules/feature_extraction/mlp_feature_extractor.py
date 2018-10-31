@@ -50,5 +50,5 @@ class MlpFeatureExtractor(FeatureExtractor):
 
         for frame_idx, rel in enumerate(relevance):
             cluster_idx = labels[frame_idx].argmax()
-            result[:, cluster_idx] = rel / frames_per_cluster[cluster_idx]
+            result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
         return result

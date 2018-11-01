@@ -1,5 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
+import logging
+import sys
+
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 import sklearn
 
@@ -7,23 +15,33 @@ import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 
 
+logger = logging.getLogger("mlp")
+
 class MlpFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True, hidden_layer_sizes=(100,),
+                 solver='lbfgs',
+                 activation="relu",
                  randomize=True,
+                 training_max_iter=100000,
                  name="MLP"):
         FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
                                   name=name)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.randomize = randomize
+        self.solver = solver
+        if activation != "relu":
+            logger.warn("Relevance propagation currently only supported for relu")
+        self.activation = activation
+        self.training_max_iter = training_max_iter
 
     def train(self, train_set, train_labels):
         classifier = sklearn.neural_network.MLPClassifier(
-            solver='lbfgs',
+            solver=self.solver,
             hidden_layer_sizes=self.hidden_layer_sizes,
             random_state=(None if self.randomize else 89274),
-            activation='relu',
-            max_iter=500)
+            activation=self.activation,
+            max_iter=self.training_max_iter)
 
         classifier.fit(train_set, train_labels)
         return classifier

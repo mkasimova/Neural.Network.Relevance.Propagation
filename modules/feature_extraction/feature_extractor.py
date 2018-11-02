@@ -17,7 +17,7 @@ logger = logging.getLogger("Extracting feature")
 
 class FeatureExtractor(object):
 
-    def __init__(self, samples, labels=None, scaling=True, n_splits=20, n_iterations=3, name=''):
+    def __init__(self, samples, labels=None, scaling=True, n_splits=20, n_iterations=3, error_limit=5, name=''):
         # Setting parameters
         self.samples = samples
         self.labels = labels
@@ -25,6 +25,7 @@ class FeatureExtractor(object):
         self.n_iterations = n_iterations
         self.scaling = scaling
         self.name = name
+        self.error_limit = error_limit
 
     def split_train_test(self):
         """
@@ -103,7 +104,7 @@ class FeatureExtractor(object):
                     errors[i_split * self.n_iterations + i_iter] = error
 
                     logger.debug("Error: %s", errors[i_split * self.n_iterations + i_iter])
-                    do_compute_importance = errors[i_split * self.n_iterations + i_iter] < 5
+                    do_compute_importance = errors[i_split * self.n_iterations + i_iter] < self.error_limit
                 else:
                     do_compute_importance = True
 

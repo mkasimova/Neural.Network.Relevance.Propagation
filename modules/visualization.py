@@ -44,7 +44,10 @@ def visualize(postprocessors,
     if show_importance:
         fig1, axes1= plt.subplots(1,n_feature_extractors, figsize=(16,8))
     if show_performance:
-        fig2, axes2 = plt.subplots(1,3, figsize=(16,8))
+    	if postprocessors[0].predefined_relevant_residues is None:
+        	fig2, axes2 = plt.subplots(1,3, figsize=(16,8))
+        else:
+        	fig2, axes2 = plt.subplots(1,5, figsize=(16,5))
 
     counter = 0
     for pp, ax in zip(postprocessors, fig1.axes):
@@ -61,8 +64,14 @@ def visualize(postprocessors,
                                     pp.extractor.name, cols[counter, :])
 
             vis_performance_metrics(counter, pp.test_set_errors, fig2.axes[2], 'Estimator', 'Test set error',
+        	                        pp.extractor.name,cols[counter, :])
+            
+            if pp.predefined_relevant_residues is not None:
+				vis_performance_metrics(counter, pp.correct_relevance_peaks, fig2.axes[3], 'Estimator', 'Number of correctly predicted relevances',
                                     pp.extractor.name,cols[counter, :])
-
+                
+				vis_performance_metrics(counter, pp.false_positives, fig2.axes[4], 'Estimator', 'Number of false positives',
+                                    pp.extractor.name,cols[counter, :])
         counter+=1
     #plt.legend()
     plt.show()

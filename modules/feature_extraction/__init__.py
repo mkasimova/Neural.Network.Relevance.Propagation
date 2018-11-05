@@ -6,3 +6,4 @@ from modules.feature_extraction.kl_divergence_feature_extractor import KLFeature
 from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
 from modules.feature_extraction.pca_feature_extractor import PCAFeatureExtractor
 from modules.feature_extraction.random_forest_feature_extractor import RandomForestFeatureExtractor
+from modules.feature_extraction.rbm_feature_extractor import RbmFeatureExtractor

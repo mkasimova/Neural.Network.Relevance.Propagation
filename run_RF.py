@@ -87,7 +87,7 @@ def main(parser):
                              cluster_indices,
                              working_dir,\
                              rescale_results=True,\
-                             filter_results=False,\
+                             filter_results=True,\
                              feature_to_resids=None,\
                              pdb_file=pdb_file)
         p.average().persist()

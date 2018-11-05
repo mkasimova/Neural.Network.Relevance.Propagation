@@ -19,8 +19,7 @@ logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir,
-                 feature_to_resids=None):
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -31,16 +30,26 @@ class PostProcessor(object):
         :param working_dir:
         :param feature_to_resids: an array of dimension nfeatures*2 which tells which two residues are involved in a feature
         """
-        self.working_dir = working_dir
-        self.cluster_indices = cluster_indices
-        self.std_feature_importance = std_feature_importance
-
-        self.feature_importance = feature_importance
         self.extractor = extractor
+        self.feature_importance = feature_importance
+        self.std_feature_importance = std_feature_importance
+        if rescale_results: #TODO scaling is also performed later when importance per residue is computed; remove this scaling?
+            self.feature_importance, self.std_feature_importance = rescale_feature_importance(self.feature_importance, self.std_feature_importance)
+        if filter_results:
+            self.feature_importance, self.std_feature_importance = filter_feature_importance(self.feature_importance, self.std_feature_importance)
+
+        self.test_set_errors = test_set_errors
+        self.cluster_indices = cluster_indices
+        self.working_dir = working_dir
+        self.pdb_file = pdb_file
+
         self.nfeatures, self.nclusters = feature_importance.shape
-        if feature_to_resids is None:
+        if feature_to_resids is None and self.pdb_file is None:
             feature_to_resids = utils.get_default_feature_to_resids(self.nfeatures)
+        elif feature_to_resids is None and self.pdb_file is not None:
+            feature_to_resids = utils.get_feature_to_resids_from_pdb(self.nfeatures,self.pdb_file)
         self.feature_to_resids = feature_to_resids
+
         self.importance_per_cluster = None
         self.std_importance_per_cluster = None
         self.importance_per_residue_and_cluster = None
@@ -51,7 +60,7 @@ class PostProcessor(object):
 
         self.entropy = None
         self.average_std = None
-        self.test_set_errors = test_set_errors
+
 
     def average(self):
         """
@@ -59,7 +68,7 @@ class PostProcessor(object):
         Sets the fields importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
         :return: itself
         """
-        self.importance_per_cluster = self.feature_importance  # compute_importance_per_cluster(importance, cluster_indices)
+        self.importance_per_cluster = self.feature_importance # compute_importance_per_cluster(importance, cluster_indices)
         self.std_importance_per_cluster = self.std_feature_importance
         self._compute_importance_per_residue_and_cluster()
         self._compute_importance_per_residue()
@@ -80,17 +89,16 @@ class PostProcessor(object):
         np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
         np.save(directory + "importance_per_residue", self.importance_per_residue)
 
-        if not os.path.exists(self.working_dir + "analysis/"):
-            os.makedirs(self.working_dir + "analysis/")
-		
-        pdb_file = self.working_dir + "analysis/all.pdb"
-        pdb = PandasPdb()
-        pdb.read_pdb(pdb_file)
-        _save_to_pdb(pdb, directory + "all_importance.pdb",
-                     self._map_to_correct_residues(self.importance_per_residue))
-        for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
-            _save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
-                         self._map_to_correct_residues(importance))
+#        if not os.path.exists(self.working_dir + "analysis/"):
+#            os.makedirs(self.working_dir + "analysis/")
+
+        if self.pdb_file is not None:
+            pdb = PandasPdb()
+            pdb.read_pdb(self.pdb_file)
+            _save_to_pdb(pdb, directory + "all_importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
+            for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
+                _save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
+
         return self
 
     def _compute_importance_per_residue_and_cluster(self):
@@ -98,10 +106,10 @@ class PostProcessor(object):
         importance = self.importance_per_cluster
         if self.nclusters < 2:
             logger.debug("Not possible to compute importance per cluster")
-        index_to_resid = set(self.feature_to_resids.flatten())  # at index X we have residue number
+        index_to_resid = set(self.feature_to_resids.flatten()) # at index X we have residue number
         self.nresidues = len(index_to_resid)
         index_to_resid = [r for r in index_to_resid]
-        res_id_to_index = {}  # a map pointing back to the index in the array index_to_resid
+        res_id_to_index = {} # a map pointing back to the index in the array index_to_resid
         for idx, resid in enumerate(index_to_resid):
             res_id_to_index[resid] = idx
         importance_per_residue_and_cluster = np.zeros((self.nresidues, self.nclusters))
@@ -113,8 +121,9 @@ class PostProcessor(object):
             importance_per_residue_and_cluster[res1, :] += rel
             importance_per_residue_and_cluster[res2, :] += rel
             std_importance[res1,:] += self.std_importance_per_cluster[feature_idx,:]**2
-            std_importance[res2, :] += self.std_importance_per_cluster[feature_idx, :] ** 2
+            std_importance[res2,:] += self.std_importance_per_cluster[feature_idx,:]**2
         std_importance = np.sqrt(std_importance)
+
         importance_per_residue_and_cluster, std_importance = rescale_feature_importance(importance_per_residue_and_cluster, std_importance)
 
         self.importance_per_residue_and_cluster = importance_per_residue_and_cluster
@@ -146,21 +155,6 @@ class PostProcessor(object):
         self.average_std = self.std_importance_per_residue.mean()
         return
 
-def _save_to_pdb(pdb, out_file, residue_to_importance):
-    atom = pdb.df['ATOM']
-    missing_residues = []
-    for i, line in atom.iterrows():
-        resSeq = int(line['residue_number'])
-        importance = residue_to_importance.get(resSeq, None)
-        if importance is None:
-            missing_residues.append(resSeq)
-            #logger.warn("importance is None for residue %s and line %s", resSeq, line)
-            importance = 0
-        atom.set_value(i, 'b_factor', importance)
-    if len(missing_residues) > 0:
-        logger.warn("importance is None for residues %s", set(missing_residues))
-    pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
-
 
 def rescale_feature_importance(relevances, std_relevances):
     """
@@ -183,11 +177,53 @@ def rescale_feature_importance(relevances, std_relevances):
         scale = max_val-min_val
         offset = min_val
         if scale < 1e-9:
-            scale = 1.
+            scale = 1. #TODO correct? should be 1e-9 instead?
         relevances[:,i] = (relevances[:,i] - offset)/scale
         if std_relevances is not None:
             std_relevances[:, i] /= scale #TODO correct?
     return relevances, std_relevances
+
+
+def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
+    """
+    Filter feature importances based on significance
+    Return filtered residue feature importances (average + std within the states/clusters)
+    """
+    if len(relevances.shape) == 1:
+        n_states = 1
+        relevances = relevances[:, np.newaxis]
+        std_relevances = std_relevances[:,np.newaxis]
+    else:
+        n_states = relevances.shape[1]
+
+    n_features = relevances.shape[0]
+
+    for i in range(n_states):
+        ind_nonzero = np.where(relevances[:, i] > 0) # TODO missing [0]?
+        global_mean = np.mean(relevances[ind_nonzero, i])
+        global_sigma = np.std(relevances[ind_nonzero, i])
+
+        # Identify insignificant features
+        ind_below_sigma = np.where(relevances[:, i] < (global_mean + n_sigma_threshold * global_sigma))[0]
+        # Remove insignificant features
+        relevances[ind_below_sigma, i] = 0
+        std_relevances[ind_below_sigma, i] = 0
+    return relevances, std_relevances
+
+
+def _save_to_pdb(pdb, out_file, residue_to_importance):
+    atom = pdb.df['ATOM']
+    missing_residues = []
+    for i, line in atom.iterrows():
+        resSeq = int(line['residue_number'])
+        importance = residue_to_importance.get(resSeq, None)
+        if importance is None:
+            missing_residues.append(resSeq)
+            importance = 0
+        atom.set_value(i, 'b_factor', importance)
+    if len(missing_residues) > 0:
+        logger.warn("importance is None for residues %s", set(missing_residues))
+    pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
 
 def residue_importances(feature_importances, std_feature_importances):

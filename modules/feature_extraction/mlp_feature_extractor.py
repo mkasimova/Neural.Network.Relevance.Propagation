@@ -9,11 +9,8 @@ from modules.feature_extraction.feature_extractor import FeatureExtractor
 
 class MlpFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True, hidden_layer_sizes=(100,),
-                 randomize=True,
-                 name="MLP"):
-        FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
-                                  name=name)
+    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, hidden_layer_sizes=(100,), randomize=True, name="MLP"):
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.randomize = randomize
 
@@ -31,24 +28,26 @@ class MlpFeatureExtractor(FeatureExtractor):
     def get_feature_importance(self, classifier, data, labels):
         weights = classifier.coefs_
         biases = classifier.intercepts_
-        # TODO do we need to copy this here?
-        data_propagation = np.copy(data)
-        labels_propagation = np.copy(labels)
         # Calculate relevance
         relevance = relprop.relevance_propagation(weights, \
                                                   biases, \
-                                                  data_propagation,
-                                                  labels_propagation)
+                                                  data,
+                                                  labels)
         # average relevance per cluster
         nclusters = labels.shape[1]
         nfeatures = relevance.shape[1]
         result = np.zeros((nfeatures, nclusters))
-        frames_per_cluster = np.zeros((nclusters,))
+        frames_per_cluster = np.zeros((nclusters))
+
+        # Rescale relevance according to min and max relevance in each frame
+        for i in range(relevance.shape[0]):
+            relevance[i,:] = (relevance[i,:]-np.min(relevance[i,:]))/(np.max(relevance[i,:])-np.min(relevance[i,:])+0.000000001)
+
         for frame_idx, frame in enumerate(labels):
             cluster_idx = labels[frame_idx].argmax()
             frames_per_cluster[cluster_idx] += 1
 
         for frame_idx, rel in enumerate(relevance):
             cluster_idx = labels[frame_idx].argmax()
-            result[:, cluster_idx] = rel / frames_per_cluster[cluster_idx]
+            result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
         return result

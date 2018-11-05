@@ -14,9 +14,8 @@ logger = logging.getLogger("elm")
 
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
-    def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True, n_nodes=None, alpha=1):
-        MlpFeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations,
-                                     scaling=scaling, name="ELM")
+    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_nodes=None, alpha=1):
+        MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name="ELM")
         self.n_nodes = n_nodes
         self.alpha = alpha
 
@@ -39,7 +38,6 @@ def pseudo_inverse(x, alpha=None):
         inv = np.linalg.inv(inner)
         return np.matmul(inv, x.T)
     except np.linalg.linalg.LinAlgError as ex:
-        # logger.exception(ex)
         logger.debug("Singular matrix")
         # Moore Penrose inverse rule, see paper on ELM
         if alpha is not None:
@@ -79,7 +77,7 @@ class SingleLayerELMClassifier(object):
         (N, n) = x.shape
         if self.n_nodes is None:
             self.n_nodes = min(4000, n)
-            logger.info("Automatically settings number of nodes in first layer to %s", self.n_nodes)
+        ####    logger.info("Automatically settings number of nodes in first layer to %s", self.n_nodes)
         W1 = random_matrix(n, self.n_nodes)
         b1 = random_matrix(1, self.n_nodes)
         H = g_ELM(np.matmul(x, W1) + b1, self.activation_func)
@@ -90,9 +88,7 @@ class SingleLayerELMClassifier(object):
     def predict(self, x):
         H = g_ELM(np.matmul(x, self.coefs_[0]) + self.intercepts_[0], func_name=self.activation_func)
         t = np.matmul(H, self.coefs_[1])
-        # print(t.shape)
         for row_idx, row in enumerate(t):
-            # print(row_idx)
             c_idx = row.argmax()
             t[row_idx, :] = 0
             t[row_idx, c_idx] = 1

@@ -1,6 +1,5 @@
 import sys
 import logging
-import sys
 
 import numpy as np
 from sklearn.decomposition import PCA
@@ -18,14 +17,12 @@ logger = logging.getLogger("PCA featurizer")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, labels=None, n_components=None, n_splits=10, scaling=False):
-        FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=1, scaling=scaling,
-                                  name="PCA")
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=False, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_components=None, name="PCA"):
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
         self.n_components = n_components
         return
 
     def train(self, train_set, train_labels):
-        logger.info('Training PCA')
         # Construct and train PCA
         model = PCA(n_components=self.n_components)
         model.fit(train_set)
@@ -46,10 +43,9 @@ class PCAFeatureExtractor(FeatureExtractor):
         return n_components
 
     def get_feature_importance(self, model, samples, labels):
-
         n_components = self.n_components
-        if (self.n_components is None) or (self.n_components > 1):
+        if (self.n_components is None) or (self.n_components > 1): #TODO why the second part of if condition?
             n_components = self.get_n_components(model)
 
-        feature_importances = np.sum(model.components_[0:n_components], axis=0)
+        feature_importances = np.sum(np.abs(model.components_[0:n_components]), axis=0) #TODO check if it is correct to take abs of components and not sum
         return feature_importances

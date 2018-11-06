@@ -51,5 +51,5 @@ class PCAFeatureExtractor(FeatureExtractor):
         if (self.n_components is None) or (self.n_components > 1):
             n_components = self.get_n_components(model)
 
-        feature_importances = np.sum(model.components_[0:n_components], axis=0)
+        feature_importances = np.sum(np.abs(model.components_[0:n_components]), axis=0)
         return feature_importances

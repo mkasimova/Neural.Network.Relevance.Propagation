@@ -75,5 +75,5 @@ class KLFeatureExtractor(FeatureExtractor):
                     continue
                 dkl = self.KL_divergence(data_c1, data_c2)
                 self.feature_importances[:, [c1, c2]] += dkl  # add relevance for both these clusters
-
+        
         return self.feature_importances.T

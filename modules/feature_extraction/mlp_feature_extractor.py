@@ -1,5 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
+import logging
+import sys
+
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 import sklearn
 
@@ -7,20 +15,32 @@ import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 
 
+logger = logging.getLogger("mlp")
+
 class MlpFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, hidden_layer_sizes=(100,), randomize=True, name="MLP"):
+
+    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, hidden_layer_sizes=(100,), randomize=True, name="MLP",
+                 solver='lbfgs',
+                 activation="relu",
+                 randomize=True,
+                 training_max_iter=100000):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.randomize = randomize
+        self.solver = solver
+        if activation != "relu":
+            logger.warn("Relevance propagation currently only supported for relu")
+        self.activation = activation
+        self.training_max_iter = training_max_iter
 
     def train(self, train_set, train_labels):
         classifier = sklearn.neural_network.MLPClassifier(
-            solver='lbfgs',
+            solver=self.solver,
             hidden_layer_sizes=self.hidden_layer_sizes,
             random_state=(None if self.randomize else 89274),
-            activation='relu',
-            max_iter=500)
+            activation=self.activation,
+            max_iter=self.training_max_iter)
 
         classifier.fit(train_set, train_labels)
         return classifier

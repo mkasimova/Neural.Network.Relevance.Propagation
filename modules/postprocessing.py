@@ -12,14 +12,17 @@ import os
 import numpy as np
 from biopandas.pdb import PandasPdb
 import modules.utils as utils
+from sklearn.cluster import KMeans
 from scipy.spatial.distance import squareform
+
 
 logger = logging.getLogger("postprocessing")
 
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None):
+
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -61,6 +64,12 @@ class PostProcessor(object):
         self.entropy = None
         self.average_std = None
 
+        self.test_set_errors = test_set_errors.mean()
+        
+        # Used for toy model
+        self.correct_relevance_peaks = None
+        self.false_positives = None
+        self.predefined_relevant_residues = predefined_relevant_residues
 
     def average(self):
         """
@@ -74,8 +83,40 @@ class PostProcessor(object):
         self._compute_importance_per_residue()
         self._compute_entropy()
         self._compute_average_std()
+        
+        if self.predefined_relevant_residues is not None:
+            self._evaluate_relevance_prediction()
+        
         return self
 
+    def _evaluate_relevance_prediction(self):
+        """ 
+        Computes number of correct relevance predictions and number of false positives.
+        """
+        peaks = self._identify_peaks()
+        
+        self.correct_relevance_peaks = np.sum(peaks[self.predefined_relevant_residues])
+        peaks[self.predefined_relevant_residues] = 0
+        self.false_positives = peaks.sum()
+        
+        return
+    
+    def _identify_peaks(self):
+        """ 
+        Identifying peaks using k-means clustering. 
+        """
+        km = KMeans(n_clusters=2).fit(self.importance_per_residue.reshape(-1, 1))
+        cluster_indices = km.labels_
+        centers = km.cluster_centers_
+        peaks = np.zeros(cluster_indices.shape)
+        
+        if centers[0] < centers[1]:
+            peaks[cluster_indices==1] = 1
+        else:
+            peaks[cluster_indices==0] = 1
+            
+        return peaks
+        
     def persist(self, directory=None):
         """
         Save .npy files of the different averages and pdb files with the beta column set to importance
@@ -88,9 +129,6 @@ class PostProcessor(object):
         np.save(directory + "importance_per_cluster", self.importance_per_cluster)
         np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
         np.save(directory + "importance_per_residue", self.importance_per_residue)
-
-#        if not os.path.exists(self.working_dir + "analysis/"):
-#            os.makedirs(self.working_dir + "analysis/")
 
         if self.pdb_file is not None:
             pdb = PandasPdb()

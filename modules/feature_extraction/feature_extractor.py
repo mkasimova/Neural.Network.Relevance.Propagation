@@ -17,7 +17,8 @@ logger = logging.getLogger("Extracting features")
 
 class FeatureExtractor(object):
 
-    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_splits=10, n_iterations=10, name=''):
+
+    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_splits=10, n_iterations=10, name='',  error_limit=5):
         # Setting parameters
         self.samples = samples
         self.cluster_indices = cluster_indices
@@ -34,6 +35,7 @@ class FeatureExtractor(object):
         self.filter_by_DKL = filter_by_DKL
         self.filter_by_KS_test = filter_by_KS_test
         self.name = name
+        self.error_limit = error_limit
 
     def split_train_test(self):
         """
@@ -137,7 +139,8 @@ class FeatureExtractor(object):
                     error = utils.check_for_overfit(test_set, test_labels, model)
                     errors[i_split * self.n_iterations + i_iter] = error
 
-                    do_compute_importance = errors[i_split * self.n_iterations + i_iter] < 5
+                    do_compute_importance = errors[i_split * self.n_iterations + i_iter] < self.error_limit
+
                 else:
                     do_compute_importance = True
 

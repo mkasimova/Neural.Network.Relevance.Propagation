@@ -18,7 +18,7 @@ logger = logging.getLogger("Extracting features")
 class FeatureExtractor(object):
 
 
-    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_splits=10, n_iterations=10, name='',  error_limit=5):
+    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_splits=10, n_iterations=10, name='', error_limit=5):
         # Setting parameters
         self.samples = samples
         self.cluster_indices = cluster_indices

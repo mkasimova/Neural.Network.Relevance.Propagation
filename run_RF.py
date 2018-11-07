@@ -38,7 +38,7 @@ def main(parser):
                                n_splits=args.number_of_k_splits,\
                                n_iterations=args.number_of_iterations,\
                                scaling=True,\
-                               filter_by_distance_cutoff=False,\
+                               filter_by_distance_cutoff=True,\
                                filter_by_DKL=False,\
                                filter_by_KS_test=False,\
                                hidden_layer_sizes=(100,)),
@@ -47,21 +47,21 @@ def main(parser):
                                n_splits=args.number_of_k_splits,\
                                n_iterations=args.number_of_iterations,\
                                scaling=True,\
-                               filter_by_distance_cutoff=False,\
+                               filter_by_distance_cutoff=True,\
                                filter_by_DKL=False,\
                                filter_by_KS_test=False),
         fe.KLFeatureExtractor(samples,\
                               cluster_indices,\
                               n_splits=args.number_of_k_splits,\
                               scaling=True,\
-                              filter_by_distance_cutoff=False,\
+                              filter_by_distance_cutoff=True,\
                               filter_by_DKL=False,\
                               filter_by_KS_test=False),
         fe.PCAFeatureExtractor(samples,\
                                cluster_indices,
                                n_splits=args.number_of_k_splits,\
                                scaling=False,\
-                               filter_by_distance_cutoff=False,\
+                               filter_by_distance_cutoff=True,\
                                filter_by_DKL=False,\
                                filter_by_KS_test=False,\
                                n_components=1),
@@ -70,7 +70,7 @@ def main(parser):
                                         n_splits=args.number_of_k_splits,\
                                         n_iterations=args.number_of_iterations,\
                                         scaling=True,\
-                                        filter_by_distance_cutoff=False,\
+                                        filter_by_distance_cutoff=True,\
                                         filter_by_DKL=False,\
                                         filter_by_KS_test=False)
     ]
@@ -93,7 +93,7 @@ def main(parser):
         p.average().persist()
         postprocessors.append(p)
 
-#    visualization.visualize(postprocessors)
+    visualization.visualize(postprocessors)
 
 parser = argparse.ArgumentParser(epilog='Feature importance extraction.')
 parser.add_argument('-od', '--out_directory', help='Folder where files are written.', default='')

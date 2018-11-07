@@ -65,7 +65,7 @@ class PostProcessor(object):
         self.average_std = None
 
         self.test_set_errors = test_set_errors.mean()
-        
+
         # Used for toy model
         self.correct_relevance_peaks = None
         self.false_positives = None

@@ -20,7 +20,8 @@ logger = logging.getLogger("mlp")
 class MlpFeatureExtractor(FeatureExtractor):
 
 
-    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, hidden_layer_sizes=(100,), randomize=True, name="MLP",
+    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, name="MLP",
+                 hidden_layer_sizes=(100,),
                  solver='lbfgs',
                  activation="relu",
                  randomize=True,

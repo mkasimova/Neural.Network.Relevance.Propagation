@@ -48,15 +48,23 @@ class RbmFeatureExtractor(FeatureExtractor):
             classifier.intercept_visible_, 
             classifier.intercept_hidden_
         ]        
-        data_propagation = np.copy(data)
-        labels_propagation = classifier.transform(data_propagation)
+        #data_propagation = np.copy(data)
+        #labels_propagation = classifier.transform(data_propagation)
         # Calculate relevance
-        relevance = relprop.relevance_propagation(weights, \
+        #relevance = relprop.relevance_propagation(weights, \
+        #                                         biases, \
+        #                                          data_propagation,
+        #                                          labels_propagation)
+        # average relevance per cluster
+        result = np.zeros((nfeatures, 1))
+        for frame_idx in range(0, nframes, 2): #enumerate(relevance)
+            #We compute relevance for one frame at the time. This is slower than all at once but saves precious memory
+            data_propagation = np.copy(data[frame_idx:frame_idx+2])
+            labels_propagation = classifier.transform(data_propagation)
+            relevance = relprop.relevance_propagation(weights, \
                                                   biases, \
                                                   data_propagation,
                                                   labels_propagation)
-        # average relevance per cluster
-        result = np.zeros((nfeatures, 1))
-        for frame_idx, rel in enumerate(relevance):
-            result[:, 0] += abs(rel) / nframes
+            for rel in relevance:
+                result[:, 0] += abs(rel) / nframes
         return result

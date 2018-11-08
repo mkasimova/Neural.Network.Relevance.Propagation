@@ -13,6 +13,7 @@ from scipy.spatial.distance import squareform
 from sklearn.utils import shuffle
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPClassifier
+from biopandas.pdb import PandasPdb
 
 # import modules.relevance_propagation
 
@@ -68,17 +69,16 @@ def convert_to_contact(data, cutoff=0.5):
     return data_cont
 
 
-def scale(data, perc_2=None, perc_98=None, scaler=None):
+def scale(data):
     """
     Scales the input and removes outliers
     """
-    if perc_2 is None and perc_98 is None:
-        perc_2 = np.zeros(data.shape[1])
-        perc_98 = np.zeros(data.shape[1])
+    perc_2 = np.zeros(data.shape[1])
+    perc_98 = np.zeros(data.shape[1])
 
-        for i in range(data.shape[1]):
-            perc_2[i] = np.percentile(data[:, i], 2)
-            perc_98[i] = np.percentile(data[:, i], 98)
+    for i in range(data.shape[1]):
+        perc_2[i] = np.percentile(data[:, i], 2)
+        perc_98[i] = np.percentile(data[:, i], 98)
 
     for i in range(data.shape[1]):
         perc_2_ind = np.where(data[:, i] < perc_2[i])[0]
@@ -86,12 +86,12 @@ def scale(data, perc_2=None, perc_98=None, scaler=None):
         data[perc_2_ind, i] = perc_2[i]
         data[perc_98_ind, i] = perc_98[i]
 
-    if scaler is None:
-        scaler = MinMaxScaler()
-        scaler.fit(data)
+    scaler = MinMaxScaler()
+    scaler.fit(data)
 
     data_scaled = scaler.transform(data)
-    return data_scaled, perc_2, perc_98, scaler
+
+    return data_scaled
 
 
 def create_class_labels(clustering):
@@ -343,5 +343,25 @@ def get_default_feature_to_resids(n_features):
         for res2 in range(res1 + 1, n_residues):
             feature_to_resids[idx, 0] = res1
             feature_to_resids[idx, 1] = res2
+            idx += 1
+    return feature_to_resids
+
+
+def get_feature_to_resids_from_pdb(n_features,pdb_file):
+    pdb = PandasPdb()
+    pdb.read_pdb(pdb_file)
+    resid_numbers = list(set(pdb.df['ATOM']['residue_number']))
+    n_residues = len(resid_numbers)
+
+    n_residues_check = 0.5 * (1 + np.sqrt(8 * n_features + 1))
+    if n_residues!=n_residues_check:
+        sys.exit("The number of residues in pdb file is incompatible with number of features")
+
+    idx = 0
+    feature_to_resids = np.empty((n_features, 2))
+    for res1 in range(n_residues):
+        for res2 in range(res1 + 1, n_residues):
+            feature_to_resids[idx, 0] = resid_numbers[res1]
+            feature_to_resids[idx, 1] = resid_numbers[res2]
             idx += 1
     return feature_to_resids

@@ -99,7 +99,7 @@ class FeatureExtractor(object):
 
     def extract_features(self):
 
-        logger.info("Performing feature extraction with %s", self.name)
+        logger.info("Performing feature extraction with %s on data of shape %s", self.name, self.samples.shape)
 
         # Create a list of feature indices
         # This is needed when filtering is applied and re-mapping is further used

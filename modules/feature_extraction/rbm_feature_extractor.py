@@ -19,8 +19,10 @@ class RbmFeatureExtractor(FeatureExtractor):
     def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True,
                  randomize=True,
                  n_components=None,
+                 filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True,
                  name="RBM"):
         FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
+                                  filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test,
                                   name=name)
         self.randomize = randomize
         self.n_components = n_components

@@ -19,7 +19,7 @@ class RbmFeatureExtractor(FeatureExtractor):
     def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True,
                  randomize=True,
                  n_components=None,
-                 name="RB"):
+                 name="RBM"):
         FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
                                   name=name)
         self.randomize = randomize
@@ -41,30 +41,27 @@ class RbmFeatureExtractor(FeatureExtractor):
         #TODO we should look into the effect of using sigmoid instead of ReLu activatio here!
         nframes, nfeatures = data.shape
         weights = [
-            np.eye(nfeatures),
+            1, #np.eye(nfeatures), #Don't use eye for large matrices since it will blow up memory
             classifier.components_.T
         ]
         biases = [
             classifier.intercept_visible_, 
             classifier.intercept_hidden_
         ]        
-        #data_propagation = np.copy(data)
-        #labels_propagation = classifier.transform(data_propagation)
+        data_propagation = np.copy(data)
+        labels_propagation = classifier.transform(data_propagation)
         # Calculate relevance
-        #relevance = relprop.relevance_propagation(weights, \
-        #                                         biases, \
-        #                                          data_propagation,
-        #                                          labels_propagation)
-        # average relevance per cluster
-        result = np.zeros((nfeatures, 1))
-        for frame_idx in range(0, nframes, 2): #enumerate(relevance)
-            #We compute relevance for one frame at the time. This is slower than all at once but saves precious memory
-            data_propagation = np.copy(data[frame_idx:frame_idx+2])
-            labels_propagation = classifier.transform(data_propagation)
-            relevance = relprop.relevance_propagation(weights, \
+        relevance = relprop.relevance_propagation(weights, \
                                                   biases, \
                                                   data_propagation,
                                                   labels_propagation)
-            for rel in relevance:
-                result[:, 0] += abs(rel) / nframes
+        # average relevance per cluster
+        result = np.zeros((nfeatures, 1))
+        for frame_idx, rel in enumerate(relevance):
+            rel = abs(rel)
+            rel -= rel.min()
+            scale = rel.max() - rel.min()
+            if scale > 1e-3:
+                rel /= scale
+            result[:, 0] += rel / nframes 
         return result

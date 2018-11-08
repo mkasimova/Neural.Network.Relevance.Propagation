@@ -52,7 +52,8 @@ class FirstLinear(Linear):
         X, L, H = self.X, self.X * 0 + np.min(self.X, axis=0), self.X * 0 + np.max(self.X, axis=0)
         Z = np.dot(X, W) - np.dot(L, V) - np.dot(H, U) + 1e-9
         S = R / Z
-        R = X * np.dot(S, W.T) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
+        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T #a constant just corresponds to a diagonal matrix with that constant along the diagonal
+        R = X * np.dot(S, Wt) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
         return R
 
 

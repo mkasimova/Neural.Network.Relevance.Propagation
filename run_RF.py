@@ -42,14 +42,14 @@ def main(parser):
                                filter_by_DKL=False,\
                                filter_by_KS_test=False,\
                                hidden_layer_sizes=(100,)),
-        fe.ElmFeatureExtractor(samples,\
-                               cluster_indices,\
-                               n_splits=args.number_of_k_splits,\
-                               n_iterations=args.number_of_iterations,\
-                               scaling=True,\
-                               filter_by_distance_cutoff=True,\
-                               filter_by_DKL=False,\
-                               filter_by_KS_test=False),
+#        fe.ElmFeatureExtractor(samples,\
+#                               cluster_indices,\
+#                               n_splits=args.number_of_k_splits,\
+#                               n_iterations=args.number_of_iterations,\
+#                               scaling=True,\
+#                               filter_by_distance_cutoff=True,\
+#                               filter_by_DKL=False,\
+#                               filter_by_KS_test=False),
         fe.KLFeatureExtractor(samples,\
                               cluster_indices,\
                               n_splits=args.number_of_k_splits,\
@@ -87,7 +87,8 @@ def main(parser):
                              cluster_indices,
                              working_dir,\
                              rescale_results=True,\
-                             filter_results=True,\
+                             filter_results=False,\
+                             filter_results_by_cutoff=False,\
                              feature_to_resids=None,\
                              pdb_file=pdb_file)
         p.average().persist()

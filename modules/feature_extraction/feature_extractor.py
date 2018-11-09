@@ -89,10 +89,10 @@ class FeatureExtractor(object):
         else:
             n_clusters_for_output = feats.shape[1]
 
-        feats_remapped = np.zeros((n_features,n_clusters_for_output))
+        feats_remapped = (-1)*np.ones((n_features,n_clusters_for_output))
         feats_remapped[res_indices_for_filtering,:] = feats
 
-        std_feats_remapped = np.zeros((n_features,n_clusters_for_output))
+        std_feats_remapped = (-1)*np.ones((n_features,n_clusters_for_output))
         std_feats_remapped[res_indices_for_filtering,:] = std_feats
 
         return feats_remapped, std_feats_remapped

@@ -22,7 +22,7 @@ logger = logging.getLogger("postprocessing")
 class PostProcessor(object):
 
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, filter_results_by_cutoff=True, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -40,6 +40,13 @@ class PostProcessor(object):
             self.feature_importance, self.std_feature_importance = rescale_feature_importance(self.feature_importance, self.std_feature_importance)
         if filter_results:
             self.feature_importance, self.std_feature_importance = filter_feature_importance(self.feature_importance, self.std_feature_importance)
+        if filter_results_by_cutoff:
+            self.feature_importance, self.std_feature_importance = filter_feature_importance_by_cutoff(self.feature_importance, self.std_feature_importance)
+
+        # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importance and self.std_feature_importance)
+        indices_filtered = np.where(self.feature_importance[:,0]==-1)[0]
+        self.feature_importance[indices_filtered,:] = 0
+        self.std_feature_importance[indices_filtered,:] = 0
 
         self.test_set_errors = test_set_errors
         self.cluster_indices = cluster_indices
@@ -83,10 +90,10 @@ class PostProcessor(object):
         self._compute_importance_per_residue()
         self._compute_entropy()
         self._compute_average_std()
-        
+
         if self.predefined_relevant_residues is not None:
             self._evaluate_relevance_prediction()
-        
+
         return self
 
     def _evaluate_relevance_prediction(self):
@@ -94,13 +101,13 @@ class PostProcessor(object):
         Computes number of correct relevance predictions and number of false positives.
         """
         peaks = self._identify_peaks()
-        
+
         self.correct_relevance_peaks = np.sum(peaks[self.predefined_relevant_residues])
         peaks[self.predefined_relevant_residues] = 0
         self.false_positives = peaks.sum()
-        
+
         return
-    
+
     def _identify_peaks(self):
         """ 
         Identifying peaks using k-means clustering. 
@@ -109,14 +116,14 @@ class PostProcessor(object):
         cluster_indices = km.labels_
         centers = km.cluster_centers_
         peaks = np.zeros(cluster_indices.shape)
-        
+
         if centers[0] < centers[1]:
             peaks[cluster_indices==1] = 1
         else:
             peaks[cluster_indices==0] = 1
-            
+
         return peaks
-        
+
     def persist(self, directory=None):
         """
         Save .npy files of the different averages and pdb files with the beta column set to importance
@@ -129,6 +136,8 @@ class PostProcessor(object):
         np.save(directory + "importance_per_cluster", self.importance_per_cluster)
         np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
         np.save(directory + "importance_per_residue", self.importance_per_residue)
+        np.save(directory + "importance_matrix", self.feature_importance)
+        np.save(directory + "std_importance_matrix", self.std_feature_importance)
 
         if self.pdb_file is not None:
             pdb = PandasPdb()
@@ -201,24 +210,24 @@ def rescale_feature_importance(relevances, std_relevances):
     :param std_feature_importance: array of dimension nfeatures * nstates
     :return: rescaled versions of the inputs with values between 0 and 1
     """
-    if len(relevances.shape) == 1:
-        n_states = 1
-        relevances = relevances[:, np.newaxis]
-        std_relevances = std_relevances[:,np.newaxis]
-    else:
-        n_states = relevances.shape[1]
 
+    logger.info("Rescaling feature importances ...")
+
+    n_states = relevances.shape[1]
     n_features = relevances.shape[0]
 
+    # indices of residues pairs which were not filtered during features filtering
+    indices_not_filtered = np.where(relevances[:,0]>=0)[0]
+
     for i in range(n_states):
-        max_val, min_val = relevances[:,i].max(), relevances[:,i].min()
+        max_val, min_val = relevances[indices_not_filtered,i].max(), relevances[indices_not_filtered,i].min()
         scale = max_val-min_val
         offset = min_val
         if scale < 1e-9:
             scale = 1. #TODO correct? should be 1e-9 instead?
-        relevances[:,i] = (relevances[:,i] - offset)/scale
+        relevances[indices_not_filtered,i] = (relevances[indices_not_filtered,i] - offset)/scale
         if std_relevances is not None:
-            std_relevances[:, i] /= scale #TODO correct?
+            std_relevances[indices_not_filtered, i] /= scale #TODO correct?
     return relevances, std_relevances
 
 
@@ -227,25 +236,45 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
     Filter feature importances based on significance
     Return filtered residue feature importances (average + std within the states/clusters)
     """
-    if len(relevances.shape) == 1:
-        n_states = 1
-        relevances = relevances[:, np.newaxis]
-        std_relevances = std_relevances[:,np.newaxis]
-    else:
-        n_states = relevances.shape[1]
+    logger.info("Filtering feature importances by sigma %s", n_sigma_threshold)
 
+    n_states = relevances.shape[1]
     n_features = relevances.shape[0]
 
+    # indices of residues pairs which were not filtered during features filtering
+    indices_not_filtered = np.where(relevances[:,0]>=0)[0]
+
     for i in range(n_states):
-        ind_nonzero = np.where(relevances[:, i] > 0) # TODO missing [0]?
-        global_mean = np.mean(relevances[ind_nonzero, i])
-        global_sigma = np.std(relevances[ind_nonzero, i])
+        global_mean = np.mean(relevances[indices_not_filtered, i])
+        global_sigma = np.std(relevances[indices_not_filtered, i])
 
         # Identify insignificant features
-        ind_below_sigma = np.where(relevances[:, i] < (global_mean + n_sigma_threshold * global_sigma))[0]
+        ind_below_sigma = np.where(relevances[indices_not_filtered, i] < (global_mean + n_sigma_threshold * global_sigma))[0]
         # Remove insignificant features
-        relevances[ind_below_sigma, i] = 0
-        std_relevances[ind_below_sigma, i] = 0
+        relevances[indices_not_filtered, i][ind_below_sigma] = 0
+        std_relevances[indices_not_filtered, i][ind_below_sigma] = 0
+    return relevances, std_relevances
+
+
+def filter_feature_importance_by_cutoff(relevances, std_relevances, cutoff=0.5):
+    """
+    Filter feature importance based on significance
+    Unlike filter_feature_importance uses the same cutoff for all feature extractors
+    """
+    logger.info("Filtering feature importances by cutoff %s", cutoff)
+
+    n_states = relevances.shape[1]
+    n_features = relevances.shape[0]
+
+    # indices of residues pairs which were not filtered during features filtering
+    indices_not_filtered = np.where(relevances[:,0]>=0)[0]
+
+    for i in range(n_states):
+        # Identify insignificant features
+        ind_below_cutoff = np.where(relevances[indices_not_filtered, i] <= cutoff)[0]
+        # Remove insignificant features
+        relevances[indices_not_filtered, i][ind_below_cutoff] = 0
+        std_relevances[indices_not_filtered, i][ind_below_cutoff] = 0
     return relevances, std_relevances
 
 
@@ -266,9 +295,9 @@ def _save_to_pdb(pdb, out_file, residue_to_importance):
 
 def residue_importances(feature_importances, std_feature_importances):
     """
-	Compute residue importance
-	DEPRECATED method... Here in case we need to merge some of the functionality into the current method
-	"""
+    Compute residue importance
+    DEPRECATED method ... Here in case we need to merge some of the functionality into the current method
+    """
     if len(feature_importances.shape) == 1:
         n_states = 1
         feature_importances = feature_importances[:, np.newaxis].T

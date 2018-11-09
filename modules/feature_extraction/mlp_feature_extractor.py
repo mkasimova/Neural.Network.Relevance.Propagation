@@ -62,6 +62,8 @@ class MlpFeatureExtractor(FeatureExtractor):
 
         # Rescale relevance according to min and max relevance in each frame
         for i in range(relevance.shape[0]):
+            ind_negative = np.where(relevance[i,:]<0)[0]
+            relevance[i,ind_negative] = 0
             relevance[i,:] = (relevance[i,:]-np.min(relevance[i,:]))/(np.max(relevance[i,:])-np.min(relevance[i,:])+0.000000001)
 
         for frame_idx, frame in enumerate(labels):

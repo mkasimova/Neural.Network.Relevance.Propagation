@@ -60,7 +60,8 @@ class RbmFeatureExtractor(FeatureExtractor):
         # average relevance per cluster
         result = np.zeros((nfeatures, 1))
         for frame_idx, rel in enumerate(relevance):
-            rel = abs(rel)
+            ind_negative = np.where(rel<0)[0]
+            rel[ind_negative] = 0
             rel -= rel.min()
             scale = rel.max() - rel.min()
             if scale > 1e-3:

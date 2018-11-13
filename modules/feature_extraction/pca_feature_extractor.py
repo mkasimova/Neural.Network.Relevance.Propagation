@@ -17,8 +17,10 @@ logger = logging.getLogger("PCA featurizer")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=False, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_components=None, name="PCA"):
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=False, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, contact_cutoff=0.5,
+                 use_inverse_distances=True, n_components=None, name="PCA"):
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff,
+                 use_inverse_distances=use_inverse_distances, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
         self.n_components = n_components
         return
 
@@ -44,8 +46,7 @@ class PCAFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, model, samples, labels):
         n_components = self.n_components
-        if (self.n_components is None) or (self.n_components > 1): #TODO why the second part of if condition?
+        if (self.n_components is None):
             n_components = self.get_n_components(model)
-
-        feature_importances = np.sum(np.abs(model.components_[0:n_components]), axis=0) #TODO check if it is correct to take abs of components and not sum
+        feature_importances = np.sum(np.abs(model.components_[0:n_components]*model.explained_variance_[0:n_components,np.newaxis]), axis=0)
         return feature_importances

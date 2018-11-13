@@ -23,7 +23,8 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
     if len(relevances.shape) == 1:
         n_states = 1
         relevances = relevances[:, np.newaxis]
-        std_relevances = std_relevances[:,np.newaxis]
+        if std_relevances is not None:
+            std_relevances = std_relevances[:,np.newaxis]
     else:
         n_states = relevances.shape[1]
 
@@ -38,7 +39,8 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
         ind_below_sigma = np.where(relevances[:, i] < (global_mean + n_sigma_threshold * global_sigma))[0]
         # Remove insignificant features
         relevances[ind_below_sigma, i] = 0
-        std_relevances[ind_below_sigma, i] = 0
+        if std_relevances is not None:
+            std_relevances[ind_below_sigma, i] = 0
     return relevances, std_relevances
 
 

@@ -17,15 +17,17 @@ logger = logging.getLogger("Extracting features")
 
 class FeatureExtractor(object):
 
+    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=0.5,
+                 use_inverse_distances=True, filter_by_DKL=True,
+                 filter_by_KS_test=True, n_splits=10, n_iterations=10, name='', error_limit=5):
 
-    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_splits=10, n_iterations=10, name='', error_limit=5):
         # Setting parameters
         self.samples = samples
         self.cluster_indices = cluster_indices
         self.n_clusters = len(list(set(self.cluster_indices)))
-	if len(self.cluster_indices.shape)==1:
+        if len(self.cluster_indices.shape) == 1:
             self.labels = utils.create_class_labels(self.cluster_indices)
-        elif len(self.cluster_indices.shape)==2:
+        elif len(self.cluster_indices.shape) == 2:
             self.labels = np.copy(self.cluster_indices)
             self.cluster_indices = self.labels.argmax(axis=1)
         self.n_splits = n_splits
@@ -36,6 +38,8 @@ class FeatureExtractor(object):
         self.filter_by_KS_test = filter_by_KS_test
         self.name = name
         self.error_limit = error_limit
+        self.use_inverse_distances = use_inverse_distances
+        self.contact_cutoff = contact_cutoff
 
     def split_train_test(self):
         """
@@ -77,23 +81,23 @@ class FeatureExtractor(object):
     def get_feature_importance(self, model, samples, labels):
         pass
 
-    def remap_after_filtering(self,feats,std_feats,n_features,res_indices_for_filtering):
+    def remap_after_filtering(self, feats, std_feats, n_features, res_indices_for_filtering):
         """
         After filtering remaps features to the matrix with initial dimensions
         """
 
-        if len(feats.shape)==1 and len(std_feats.shape)==1:
+        if len(feats.shape) == 1 and len(std_feats.shape) == 1:
             n_clusters_for_output = 1
-            feats = feats.reshape((feats.shape[0],1))
-            std_feats = std_feats.reshape((std_feats.shape[0],1))
+            feats = feats.reshape((feats.shape[0], 1))
+            std_feats = std_feats.reshape((std_feats.shape[0], 1))
         else:
             n_clusters_for_output = feats.shape[1]
 
-        feats_remapped = (-1)*np.ones((n_features,n_clusters_for_output))
-        feats_remapped[res_indices_for_filtering,:] = feats
+        feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
+        feats_remapped[res_indices_for_filtering, :] = feats
 
-        std_feats_remapped = (-1)*np.ones((n_features,n_clusters_for_output))
-        std_feats_remapped[res_indices_for_filtering,:] = std_feats
+        std_feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
+        std_feats_remapped[res_indices_for_filtering, :] = std_feats
 
         return feats_remapped, std_feats_remapped
 
@@ -104,16 +108,20 @@ class FeatureExtractor(object):
         # Create a list of feature indices
         # This is needed when filtering is applied and re-mapping is further used
         n_features = self.samples.shape[1]
-        indices_for_filtering = np.arange(0,n_features,1)
+        indices_for_filtering = np.arange(0, n_features, 1)
 
         if self.filter_by_distance_cutoff:
-            self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,indices_for_filtering)
+            self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
+                                                                                      indices_for_filtering, cutoff=self.contact_cutoff,
+                                                                                      inverse_distances=self.use_inverse_distances)
 
         if self.filter_by_DKL:
-            self.samples, indices_for_filtering = filtering.filter_by_DKL(self.samples,self.cluster_indices,indices_for_filtering)
+            self.samples, indices_for_filtering = filtering.filter_by_DKL(self.samples, self.cluster_indices,
+                                                                          indices_for_filtering)
 
         if self.filter_by_KS_test:
-            self.samples, indices_for_filtering = filtering.filter_by_KS_test(self.samples,self.cluster_indices,indices_for_filtering)
+            self.samples, indices_for_filtering = filtering.filter_by_KS_test(self.samples, self.cluster_indices,
+                                                                              indices_for_filtering)
 
         if self.scaling:
             # Note that we must use the same scalers for all data
@@ -129,12 +137,13 @@ class FeatureExtractor(object):
 
             for i_iter in range(self.n_iterations):
 
-                train_set, test_set, train_labels, test_labels = self.get_train_test_set(train_inds[i_split], test_inds[i_split])
+                train_set, test_set, train_labels, test_labels = self.get_train_test_set(train_inds[i_split],
+                                                                                         test_inds[i_split])
 
                 # Train model
                 model = self.train(train_set, train_labels)
 
-                if self.name!="PCA" and model is not None and hasattr(model, "predict"):
+                if self.name != "PCA" and model is not None and hasattr(model, "predict"):
                     # Test classifier
                     error = utils.check_for_overfit(test_set, test_labels, model)
                     errors[i_split * self.n_iterations + i_iter] = error
@@ -146,10 +155,12 @@ class FeatureExtractor(object):
 
                 if do_compute_importance:
                     # Get features importance
-                    feature_importance = self.get_feature_importance(model, train_set, train_labels) # TODO check for all data
+                    feature_importance = self.get_feature_importance(model, train_set,
+                                                                     train_labels)  # TODO check for all data
                     feats.append(feature_importance)
                 else:
-                    logger.warn("At iteration %s of %s error %s is too high - not computing feature importance", i_split * self.n_iterations + i_iter + 1, self.n_splits * self.n_iterations, error)
+                    logger.warn("At iteration %s of %s error %s is too high - not computing feature importance",
+                                i_split * self.n_iterations + i_iter + 1, self.n_splits * self.n_iterations, error)
 
         feats = np.asarray(feats)
 
@@ -158,7 +169,7 @@ class FeatureExtractor(object):
 
         # Remapping features if filtering was applied
         # If no filtering was applied, return feats and std_feats
-        feats, std_feats = self.remap_after_filtering(feats,std_feats,n_features,indices_for_filtering)
+        feats, std_feats = self.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
 
         logger.info("Done with %s", self.name)
         logger.info("------------------------------")

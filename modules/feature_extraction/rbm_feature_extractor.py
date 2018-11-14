@@ -12,18 +12,15 @@ import sklearn
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 
+
 logger = logging.getLogger("rbm")
+
 
 class RbmFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, labels, n_splits=10, n_iterations=3, scaling=True,
-                 randomize=True,
-                 n_components=None,
-                 filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True,
-                 name="RBM"):
-        FeatureExtractor.__init__(self, samples, labels, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
-                                  filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test,
-                                  name=name)
+    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, randomize=True, n_components=None, filter_by_distance_cutoff=True, filter_by_DKL=False, filter_by_KS_test=False, name="RBM"):
+
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
         self.randomize = randomize
         self.n_components = n_components
 
@@ -39,31 +36,33 @@ class RbmFeatureExtractor(FeatureExtractor):
         return classifier
 
     def get_feature_importance(self, classifier, data, labels):
-        #print(classifier.components_.shape,classifier.intercept_visible_.shape, classifier.intercept_hidden_.shape )
-        #TODO we should look into the effect of using sigmoid instead of ReLu activatio here!
+        #TODO we should look into the effect of using sigmoid instead of ReLu activation here!
         nframes, nfeatures = data.shape
         weights = [
-            1, #np.eye(nfeatures), #Don't use eye for large matrices since it will blow up memory
+            1, #np.eye(nfeatures), # Don't use eye for large matrices since it will blow up memory
             classifier.components_.T
         ]
         biases = [
             classifier.intercept_visible_, 
             classifier.intercept_hidden_
-        ]        
+        ]
         data_propagation = np.copy(data)
         labels_propagation = classifier.transform(data_propagation)
         # Calculate relevance
         relevance = relprop.relevance_propagation(weights, \
                                                   biases, \
-                                                  data_propagation,
+                                                  data_propagation, \
                                                   labels_propagation)
-        # average relevance per cluster
+
+        # Average relevance per cluster
         result = np.zeros((nfeatures, 1))
         for frame_idx, rel in enumerate(relevance):
-            rel = abs(rel)
+            ind_negative = np.where(rel<0)[0]
+            rel[ind_negative] = 0
             rel -= rel.min()
             scale = rel.max() - rel.min()
-            if scale > 1e-3:
-                rel /= scale
+            if scale < 1e-9:
+               scale = 1e-9
+            rel /= scale
             result[:, 0] += rel / nframes 
         return result

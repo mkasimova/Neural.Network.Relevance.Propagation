@@ -17,7 +17,7 @@ logger = logging.getLogger("PCA featurizer")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=False, filter_by_distance_cutoff=True, filter_by_DKL=True, filter_by_KS_test=True, n_components=None, name="PCA"):
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=False, filter_by_distance_cutoff=True, filter_by_DKL=False, filter_by_KS_test=False, n_components=None, name="PCA"):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
         self.n_components = n_components
         return

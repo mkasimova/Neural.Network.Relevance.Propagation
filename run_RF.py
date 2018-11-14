@@ -5,7 +5,7 @@ import sys
 python_path = os.path.dirname(__file__)
 sys.path.append(python_path + '/modules/')
 
-from modules import utils, feature_extraction as fe, postprocessing as pp, visualization
+from modules import utils, feature_extraction as fe, postprocessing as pp, visualization, comparison_bw_fe
 from modules import filtering
 
 import numpy as np
@@ -42,7 +42,7 @@ def main(parser):
                                filter_by_DKL=False,\
                                filter_by_KS_test=False,\
                                hidden_layer_sizes=(100,)),
-#        fe.ElmFeatureExtractor(samples,\
+#        fe.RbmFeatureExtractor(samples,\
 #                               cluster_indices,\
 #                               n_splits=args.number_of_k_splits,\
 #                               n_iterations=args.number_of_iterations,\
@@ -91,8 +91,13 @@ def main(parser):
                              filter_results_by_cutoff=False,\
                              feature_to_resids=None,\
                              pdb_file=pdb_file)
-        p.average().persist()
         postprocessors.append(p)
+
+    comparison_bw_fe.compare(postprocessors)
+
+    for p in postprocessors: #TODO is this correct?
+        p.filter_feature_importance_by_rank(filter_by_rank_cutoff=500)
+        p.average().persist()
 
     visualization.visualize(postprocessors)
 

@@ -22,7 +22,7 @@ logger = logging.getLogger("postprocessing")
 class PostProcessor(object):
 
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, filter_results_by_cutoff=True, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, filter_results_by_cutoff=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -44,9 +44,9 @@ class PostProcessor(object):
             self.feature_importance, self.std_feature_importance = filter_feature_importance_by_cutoff(self.feature_importance, self.std_feature_importance)
 
         # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importance and self.std_feature_importance)
-        indices_filtered = np.where(self.feature_importance[:,0]==-1)[0]
-        self.feature_importance[indices_filtered,:] = 0
-        self.std_feature_importance[indices_filtered,:] = 0
+        self.indices_filtered = np.where(self.feature_importance[:,0]==-1)[0]
+        self.feature_importance[self.indices_filtered,:] = 0
+        self.std_feature_importance[self.indices_filtered,:] = 0
 
         self.test_set_errors = test_set_errors
         self.cluster_indices = cluster_indices
@@ -202,6 +202,28 @@ class PostProcessor(object):
         self.average_std = self.std_importance_per_residue.mean()
         return
 
+    def filter_feature_importance_by_rank(self,filter_by_rank_cutoff=None):
+        """
+        Filter feature importance based on significance
+        Keep first 'filter_by_rank_cutoff' ranked features importances
+        """
+        logger.info("Filtering feature importances by rank %s", filter_by_rank_cutoff)
+
+        n_states = self.feature_importance.shape[1]
+        n_features = self.feature_importance.shape[0]
+
+        importance_filt = np.zeros((n_features,n_states))
+        std_importance_filt = np.zeros((n_features,n_states))
+
+        for i in range(n_states):
+            ind_top_features = np.argsort(-self.feature_importance[:,i])[0:filter_by_rank_cutoff]
+            importance_filt[ind_top_features,i] = self.feature_importance[ind_top_features,i]
+            std_importance_filt[ind_top_features,i] = self.std_feature_importance[ind_top_features,i]
+
+        self.feature_importance = np.copy(importance_filt)
+        self.std_feature_importance = np.copy(std_importance_filt)
+        return
+
 
 def rescale_feature_importance(relevances, std_relevances):
     """
@@ -224,7 +246,7 @@ def rescale_feature_importance(relevances, std_relevances):
         scale = max_val-min_val
         offset = min_val
         if scale < 1e-9:
-            scale = 1. #TODO correct? should be 1e-9 instead?
+            scale = 1e-9 #TODO correct?
         relevances[indices_not_filtered,i] = (relevances[indices_not_filtered,i] - offset)/scale
         if std_relevances is not None:
             std_relevances[indices_not_filtered, i] /= scale #TODO correct?
@@ -298,12 +320,7 @@ def residue_importances(feature_importances, std_feature_importances):
     Compute residue importance
     DEPRECATED method ... Here in case we need to merge some of the functionality into the current method
     """
-    if len(feature_importances.shape) == 1:
-        n_states = 1
-        feature_importances = feature_importances[:, np.newaxis].T
-        std_feature_importances = std_feature_importances[:, np.newaxis].T
-    else:
-        n_states = feature_importances.shape[0]
+    n_states = feature_importances.shape[0]
 
     n_residues = squareform(feature_importances[0, :]).shape[0]
 

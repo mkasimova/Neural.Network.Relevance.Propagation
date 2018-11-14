@@ -93,10 +93,10 @@ def main(parser):
                              pdb_file=pdb_file)
         postprocessors.append(p)
 
-    comparison_bw_fe.compare(postprocessors)
+    filter_by_rank_cutoff=comparison_bw_fe.compare(postprocessors)
 
     for p in postprocessors: #TODO is this correct?
-        p.filter_feature_importance_by_rank(filter_by_rank_cutoff=500)
+        p.filter_feature_importance_by_rank(filter_by_rank_cutoff=filter_by_rank_cutoff)
         p.average().persist()
 
     visualization.visualize(postprocessors)

@@ -79,6 +79,10 @@ class PostProcessor(object):
         self.false_positives = None
         self.predefined_relevant_residues = predefined_relevant_residues
 
+        self.directory = self.working_dir + "analysis/{}/".format(self.extractor.name)
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+
     def average(self):
         """
         Computes average importance per cluster and residue and residue etc.
@@ -134,27 +138,23 @@ class PostProcessor(object):
         
         return peaks
 
-    def persist(self, directory=None):
+    def persist(self):
         """
         Save .npy files of the different averages and pdb files with the beta column set to importance
         :return: itself
         """
-        if directory is None:
-            directory = self.working_dir + "analysis/{}/".format(self.extractor.name)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        np.save(directory + "importance_per_cluster", self.importance_per_cluster)
-        np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
-        np.save(directory + "importance_per_residue", self.importance_per_residue)
-        np.save(directory + "importance_matrix", self.feature_importance)
-        np.save(directory + "std_importance_matrix", self.std_feature_importance)
+        np.save(self.directory + "importance_per_cluster", self.importance_per_cluster)
+        np.save(self.directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
+        np.save(self.directory + "importance_per_residue", self.importance_per_residue)
+        np.save(self.directory + "importance_matrix", self.feature_importance)
+        np.save(self.directory + "std_importance_matrix", self.std_feature_importance)
 
         if self.pdb_file is not None:
             pdb = PandasPdb()
             pdb.read_pdb(self.pdb_file)
-            _save_to_pdb(pdb, directory + "all_importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
+            _save_to_pdb(pdb, self.directory + "all_importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
             for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
-                _save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
+                _save_to_pdb(pdb, self.directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
 
         return self
 

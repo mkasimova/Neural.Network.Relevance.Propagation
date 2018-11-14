@@ -1,11 +1,11 @@
 import numpy as np
 
-import heatmapping_modules as hm_modules
+from modules import heatmapping_modules as hm_modules
 
 
-def relevance_propagation(weights, biases, X, T):
+def relevance_propagation(weights, biases, X, T, use_sigmoid_activation=False):
     # Reinstantiating the neural network
-    network = Network(create_layers(weights, biases))
+    network = Network(create_layers(weights, biases, use_sigmoid_activation=use_sigmoid_activation))
     Y = network.forward(X)
     # Performing relevance propagation
     D = network.relprop(Y * T)
@@ -23,6 +23,9 @@ class ReLU(hm_modules.ReLU):
     def relprop(self, R):
         return R
 
+class Logistic(hm_modules.Logistic):
+    def relprop(self, R):
+        return R
 
 class Linear(hm_modules.Linear):
     def __init__(self, weight, bias):
@@ -30,17 +33,21 @@ class Linear(hm_modules.Linear):
         self.B = bias
 
 
-def create_layers(weights, biases, use_first_linear=True):
+def create_layers(weights, biases, use_first_linear=True, use_sigmoid_activation=False):
     layers = []
     for idx, weight in enumerate(weights):
-        if idx == 0 and use_first_linear:
+        if (idx == 0 and use_first_linear) or use_sigmoid_activation:
             l = FirstLinear(weight, biases[idx])
         else:
             l = NextLinear(weight, biases[idx])
         layers.append(l)
         # ADD RELU TO THE LAST LAYER IF NEEDED
-        if idx < len(weights) - 1:
-            layers.append(ReLU())
+        if use_sigmoid_activation:
+            if idx < len(weights) - 1:
+                layers.append(Logistic())
+        else:
+            if idx < len(weights) - 1:
+                layers.append(ReLU())
     return layers
 
 

@@ -18,9 +18,9 @@ logger = logging.getLogger("rbm")
 
 class RbmFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, randomize=True, n_components=None, filter_by_distance_cutoff=True, filter_by_DKL=False, filter_by_KS_test=False, name="RBM"):
+    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, randomize=True, n_components=None, filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True, filter_by_DKL=False, filter_by_KS_test=False, name="RBM"):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
         self.randomize = randomize
         self.n_components = n_components
 
@@ -52,7 +52,7 @@ class RbmFeatureExtractor(FeatureExtractor):
         relevance = relprop.relevance_propagation(weights, \
                                                   biases, \
                                                   data_propagation, \
-                                                  labels_propagation)
+                                                  labels_propagation, use_sigmoid_activation=True)
 
         # Average relevance per cluster
         result = np.zeros((nfeatures, 1))

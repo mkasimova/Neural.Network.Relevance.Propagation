@@ -355,7 +355,7 @@ def get_feature_to_resids_from_pdb(n_features,pdb_file):
 
     n_residues_check = 0.5 * (1 + np.sqrt(8 * n_features + 1))
     if n_residues!=n_residues_check:
-        sys.exit("The number of residues in pdb file is incompatible with number of features")
+        sys.exit("The number of residues in pdb file ("+str(n_residues)+") is incompatible with number of features ("+str(n_residues_check)+")")
 
     idx = 0
     feature_to_resids = np.empty((n_features, 2))

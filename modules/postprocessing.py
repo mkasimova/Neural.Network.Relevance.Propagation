@@ -14,6 +14,7 @@ from biopandas.pdb import PandasPdb
 import modules.utils as utils
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import squareform
+from modules import filtering
 
 
 logger = logging.getLogger("postprocessing")
@@ -102,26 +103,35 @@ class PostProcessor(object):
         """
         peaks = self._identify_peaks()
 
-        self.correct_relevance_peaks = np.sum(peaks[self.predefined_relevant_residues])
+        self.correct_relevance_peaks = np.sum(peaks[self.predefined_relevant_residues])/len(self.predefined_relevant_residues)
         peaks[self.predefined_relevant_residues] = 0
         self.false_positives = peaks.sum()
-
+        
         return
 
-    def _identify_peaks(self):
+    def _identify_peaks(self, use_kmeans_clustering=True):
         """ 
         Identifying peaks using k-means clustering. 
         """
-        km = KMeans(n_clusters=2).fit(self.importance_per_residue.reshape(-1, 1))
-        cluster_indices = km.labels_
-        centers = km.cluster_centers_
-        peaks = np.zeros(cluster_indices.shape)
-
-        if centers[0] < centers[1]:
-            peaks[cluster_indices==1] = 1
+        resid_importance = np.copy(self.importance_per_residue)
+        peaks = np.zeros(resid_importance.shape[0])
+        
+        if resid_importance.sum() == 0:
+            return peaks
+        
+        if use_kmeans_clustering:
+            km = KMeans(n_clusters=2).fit(resid_importance.reshape(-1, 1))
+            cluster_indices = km.labels_
+            centers = km.cluster_centers_
+            
+            if centers[0] < centers[1]:
+                peaks[cluster_indices==1] = 1
+            else:
+                peaks[cluster_indices==0] = 1
         else:
-            peaks[cluster_indices==0] = 1
-
+            peaks,_ = filtering.filter_feature_importance(resid_importance,resid_importance)
+            peaks[peaks > 0] = 1
+        
         return peaks
 
     def persist(self, directory=None):

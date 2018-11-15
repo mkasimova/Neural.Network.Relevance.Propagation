@@ -79,10 +79,6 @@ class PostProcessor(object):
         self.false_positives = None
         self.predefined_relevant_residues = predefined_relevant_residues
 
-        self.directory = self.working_dir + "analysis/{}/".format(self.extractor.name)
-        if not os.path.exists(self.directory):
-            os.makedirs(self.directory)
-
     def average(self):
         """
         Computes average importance per cluster and residue and residue etc.
@@ -143,6 +139,11 @@ class PostProcessor(object):
         Save .npy files of the different averages and pdb files with the beta column set to importance
         :return: itself
         """
+        if directory is None:
+            directory = self.working_dir + "analysis/{}/".format(self.extractor.name)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        
         np.save(self.directory + "importance_per_cluster", self.importance_per_cluster)
         np.save(self.directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
         np.save(self.directory + "importance_per_residue", self.importance_per_residue)

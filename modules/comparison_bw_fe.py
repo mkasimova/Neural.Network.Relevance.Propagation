@@ -75,10 +75,10 @@ def compare(postprocessors):
     diff_popt, diff_pcov = curve_fit(func, x, difference_rank)
     ave_popt, ave_pcov = curve_fit(func, x, top_features_average)
 
-    logger.info("Time decay of difference between fe is %s, error is %s", diff_popt[0], np.sqrt(np.diag(diff_pcov))[0])
+    logger.info("Relevance decay of difference between fe is %s, error is %s", diff_popt[0], np.sqrt(np.diag(diff_pcov))[0])
     diff_n_filtered_features = int(-1/diff_popt[0]*np.log(0.5))+n_features_per_iteration
     logger.info("Number of significant feature importances is %s", diff_n_filtered_features)
-    logger.info("Time decay of average importance for all fe is %s, error is %s", ave_popt[0], np.sqrt(np.diag(ave_pcov))[0])
+    logger.info("Relevance decay of average importance for all fe is %s, error is %s", ave_popt[0], np.sqrt(np.diag(ave_pcov))[0])
     ave_n_filtered_features = int(-1/ave_popt[0]*np.log(0.5))+n_features_per_iteration
     logger.info("Number of significant feature importances is %s", ave_n_filtered_features)
 
@@ -92,4 +92,4 @@ def compare(postprocessors):
     plt.legend()
     plt.show()
 
-    return diff_n_filtered_features
+    return ave_n_filtered_features

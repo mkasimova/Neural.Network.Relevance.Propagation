@@ -10,20 +10,20 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
+#import networkx as nx
 from biopandas.pdb import PandasPdb
 import modules.utils as utils
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import squareform
 from modules import filtering
 
-
 logger = logging.getLogger("postprocessing")
-
 
 class PostProcessor(object):
 
-
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, filter_results_by_cutoff=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, \
+    cluster_indices, working_dir, rescale_results=True, filter_results=False, filter_results_by_cutoff=False, \
+    feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -37,6 +37,7 @@ class PostProcessor(object):
         self.extractor = extractor
         self.feature_importance = feature_importance
         self.std_feature_importance = std_feature_importance
+        self.rescale_results = rescale_results
         if rescale_results: #TODO scaling is also performed later when importance per residue is computed; remove this scaling?
             self.feature_importance, self.std_feature_importance = rescale_feature_importance(self.feature_importance, self.std_feature_importance)
         if filter_results:
@@ -52,6 +53,7 @@ class PostProcessor(object):
         self.test_set_errors = test_set_errors
         self.cluster_indices = cluster_indices
         self.working_dir = working_dir
+        self.directory = None
         self.pdb_file = pdb_file
 
         self.nfeatures, self.nclusters = feature_importance.shape
@@ -86,6 +88,7 @@ class PostProcessor(object):
         :return: itself
         """
         self.importance_per_cluster = self.feature_importance # compute_importance_per_cluster(importance, cluster_indices)
+        logger.debug("Importance per cluster shape: "+str(self.importance_per_cluster.shape))
         self.std_importance_per_cluster = self.std_feature_importance
         self._compute_importance_per_residue_and_cluster()
         self._compute_importance_per_residue()
@@ -97,6 +100,32 @@ class PostProcessor(object):
 
         return self
 
+    def persist(self):
+        """
+        Save .npy files of the different averages and pdb files with the beta column set to importance
+        :return: itself
+        """
+        self.directory = self.working_dir + "analysis/{}/".format(self.extractor.name)
+
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+
+        
+        np.save(self.directory + "importance_per_cluster", self.importance_per_cluster)
+        np.save(self.directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
+        np.save(self.directory + "importance_per_residue", self.importance_per_residue)
+        np.save(self.directory + "importance_matrix", self.feature_importance)
+        np.save(self.directory + "std_importance_matrix", self.std_feature_importance)
+
+        if self.pdb_file is not None:
+            pdb = PandasPdb()
+            pdb.read_pdb(self.pdb_file)
+            _save_to_pdb(pdb, self.directory + "all_importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
+            for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
+                _save_to_pdb(pdb, self.directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
+
+        return self
+    
     def _evaluate_relevance_prediction(self):
         """ 
         Computes number of correct relevance predictions and number of false positives.
@@ -134,31 +163,6 @@ class PostProcessor(object):
         
         return peaks
 
-    def persist(self):
-        """
-        Save .npy files of the different averages and pdb files with the beta column set to importance
-        :return: itself
-        """
-        if directory is None:
-            directory = self.working_dir + "analysis/{}/".format(self.extractor.name)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        
-        np.save(self.directory + "importance_per_cluster", self.importance_per_cluster)
-        np.save(self.directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
-        np.save(self.directory + "importance_per_residue", self.importance_per_residue)
-        np.save(self.directory + "importance_matrix", self.feature_importance)
-        np.save(self.directory + "std_importance_matrix", self.std_feature_importance)
-
-        if self.pdb_file is not None:
-            pdb = PandasPdb()
-            pdb.read_pdb(self.pdb_file)
-            _save_to_pdb(pdb, self.directory + "all_importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
-            for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
-                _save_to_pdb(pdb, self.directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
-
-        return self
-
     def _compute_importance_per_residue_and_cluster(self):
 
         importance = self.importance_per_cluster
@@ -182,7 +186,8 @@ class PostProcessor(object):
             std_importance[res2,:] += self.std_importance_per_cluster[feature_idx,:]**2
         std_importance = np.sqrt(std_importance)
 
-        importance_per_residue_and_cluster, std_importance = rescale_feature_importance(importance_per_residue_and_cluster, std_importance)
+        if self.rescale_results:
+            importance_per_residue_and_cluster, std_importance = rescale_feature_importance(importance_per_residue_and_cluster, std_importance)
 
         self.importance_per_residue_and_cluster = importance_per_residue_and_cluster
         self.std_importance_per_residue_and_cluster = std_importance
@@ -195,6 +200,9 @@ class PostProcessor(object):
         else:
             self.importance_per_residue = self.importance_per_residue_and_cluster.mean(axis=1)
             self.std_importance_per_residue = np.sqrt(np.mean(self.std_importance_per_residue_and_cluster**2,axis=1))
+
+        if self.rescale_results:
+            importance_per_residue_and_cluster, std_importance = rescale_feature_importance(self.importance_per_residue, self.std_importance_per_residue)
 
     def _map_to_correct_residues(self, importance_per_residue):
         residue_to_importance = {}
@@ -236,7 +244,7 @@ class PostProcessor(object):
         return
 
 
-def rescale_feature_importance(relevances, std_relevances):
+def rescale_feature_importance(relevances, std_relevances=None):
     """
     Min-max rescale feature importances
     :param feature_importance: array of dimension nfeatures * nstates
@@ -246,7 +254,13 @@ def rescale_feature_importance(relevances, std_relevances):
 
     logger.info("Rescaling feature importances ...")
 
-    n_states = relevances.shape[1]
+    if len(relevances.shape) > 1:
+        n_states = relevances.shape[1]
+    else:
+        n_states = 1
+        relevances = relevances[:,np.newaxis]
+        if std_relevances is not None:
+            std_relevances = std_relevances[:, np.newaxis]
     n_features = relevances.shape[0]
 
     # indices of residues pairs which were not filtered during features filtering
@@ -261,7 +275,9 @@ def rescale_feature_importance(relevances, std_relevances):
         relevances[indices_not_filtered,i] = (relevances[indices_not_filtered,i] - offset)/scale
         if std_relevances is not None:
             std_relevances[indices_not_filtered, i] /= scale #TODO correct?
-    return relevances, std_relevances
+            return relevances, std_relevances
+        else:
+            return relevances
 
 
 def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):

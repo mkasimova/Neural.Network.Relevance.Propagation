@@ -300,8 +300,9 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
         # Identify insignificant features
         ind_below_sigma = np.where(relevances[indices_not_filtered, i] < (global_mean + n_sigma_threshold * global_sigma))[0]
         # Remove insignificant features
-        relevances[indices_not_filtered, i][ind_below_sigma] = 0
-        std_relevances[indices_not_filtered, i][ind_below_sigma] = 0
+        ind = indices_not_filtered[ind_below_sigma]
+        relevances[ind, i] = 0
+        std_relevances[ind, i] = 0
     return relevances, std_relevances
 
 
@@ -322,8 +323,9 @@ def filter_feature_importance_by_cutoff(relevances, std_relevances, cutoff=0.5):
         # Identify insignificant features
         ind_below_cutoff = np.where(relevances[indices_not_filtered, i] <= cutoff)[0]
         # Remove insignificant features
-        relevances[indices_not_filtered, i][ind_below_cutoff] = 0
-        std_relevances[indices_not_filtered, i][ind_below_cutoff] = 0
+        ind = indices_not_filtered[ind_below_cutoff]
+        relevances[ind, i] = 0
+        std_relevances[ind, i] = 0
     return relevances, std_relevances
 
 

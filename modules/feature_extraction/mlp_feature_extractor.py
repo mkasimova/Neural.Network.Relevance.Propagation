@@ -50,10 +50,11 @@ class MlpFeatureExtractor(FeatureExtractor):
         weights = classifier.coefs_
         biases = classifier.intercepts_
         # Calculate relevance
-        relevance = relprop.relevance_propagation(weights, \
-                                                  biases, \
-                                                  data,
-                                                  labels)
+        propagator = relprop.RelevancePropagator(activation_function=relprop.relu)
+        relevance = propagator.propagate(weights,
+                                         biases,
+                                         data,
+                                         labels)
         # average relevance per cluster
         nclusters = labels.shape[1]
         nfeatures = relevance.shape[1]

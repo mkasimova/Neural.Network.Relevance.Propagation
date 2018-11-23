@@ -1,7 +1,7 @@
-import numpy as np
-
 import logging
 import sys
+
+import numpy as np
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -10,21 +10,21 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 from modules import heatmapping_modules as hm_modules
 
-relu = "ReLu"
-logistic_sigmoid = "logistic-sigmoid"
+relu = "relu"
+logistic_sigmoid = "logistic"
 activation_functions = [relu, logistic_sigmoid]
 logger = logging.getLogger("mlp")
 
+
 class RelevancePropagator(object):
 
-    def __init__(self, activation_function=relu):
+    def __init__(self, layers, activation_function=relu):
         self.activation_function = activation_function
+        self.layers = layers
 
-
-    def propagate(self, weights, biases, X, T):
+    def propagate(self, X, T):
         # Reinstantiating the neural network
-        layers = create_layers(weights, biases, self.activation_function)
-        network = Network(layers)
+        network = Network(self.layers)
         Y = network.forward(X)
         # Performing relevance propagation
         D = network.relprop(Y * T)
@@ -42,10 +42,32 @@ class ReLU(hm_modules.ReLU):
     def relprop(self, R):
         return R
 
-class Logistic(hm_modules.Logistic):
+
+class LogisticSigmoid:
+    """Used for RBM"""
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def logistic(X):
+        return 1.0 / (1.0 + np.exp(-X))
+
+    def forward(self, X):
+        self.X = X
+        return self.logistic(X)
+
+    def gradprop(self, DY):
+        self.DY = DY
+        # TODO double check implementation
+        l = self.logistic(DY)
+        return l * (1 - l)
+
     def relprop(self, R):
-        #TODO
-        return R
+        #TODO or just return R?
+        l = self.logistic(R)
+        return l * (1 - l)
+
 
 class Linear(hm_modules.Linear):
     def __init__(self, weight, bias):
@@ -53,51 +75,28 @@ class Linear(hm_modules.Linear):
         self.B = bias
 
 
-def create_layers(weights, biases, activation_function):
-    layers = []
-    for idx, weight in enumerate(weights):
-        if idx == 0:
-            l = FirstLinear(weight, biases[idx])
-        elif activation_function == logistic_sigmoid:
-            l = LogisticSigmoidLinear(weight, biases[idx])
-        elif activation_function == relu:
-            l = NextLinear(weight, biases[idx])
-        else:
-            raise Exception("Unsupported activation function {}. Supported values are {}".format(activation_function, activation_functions))
-        layers.append(l)
-        # ADD RELU TO THE LAST LAYER IF NEEDED
-        if idx < len(weights) - 1:
-            if activation_function == logistic_sigmoid:
-                layers.append(Logistic())
-            elif activation_function == relu:
-                layers.append(ReLU())
-    return layers
-
-
 class FirstLinear(Linear):
     """For z-beta rule"""
 
     def relprop(self, R):
+        min_val, max_val = np.min(self.X, axis=0), np.max(self.X, axis=0)
+        if min_val.min() < 0:
+            logger.warn("Expected input to be scaled between 0 and 1. Minimum value was %s", min_val)
+        else:
+            min_val = 0
+        if max_val.max() > 1 + 1e-3:
+            logger.warn("Expected input to be scaled between 0 and 1. Max value was %s", max_val)
+        else:
+            max_val = 1
         W, V, U = self.W, np.maximum(0, self.W), np.minimum(0, self.W)
-        X, L, H = self.X, self.X * 0 + np.min(self.X, axis=0), self.X * 0 + np.max(self.X, axis=0)
+        X, L, H = self.X, self.X * 0 + min_val, self.X * 0 + max_val
         Z = np.dot(X, W) - np.dot(L, V) - np.dot(H, U) + 1e-9
         S = R / Z
-        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T #a constant just corresponds to a diagonal matrix with that constant along the diagonal
+        Wt = W if isinstance(W, int) or isinstance(W,
+                                                   float) else W.T  # a constant just corresponds to a diagonal matrix with that constant along the diagonal
         R = X * np.dot(S, Wt) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
         return R
 
-
-class LogisticSigmoidLinear(Linear):
-    """For z-beta rule"""
-
-    def relprop(self, R):
-        W, V, U = self.W, np.maximum(0, self.W), np.minimum(0, self.W)
-        X, L, H = self.X, self.X * 0 + 1./(1+np.exp(-1)), self.X * 0 + 1. #np.max(self.X, axis=0)
-        Z = np.dot(X, W) - np.dot(L, V) - np.dot(H, U) + 1e-9
-        S = R / Z
-        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T #a constant just corresponds to a diagonal matrix with that constant along the diagonal
-        R = X * np.dot(S, Wt) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
-        return R
 
 class NextLinear(Linear):
     """For z+ rule"""

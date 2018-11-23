@@ -42,23 +42,17 @@ class RbmFeatureExtractor(FeatureExtractor):
     def get_feature_importance(self, classifier, data, labels):
         # TODO we should look into the effect of using sigmoid instead of ReLu activation here!
         nframes, nfeatures = data.shape
-        weights = [
-            1,  # np.eye(nfeatures), # Don't use eye for large matrices since it will blow up memory
-            classifier.components_.T
-        ]
-        biases = [
-            classifier.intercept_visible_,
-            classifier.intercept_hidden_
-        ]
-        data_propagation = np.copy(data)
-        labels_propagation = classifier.transform(data_propagation)
+        classifier.intercept_hidden_
+        #data_propagation = np.copy(data)
+        labels_propagation = classifier.transform(data) #same as perfect classification
         # Calculate relevance
         # see https://scikit-learn.org/stable/modules/neural_networks_unsupervised.html
-        propagator = relprop.RelevancePropagator(activation_function=relprop.logistic_sigmoid)
-        relevance = propagator.propagate(weights,
-                                         biases,
-                                         data_propagation,
-                                         labels_propagation)
+        layers = [
+            relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
+            relprop.LogisticSigmoid()
+        ]
+        propagator = relprop.RelevancePropagator(layers, activation_function=relprop.logistic_sigmoid)
+        relevance = propagator.propagate(data, labels_propagation)
 
         # Average relevance per cluster
         result = np.zeros((nfeatures, 1))

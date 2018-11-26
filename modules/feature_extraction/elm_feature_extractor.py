@@ -7,22 +7,30 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
+import modules.relevance_propagation as relprop
 from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
+import scipy.special
 
 logger = logging.getLogger("elm")
 
 
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True, filter_by_DKL=False, filter_by_KS_test=False, n_nodes=None, alpha=1):
-
-        MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name="ELM")
+    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True,
+                 filter_by_distance_cutoff=True, contact_cutoff=None, use_inverse_distances=True, filter_by_DKL=False,
+                 activation=relprop.relu,
+                 filter_by_KS_test=False, n_nodes=None, alpha=1):
+        MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
+                                     scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
+                                     contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances,
+                                     activation=activation,
+                                     filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name="ELM")
         self.n_nodes = n_nodes
         self.alpha = alpha
 
     def train(self, train_set, train_labels):
         elm = SingleLayerELMClassifier(n_nodes=self.n_nodes,
-                                       activation_func="hard_relu",
+                                       activation_func=self.activation,
                                        alpha=self.alpha)
 
         elm.fit(train_set, train_labels)
@@ -49,19 +57,22 @@ def pseudo_inverse(x, alpha=None):
 
 
 def random_matrix(L, n):
-    return 2*(np.random.rand(L, n) - 0.5)
+    return np.random.normal(0, 0.25, (L, n))
+    # return np.random.rand(L, n)
 
 
 def g_ELM(x, func_name):
     if func_name == "soft_relu":  # good
         return np.log(1 + np.exp(x))
-    elif func_name == "hard_relu":  # good if you use regularization
-        x[x < 0] = 0
-        return x
+    elif func_name == relprop.relu:  # good if you use regularization
+        Z = x > 0
+        return x * Z
     elif func_name == "arctan":  # also good
         return np.arctan(x)
     elif func_name == "identity":
         return x
+    elif func_name == relprop.logistic_sigmoid:
+        return scipy.special.expit(x)
     else:
         raise Exception("No such activation function {}".format(func_name))
 

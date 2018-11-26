@@ -9,6 +9,7 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 from modules import heatmapping_modules as hm_modules
+import scipy.special
 
 relu = "relu"
 logistic_sigmoid = "logistic"
@@ -51,22 +52,21 @@ class LogisticSigmoid:
 
     @staticmethod
     def logistic(X):
-        return 1.0 / (1.0 + np.exp(-X))
+        # return 1.0 / (1.0 + np.exp(-X))
+        return scipy.special.expit(X)
 
     def forward(self, X):
-        self.X = X
+        # self.X = X
         return self.logistic(X)
 
     def gradprop(self, DY):
-        self.DY = DY
+        # self.DY = DY
         # TODO double check implementation
         l = self.logistic(DY)
         return l * (1 - l)
 
     def relprop(self, R):
-        #TODO or just return R?
-        l = self.logistic(R)
-        return l * (1 - l)
+        return R
 
 
 class Linear(hm_modules.Linear):

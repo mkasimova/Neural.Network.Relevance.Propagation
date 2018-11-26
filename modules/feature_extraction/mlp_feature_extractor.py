@@ -20,8 +20,12 @@ logger = logging.getLogger("mlp")
 class MlpFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True,
-                 filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True, filter_by_DKL=False,
-                 filter_by_KS_test=False, name="MLP",
+                 filter_by_distance_cutoff=True,
+                 contact_cutoff=None,
+                 use_inverse_distances=True,
+                 filter_by_DKL=False,
+                 filter_by_KS_test=False,
+                 name="MLP",
                  hidden_layer_sizes=(100,),
                  solver='lbfgs',
                  activation=relprop.relu,
@@ -88,6 +92,8 @@ def _create_layers(activation_function, classifier):
             l = relprop.FirstLinear(weight, biases[idx])
         elif activation_function == relprop.relu:
             l = relprop.NextLinear(weight, biases[idx])
+        elif activation_function == relprop.logistic_sigmoid:
+            l = relprop.FirstLinear(weight, biases[idx])
         else:
             raise Exception(
                 "Unsupported activation function {}. Supported values are {}".format(activation_function,

@@ -13,7 +13,7 @@ from scipy.stats import entropy
 from scipy.stats import ks_2samp as ks_test
 
 logger = logging.getLogger("filtering")
-
+contact_cutoff_default = 0.5
 
 def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
     """
@@ -44,10 +44,12 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
     return relevances, std_relevances
 
 
-def filter_by_distance_cutoff(data, indices_for_filtering, cutoff=0.5, inverse_distances=True):
+def filter_by_distance_cutoff(data, indices_for_filtering, cutoff=None, inverse_distances=True):
     """
     Contact cutoff based filtering
     """
+    if cutoff is None:
+        cutoff = contact_cutoff_default
 
     number_of_features = data.shape[1]
     logger.info("Number of features before distance cutoff based filtering is %s", number_of_features)

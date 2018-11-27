@@ -26,20 +26,24 @@ def vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, ave
 
 
 def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False,std_val=None):
-    if std_val is not None:
-        ax.plot([x_val,x_val], [y_val-std_val,y_val+std_val], color='k', linewidth=1, linestyle='--')
     ax.plot(x_val, y_val, label=extractor_name, color=color, linewidth=2, marker='o',markersize=5)
+    if std_val is not None:
+        ax.plot([x_val,x_val], [y_val-std_val,y_val+std_val], color='k', linewidth=1, linestyle='-',marker='s',markersize=1)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+
     if show_legends:
         ax.legend()
 
-def vis_per_cluster_projection_entropy(x_val, y_val, ax, col, extractor_name, std_val=None, xlabel='',ylabel=''):
+def vis_per_cluster_projection_entropy(x_val, y_val, ax, col, extractor_name, std_val=None, xlabel='',ylabel='',ylim=None):
 
     ax.bar(x_val,y_val,color=col,edgecolor='',label=extractor_name)
     if std_val is not None:
         for i in range(x_val.shape[0]):
             ax.plot([x_val[i],x_val[i]],[y_val[i] - std_val[i], y_val[i] + std_val[i]], color='k', linewidth=1, linestyle='-',marker='s',markersize=1)
+
+    if ylim is not None:
+        ax.set_ylim(ylim)
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -71,25 +75,29 @@ def vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_clu
     ave_per_cluster_projection_entropies = per_cluster_projection_entropies.mean(axis=1)
     std_per_cluster_projection_entropies = per_cluster_projection_entropies.std(axis=1)
 
+    cluster_proj_entroy_ylim = [0,np.max(ave_per_cluster_projection_entropies+std_per_cluster_projection_entropies+0.1)]
+
     x_val_clusters = np.arange(ave_per_cluster_projection_entropies.shape[1])
 
-    fig1, _ = plt.subplots(1, 5, figsize=(32, 3))
-    fig2, _ = plt.subplots(1, n_estimators, figsize=(35, 3))
+    fig1, _ = plt.subplots(1, n_metrics, figsize=(38, 5))
+    fig2, _ = plt.subplots(1, n_estimators, figsize=(40, 5))
 
     for i_metric in range(n_metrics):
         fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric],color=[0.4,0.4,0.45],linewidth=1)
 
     for i_estimator in range(n_estimators):
         # Visualize each performance metric for current estimator with average+-std, in each axis
-
+        show_legends = False
         for i_metric in range(n_metrics):
+            if i_metric == n_metrics -1:
+                show_legends = True
             vis_performance_metrics(x_vals[i_estimator], ave_metrics[i_metric][i_estimator], fig1.axes[i_metric], 'Estimator',
                                     metric_labels[i_metric], extractor_names[i_estimator],
-                                    colors[i_estimator], std_val=std_metrics[i_metric][i_estimator])
+                                    colors[i_estimator], std_val=std_metrics[i_metric][i_estimator],show_legends=show_legends)
 
         vis_per_cluster_projection_entropy(x_val_clusters, ave_per_cluster_projection_entropies[i_estimator,:], fig2.axes[i_estimator], colors[i_estimator],
                                            extractor_names[i_estimator], std_val=std_per_cluster_projection_entropies[i_estimator,:],
-                                           xlabel='Cluster',ylabel='Projection entropy')
+                                           xlabel='Cluster',ylabel='Projection entropy',ylim=cluster_proj_entroy_ylim)
     return
 
 def vis_projected_data(proj_data, cluster_indices, fig, title):
@@ -173,7 +181,7 @@ def visualize(postprocessors, data_projectors, show_importance=True, show_perfor
     """
 
     n_feature_extractors = len(postprocessors)
-    cols = np.asarray([[0.7, 0.0, 0.08], [0, 0.5, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.9, 0.6, 0.2], [0, 0, 0]])
+    cols = np.asarray([[0.7, 0.0, 0.08], [0, 0.5, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.8, 0.6, 0.2], [1, 0.8, 0]])
 
     if show_performance:
         x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names = extract_metrics(postprocessors, data_projectors)

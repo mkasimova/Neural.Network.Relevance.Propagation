@@ -107,6 +107,7 @@ class FeatureExtractor(object):
         # This is needed when filtering is applied and re-mapping is further used
         n_features = self.samples.shape[1]
         indices_for_filtering = np.arange(0, n_features, 1)
+        original_samples = np.copy(self.samples)
 
         if self.filter_by_distance_cutoff:
             self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
@@ -171,5 +172,5 @@ class FeatureExtractor(object):
 
         logger.info("Done with %s", self.name)
         logger.info("------------------------------")
-
+        self.samples = np.copy(original_samples)
         return feats, std_feats, errors

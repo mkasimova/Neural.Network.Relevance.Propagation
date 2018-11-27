@@ -14,6 +14,8 @@ import comparison_bw_fe as comp_fe
 
 def main(parser):
 
+    n_runs = 5
+
     args = parser.parse_args()
     working_dir = args.out_directory
     samples = np.load(args.feature_list)
@@ -30,23 +32,20 @@ def main(parser):
 
     feature_extractors = [
         fe.PCAFeatureExtractor(samples, labels,
-                               n_splits=args.number_of_k_splits, \
-                               scaling=False, \
-                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff, \
-                               filter_by_DKL=False, \
-                               filter_by_KS_test=False, \
-                               n_components=None),
-
+                               n_splits=args.number_of_k_splits,
+                               scaling=False, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                               filter_by_DKL=False, filter_by_KS_test=False, n_components=None),
         #fe.RbmFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits, \
         #                       n_iterations=args.number_of_iterations, scaling=True, \
         #                       filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff, filter_by_DKL=False,
         #                       filter_by_KS_test=False),
-        fe.KLFeatureExtractor(samples, labels, \
-                              n_splits=args.number_of_k_splits, \
-                              scaling=True, \
-                              filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff, \
-                              filter_by_DKL=False, \
-                              filter_by_KS_test=False),
+        fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
+                                        n_iterations=args.number_of_iterations,
+                                        scaling=True, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                                        filter_by_DKL=False, filter_by_KS_test=False),
+        fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,  scaling=True,
+                              filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                              filter_by_DKL=False, filter_by_KS_test=False),
         #fe.ElmFeatureExtractor(samples, labels,\
         #					   n_splits=args.number_of_k_splits,\
         #					   n_iterations=args.number_of_iterations,\
@@ -54,49 +53,41 @@ def main(parser):
         #					   filter_by_distance_cutoff=True,contact_cutoff=0.8,\
         #					   filter_by_DKL=False,\
         #					  filter_by_KS_test=False),
-        fe.RandomForestFeatureExtractor(samples, labels,\
-                                        n_splits=args.number_of_k_splits,\
-                                        n_iterations=args.number_of_iterations,\
-                                        scaling=True,\
-                                        filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,\
-                                        filter_by_DKL=False,\
-                                        filter_by_KS_test=False),
-        fe.MlpFeatureExtractor(samples, labels, \
-                               n_splits=args.number_of_k_splits, \
-                               n_iterations=args.number_of_iterations, \
-                               scaling=True, \
-                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff, \
-                               filter_by_DKL=False, \
-                               filter_by_KS_test=False, \
+        fe.MlpFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
+                               n_iterations=args.number_of_iterations, scaling=True,
+                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                               filter_by_DKL=False, filter_by_KS_test=False,
                                hidden_layer_sizes=(100,)),
     ]
 
+
     postprocessors = []
-    for extractor in feature_extractors:
-        feats, std_feats, errors = extractor.extract_features()
-
-        # Post-process data (rescale and filter feature importances)
-        p = pp.PostProcessor(extractor,\
-                             feats,\
-                             std_feats,\
-                             errors,\
-                             cluster_indices,
-                             working_dir,\
-                             rescale_results=True,\
-                             filter_results=False,\
-                             filter_results_by_cutoff=False,\
-                             feature_to_resids=None,\
-                             pdb_file=pdb_file)
-        postprocessors.append(p)
-
-    #filter_by_rank_cutoff = comp_fe.compare(postprocessors)
     data_projectors = []
-    for p in postprocessors:
-        #p.filter_feature_importance_by_rank(filter_by_rank_cutoff=filter_by_rank_cutoff)
-        p.average().persist()
-        projector = dp.DataProjector(p, samples)
-        projector.project().score_projection()
-        data_projectors.append(projector)
+
+    for extractor in feature_extractors:
+        tmp_pp = []
+        tmp_dp = []
+        for i_run in range(n_runs):
+            feats, std_feats, errors = extractor.extract_features()
+
+            # Post-process data (rescale and filter feature importances)
+            p = pp.PostProcessor(extractor, feats, std_feats, errors,\
+                                 cluster_indices, working_dir, rescale_results=True,\
+                                 filter_results=False, filter_results_by_cutoff=False,\
+                                 feature_to_resids=None, pdb_file=pdb_file)
+
+
+            p.average().persist()
+
+            projector = dp.DataProjector(p, samples)
+            projector.project().score_projection()
+
+            tmp_dp.append(projector)
+            tmp_pp.append(p)
+
+        postprocessors.append(tmp_pp)
+        data_projectors.append(tmp_dp)
+
     visualization.visualize(postprocessors,data_projectors)
 
 parser = argparse.ArgumentParser(epilog='Feature importance extraction.')

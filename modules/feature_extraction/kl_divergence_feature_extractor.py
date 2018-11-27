@@ -10,6 +10,8 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 from scipy.stats import entropy
+from sklearn.mixture import GaussianMixture
+from scipy.stats import multivariate_normal
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 
 logger = logging.getLogger("KL")
@@ -28,11 +30,12 @@ class KLFeatureExtractor(FeatureExtractor):
 
         self.feature_importances = np.zeros((n_clusters, data.shape[1]))
         for i_cluster in range(n_clusters):
+            logger.info('Cluster: '+str(i_cluster+1)+'/'+str(n_clusters))
             data_cluster = data[labels[:, i_cluster] == 1, :]
             data_rest = data[labels[:, i_cluster] == 0, :]
-            self.feature_importances[i_cluster, :] = self.KL_divergence(data_cluster, data_rest)
+            self.feature_importances[i_cluster, :] = self._KL_divergence(data_cluster[:,:,np.newaxis], data_rest[:,:,np.newaxis])
 
-    def KL_divergence(self, x, y):
+    def _KL_divergence(self, x, y):
         """
         Compute Kullback-Leibler divergence
         """

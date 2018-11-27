@@ -16,6 +16,7 @@ from scipy.spatial.distance import squareform
 from modules import postprocessing
 from scipy.stats import multivariate_normal
 from sklearn.mixture import GaussianMixture
+from scipy.stats import entropy
 
 logger = logging.getLogger("projection")
 
@@ -39,9 +40,11 @@ class DataProjector():
         self.raw_projection = None
 
         self.separation_score = None
+        self.projection_class_entropy = None
+        self.cluster_projection_class_entropy = None
         return
 
-    def project(self):
+    def project(self, do_coloring=False):
         """
         Project distances. Performs:
           1. Raw projection (projection onto cluster feature importances if feature_importances_per_cluster is given)
@@ -51,13 +54,24 @@ class DataProjector():
         if self.pop.importance_per_cluster is not None:
             self.raw_projection = self._project_on_relevance_basis_vectors(self.samples, self.pop.importance_per_cluster)
 
-        logger.info("Identifying basis vectors")
-        relevance_basis_vectors = self._identify_relevance_basis_vectors(squareform(self.pop.feature_importance[:,0]))
-        logger.info("Projecting onto "+str(relevance_basis_vectors.shape[1])+" identified dimensions.")
-        if relevance_basis_vectors.shape[1] < 10 and relevance_basis_vectors.shape[0] > 0:
-            self.basis_vector_projection = self._project_on_relevance_basis_vectors(self.samples, relevance_basis_vectors)
+        if do_coloring:
+            logger.info("Identifying basis vectors")
+            relevance_basis_vectors = self._identify_relevance_basis_vectors(squareform(self.pop.feature_importance[:,0]))
+            logger.info("Projecting onto "+str(relevance_basis_vectors.shape[1])+" identified dimensions.")
+            if relevance_basis_vectors.shape[1] < 10 and relevance_basis_vectors.shape[0] > 0:
+                self.basis_vector_projection = self._project_on_relevance_basis_vectors(self.samples, relevance_basis_vectors)
 
         return self
+
+    def evaluate_importance_robustness(self):
+        """
+        Evaluating robustness of importances by removing one feature at a time and computing separation scores and
+        total posterior entropy.
+        :return:
+        """
+        # TODO: implement
+        return
+
 
     def score_projection(self, raw_projection=True, use_GMM=True):
         """
@@ -83,17 +97,26 @@ class DataProjector():
 
         n_points = proj.shape[0]
         new_classes = np.zeros(n_points)
-
+        class_entropies = np.zeros(n_points)
         for i_point in range(n_points):
             if use_GMM:
                 posteriors = self._compute_GM_posterior(proj[i_point, :], priors, GMMs)
             else:
                 posteriors = self._compute_posterior(proj[i_point,:], priors, means, covs)
+            class_entropies[i_point] = entropy(posteriors)
             new_classes[i_point] = np.argmax(posteriors)
 
         # Compute separation score
         correct_separation = new_classes==self.labels
         self.separation_score = correct_separation.sum()/n_points
+        self.projection_class_entropy = class_entropies.mean()
+
+        # Compute per-cluster projection entropy
+        self.cluster_projection_class_entropy = np.zeros(self.n_clusters)
+        for i_cluster in range(self.n_clusters):
+            inds = self.labels==i_cluster
+            self.cluster_projection_class_entropy[i_cluster] = class_entropies[inds].mean()
+
         return
 
     def persist(self):
@@ -139,13 +162,12 @@ class DataProjector():
             for i_component in range(gmm.weights_.shape[0]):
                 density += gmm.weights_[i_component]*multivariate_normal.pdf(x, mean=gmm.means_[i_component],
                                                                              cov=gmm.covariances_[i_component])
-
             posteriors[i_cluster] = density*priors[i_cluster]
 
         posteriors /= posteriors.sum()
         return posteriors
 
-    def estimate_n_GMM_components(self, x, n_component_lim=[1,4]):
+    def _estimate_n_GMM_components(self, x, n_component_lim=[1,4]):
 
         n_points = x.shape[0]
         n_half = int(n_points / 2.0)
@@ -176,7 +198,7 @@ class DataProjector():
         for i_cluster in range(self.n_clusters):
             cluster = proj[self.labels == i_cluster, :]
 
-            n_components = self.estimate_n_GMM_components(cluster,n_component_lim)
+            n_components = self._estimate_n_GMM_components(cluster,n_component_lim)
 
             GMM = GaussianMixture(n_components)
             GMM.fit(cluster)

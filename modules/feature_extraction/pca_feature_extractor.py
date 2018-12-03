@@ -19,7 +19,7 @@ class PCAFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_splits=10, scaling=False, filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True, filter_by_DKL=False, filter_by_KS_test=False, n_components=None, name="PCA"):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances, filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances, name=name)
         self.n_components = n_components
         return
 

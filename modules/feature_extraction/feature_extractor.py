@@ -9,7 +9,7 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-from modules import utils as utils, postprocessing as pp, filtering
+from modules import utils as utils, filtering
 from sklearn.model_selection import KFold
 
 logger = logging.getLogger("Extracting features")

@@ -156,7 +156,7 @@ def extract_metrics(postprocessors):
 
     for i_run in range(n_runs):
         for i_estimator in range(n_estimators):
-        	pp = postprocessors[i_estimator][i_run]
+            pp = postprocessors[i_estimator][i_run]
             standard_devs[i_estimator,i_run] = pp.average_std
             entropies[i_estimator,i_run] = pp.entropy
             test_set_errors[i_estimator,i_run] = pp.test_set_errors
@@ -206,7 +206,7 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
     if show_projected_data:
         fig_counter = 3
         for pp in postprocessors:
-        	dp = pp[i_run].data_projector
+            dp = pp[i_run].data_projector
             if dp.raw_projection is not None:
                 vis_projected_data(dp.raw_projection, dp.labels, plt.figure(fig_counter), "Raw projection "+pp[i_run].extractor.name)
                 fig_counter += 1

@@ -24,7 +24,7 @@ class ElmFeatureExtractor(MlpFeatureExtractor):
                                      scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
                                      contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances,
                                      activation=activation,
-                                     filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name="ELM")
+                                     name="ELM")
         self.n_nodes = n_nodes
         self.alpha = alpha
 

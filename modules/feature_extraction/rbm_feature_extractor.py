@@ -24,7 +24,7 @@ class RbmFeatureExtractor(FeatureExtractor):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
                                   contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances,
-                                  filter_by_DKL=filter_by_DKL, filter_by_KS_test=filter_by_KS_test, name=name)
+                                  name=name)
         self.randomize = randomize
         self.n_components = n_components
 

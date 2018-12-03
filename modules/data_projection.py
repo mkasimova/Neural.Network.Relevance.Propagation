@@ -13,7 +13,6 @@ import numpy as np
 import networkx as nx
 import modules.utils as utils
 from scipy.spatial.distance import squareform
-from modules import postprocessing
 from scipy.stats import multivariate_normal
 from sklearn.mixture import GaussianMixture
 from scipy.stats import entropy

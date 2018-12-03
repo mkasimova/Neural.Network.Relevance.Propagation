@@ -11,7 +11,7 @@ logging.basicConfig(
 import numpy as np
 from scipy.spatial.distance import squareform
 from biopandas.pdb import PandasPdb
-
+from sklearn.preprocessing import MinMaxScaler
 logger = logging.getLogger("utils")
 
 

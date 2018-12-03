@@ -15,6 +15,7 @@ import modules.utils as utils
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import squareform
 from modules import filtering
+import matplotlib.pyplot as plt
 
 
 logger = logging.getLogger("postprocessing")
@@ -23,7 +24,7 @@ logger = logging.getLogger("postprocessing")
 class PostProcessor(object):
 
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, filter_results_by_cutoff=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -41,8 +42,6 @@ class PostProcessor(object):
             self.feature_importance, self.std_feature_importance = rescale_feature_importance(self.feature_importance, self.std_feature_importance)
         if filter_results:
             self.feature_importance, self.std_feature_importance = filter_feature_importance(self.feature_importance, self.std_feature_importance)
-        if filter_results_by_cutoff:
-            self.feature_importance, self.std_feature_importance = filter_feature_importance_by_cutoff(self.feature_importance, self.std_feature_importance)
 
         # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importance and self.std_feature_importance)
         self.indices_filtered = np.where(self.feature_importance[:,0]==-1)[0]
@@ -107,10 +106,13 @@ class PostProcessor(object):
         """
         peaks = self._identify_peaks()
 
-        self.correct_relevance_peaks = np.sum(peaks[self.predefined_relevant_residues])/len(self.predefined_relevant_residues)
-        peaks[self.predefined_relevant_residues] = 0
+        predefined_relevant_residues_flattened = flatten(self.predefined_relevant_residues)
+        self.correct_relevance_peaks = np.sum(peaks[predefined_relevant_residues_flattened])/len(predefined_relevant_residues_flattened)
+        peaks[predefined_relevant_residues_flattened] = 0
         self.false_positives = peaks.sum()
-        
+
+        self._roc_curve()
+
         return
 
     def _identify_peaks(self, use_kmeans_clustering=True):
@@ -119,15 +121,15 @@ class PostProcessor(object):
         """
         resid_importance = np.copy(self.importance_per_residue)
         peaks = np.zeros(resid_importance.shape[0])
-        
+
         if resid_importance.sum() == 0:
             return peaks
-        
+
         if use_kmeans_clustering:
             km = KMeans(n_clusters=2).fit(resid_importance.reshape(-1, 1))
             cluster_indices = km.labels_
             centers = km.cluster_centers_
-            
+
             if centers[0] < centers[1]:
                 peaks[cluster_indices==1] = 1
             else:
@@ -135,14 +137,55 @@ class PostProcessor(object):
         else:
             peaks,_ = filtering.filter_feature_importance(resid_importance,resid_importance)
             peaks[peaks > 0] = 1
-        
+
         return peaks
+
+    def _roc_curve(self):
+        """
+        Computes ROC curve
+        """
+        n_residues = self.importance_per_residue.shape[0]
+        actives = np.chararray(n_residues)
+        actives[:] = 'd'
+        ind_a = flatten(self.predefined_relevant_residues)
+        actives[ind_a] = 'a'
+
+        actives_len = len(ind_a)
+        decoys_len = n_residues - actives_len
+
+        ind_scores_sorted = np.argsort(-self.importance_per_residue)
+        actives_sorted = actives[ind_scores_sorted]
+
+        tp=0
+        fp=0
+        tp_rate = []
+        fp_rate = []
+        for i in actives_sorted:
+            if i=='a':
+                tp+=1
+            else:
+                fp+=1
+            tp_rate.append(float(tp)/float(actives_len))
+            fp_rate.append(float(fp)/float(decoys_len))
+
+        auc = 0
+        for i in range(len(p.fp_rate)-1):
+            auc += (p.fp_rate[i+1]-p.fp_rate[i])*(p.tp_rate[i+1]+p.tp_rate[i])/2
+
+        self.tp_rate = tp_rate
+        self.fp_rate = fp_rate
+        self.auc = auc
 
     def persist(self):
         """
         Save .npy files of the different averages and pdb files with the beta column set to importance
         :return: itself
         """
+        if directory is None:
+            directory = self.working_dir + "analysis/{}/".format(self.extractor.name)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         np.save(self.directory + "importance_per_cluster", self.importance_per_cluster)
         np.save(self.directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
         np.save(self.directory + "importance_per_residue", self.importance_per_residue)
@@ -194,6 +237,14 @@ class PostProcessor(object):
         else:
             self.importance_per_residue = self.importance_per_residue_and_cluster.mean(axis=1)
             self.std_importance_per_residue = np.sqrt(np.mean(self.std_importance_per_residue_and_cluster**2,axis=1))
+            # Rescale between 0 and 1
+            max_val, min_val = self.importance_per_residue.max(), self.importance_per_residue.min()
+            scale = max_val-min_val
+            offset = min_val
+            if scale < 1e-9:
+                scale = 1e-9 #TODO correct?
+            self.importance_per_residue = (self.importance_per_residue-offset)/scale
+            self.std_importance_per_residue /= scale #TODO correct?
 
     def _map_to_correct_residues(self, importance_per_residue):
         residue_to_importance = {}
@@ -263,7 +314,7 @@ def rescale_feature_importance(relevances, std_relevances):
     return relevances, std_relevances
 
 
-def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
+def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=0):
     """
     Filter feature importances based on significance
     Return filtered residue feature importances (average + std within the states/clusters)
@@ -277,36 +328,18 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
     indices_not_filtered = np.where(relevances[:,0]>=0)[0]
 
     for i in range(n_states):
-        global_mean = np.mean(relevances[indices_not_filtered, i])
+        global_median = np.median(relevances[indices_not_filtered, i])
+        #logger.info("Global median is %s", global_median)
         global_sigma = np.std(relevances[indices_not_filtered, i])
+        #logger.info("Global sigma is %s", global_sigma)
 
         # Identify insignificant features
-        ind_below_sigma = np.where(relevances[indices_not_filtered, i] < (global_mean + n_sigma_threshold * global_sigma))[0]
+        ind_below_sigma = np.where(relevances[indices_not_filtered, i] <= (global_median + n_sigma_threshold * global_sigma))[0]
+        logger.info("Number of features after filtering is %s", n_features - len(ind_below_sigma))
         # Remove insignificant features
-        relevances[indices_not_filtered, i][ind_below_sigma] = 0
-        std_relevances[indices_not_filtered, i][ind_below_sigma] = 0
-    return relevances, std_relevances
-
-
-def filter_feature_importance_by_cutoff(relevances, std_relevances, cutoff=0.5):
-    """
-    Filter feature importance based on significance
-    Unlike filter_feature_importance uses the same cutoff for all feature extractors
-    """
-    logger.info("Filtering feature importances by cutoff %s", cutoff)
-
-    n_states = relevances.shape[1]
-    n_features = relevances.shape[0]
-
-    # indices of residues pairs which were not filtered during features filtering
-    indices_not_filtered = np.where(relevances[:,0]>=0)[0]
-
-    for i in range(n_states):
-        # Identify insignificant features
-        ind_below_cutoff = np.where(relevances[indices_not_filtered, i] <= cutoff)[0]
-        # Remove insignificant features
-        relevances[indices_not_filtered, i][ind_below_cutoff] = 0
-        std_relevances[indices_not_filtered, i][ind_below_cutoff] = 0
+        ind = indices_not_filtered[ind_below_sigma]
+        relevances[ind, i] = 0
+        std_relevances[ind, i] = 0
     return relevances, std_relevances
 
 
@@ -325,18 +358,5 @@ def _save_to_pdb(pdb, out_file, residue_to_importance):
     pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
 
-def residue_importances(feature_importances, std_feature_importances):
-    """
-    Compute residue importance
-    DEPRECATED method ... Here in case we need to merge some of the functionality into the current method
-    """
-    n_states = feature_importances.shape[0]
-
-    n_residues = squareform(feature_importances[0, :]).shape[0]
-
-    resid_importance = np.zeros((n_states, n_residues))
-    std_resid_importance = np.zeros((n_states, n_residues))
-    for i_state in range(n_states):
-        resid_importance[i_state, :] = np.sum(squareform(feature_importances[i_state, :]), axis=1)
-        std_resid_importance[i_state, :] = np.sqrt(np.sum(squareform(std_feature_importances[i_state, :] ** 2), axis=1))
-    return resid_importance, std_resid_importance
+def flatten(list_of_lists):
+    return [y for x in list_of_lists for y in x]

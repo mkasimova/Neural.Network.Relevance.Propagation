@@ -68,26 +68,26 @@ def compare(postprocessors):
     # Average over all features extractors
     difference_rank = np.sum(np.sum(difference_rank,axis=2),axis=1)/(n_features_extractors-1)/n_features_extractors
     difference_rank = 1 - difference_rank
-    top_features_average = np.average(top_features_average,axis=1)
+    #top_features_average = np.average(top_features_average,axis=1)
 
     x = (top_features_array - n_features_per_iteration)[:-1]
 
     diff_popt, diff_pcov = curve_fit(func, x, difference_rank)
-    ave_popt, ave_pcov = curve_fit(func, x, top_features_average)
+    #ave_popt, ave_pcov = curve_fit(func, x, top_features_average)
 
     logger.info("Time decay of difference between fe is %s, error is %s", diff_popt[0], np.sqrt(np.diag(diff_pcov))[0])
     diff_n_filtered_features = int(-1/diff_popt[0]*np.log(0.5))+n_features_per_iteration
     logger.info("Number of significant feature importances is %s", diff_n_filtered_features)
-    logger.info("Time decay of average importance for all fe is %s, error is %s", ave_popt[0], np.sqrt(np.diag(ave_pcov))[0])
-    ave_n_filtered_features = int(-1/ave_popt[0]*np.log(0.5))+n_features_per_iteration
-    logger.info("Number of significant feature importances is %s", ave_n_filtered_features)
+    #logger.info("Time decay of average importance for all fe is %s, error is %s", ave_popt[0], np.sqrt(np.diag(ave_pcov))[0])
+    #ave_n_filtered_features = int(-1/ave_popt[0]*np.log(0.5))+n_features_per_iteration
+    #logger.info("Number of significant feature importances is %s", ave_n_filtered_features)
 
     plt.plot(x+n_features_per_iteration,difference_rank,label='1-difference')
-    plt.plot(x+n_features_per_iteration,top_features_average,label='average importance')
+    #plt.plot(x+n_features_per_iteration,top_features_average,label='average importance')
     plt.plot(x+n_features_per_iteration,func(x, *diff_popt),label='1-diff FIT')
-    plt.plot(x+n_features_per_iteration,func(x, *ave_popt),label='1-ave FIT')
+    #plt.plot(x+n_features_per_iteration,func(x, *ave_popt),label='1-ave FIT')
     plt.xlabel('top features')
-    plt.ylabel('1-diff or ave')
+    plt.ylabel('1-diff')
     plt.xscale('log')
     plt.legend()
     plt.show()

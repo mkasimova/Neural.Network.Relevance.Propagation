@@ -29,10 +29,17 @@ def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, co
     if show_legends:
         ax.legend()
 
+def vis_roc(x_val, y_val, ax, extractor_name, color):
+    ax.plot(x_val, y_val, color=color, label=extractor_name, linewidth=2)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.legend()
+
 
 def visualize(postprocessors,
               show_importance=True,
-              show_performance=True):
+              show_performance=True,
+              show_roc=True):
     """
     Plots the feature per residue.
     TODO visualize features too with std etc
@@ -50,10 +57,11 @@ def visualize(postprocessors,
             fig2, axes2 = plt.subplots(1, 3, figsize=(28, 5))
         else:
             fig2, axes2 = plt.subplots(1, 5, figsize=(35, 5))
+    if show_roc:
+        fig3, axes3 = plt.subplots(1, n_feature_extractors, figsize=(35, 5))
 
     counter = 0
     for pp, ax in zip(postprocessors, fig1.axes):
-        # plt.plot(pp.index_to_resid, pp.importance_per_residue, label=pp.extractor.name)
         if show_importance:
             vis_feature_importance(pp.index_to_resid, pp.importance_per_residue, pp.std_importance_per_residue,
                                    ax, pp.extractor.name, cols[counter, :])
@@ -77,5 +85,9 @@ def visualize(postprocessors,
                                         'Number of false positives',
                                         pp.extractor.name, cols[counter, :], show_legends=True)
         counter += 1
-    # plt.legend()
+    counter = 0
+    for pp, ax in zip(postprocessors, fig3.axes):
+        if show_roc:
+            vis_roc(pp.fp_rate, pp.tp_rate, ax, pp.extractor.name, cols[counter, :])
+        counter += 1
     plt.show()

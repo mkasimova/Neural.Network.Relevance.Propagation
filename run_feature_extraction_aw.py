@@ -14,7 +14,7 @@ import comparison_bw_fe as comp_fe
 
 def main(parser):
 
-    n_runs = 5
+    n_runs = 3
 
     args = parser.parse_args()
     working_dir = args.out_directory
@@ -35,24 +35,21 @@ def main(parser):
                                n_splits=args.number_of_k_splits,
                                scaling=False, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
                                filter_by_DKL=False, filter_by_KS_test=False, n_components=None),
-        #fe.RbmFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits, \
-        #                       n_iterations=args.number_of_iterations, scaling=True, \
-        #                       filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff, filter_by_DKL=False,
-        #                       filter_by_KS_test=False),
+        fe.RbmFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
+                               n_iterations=args.number_of_iterations, scaling=True,
+                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff, filter_by_DKL=False,
+                               filter_by_KS_test=False),
         fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
-                                        n_iterations=args.number_of_iterations,
-                                        scaling=True, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
-                                        filter_by_DKL=False, filter_by_KS_test=False),
+                               n_iterations=args.number_of_iterations,
+                               scaling=True, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                               filter_by_DKL=False, filter_by_KS_test=False),
         fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,  scaling=True,
-                              filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
-                              filter_by_DKL=False, filter_by_KS_test=False),
-        #fe.ElmFeatureExtractor(samples, labels,\
-        #					   n_splits=args.number_of_k_splits,\
-        #					   n_iterations=args.number_of_iterations,\
-        #					   scaling=True,\
-        #					   filter_by_distance_cutoff=True,contact_cutoff=0.8,\
-        #					   filter_by_DKL=False,\
-        #					  filter_by_KS_test=False),
+                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                               filter_by_DKL=False, filter_by_KS_test=False),
+        fe.ElmFeatureExtractor(samples, labels,
+        					   n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations,
+        					   scaling=True, filter_by_distance_cutoff=True,contact_cutoff=0.8,
+        					   filter_by_DKL=False, filter_by_KS_test=False),
         fe.MlpFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations, scaling=True,
                                filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
@@ -71,9 +68,9 @@ def main(parser):
             feats, std_feats, errors = extractor.extract_features()
 
             # Post-process data (rescale and filter feature importances)
-            p = pp.PostProcessor(extractor, feats, std_feats, errors,\
-                                 cluster_indices, working_dir, rescale_results=True,\
-                                 filter_results=False, filter_results_by_cutoff=False,\
+            p = pp.PostProcessor(extractor, feats, std_feats, errors,
+                                 cluster_indices, working_dir, rescale_results=True,
+                                 filter_results=True, filter_results_by_cutoff=False,
                                  feature_to_resids=None, pdb_file=pdb_file)
 
 
@@ -81,6 +78,7 @@ def main(parser):
 
             projector = dp.DataProjector(p, samples)
             projector.project().score_projection()
+            #projector.evaluate_importance_robustness()
 
             tmp_dp.append(projector)
             tmp_pp.append(p)

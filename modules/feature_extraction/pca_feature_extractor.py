@@ -29,7 +29,7 @@ class PCAFeatureExtractor(FeatureExtractor):
         model.fit(train_set)
         return model
 
-    def get_n_components(self, model):
+    def _get_n_components(self, model, n_clusters):
         """
         Decide the number of components to keep based on a 75% variance cutoff
         """
@@ -37,15 +37,23 @@ class PCAFeatureExtractor(FeatureExtractor):
         n_components = 1
         total_var_explained = explained_var[0]
         for i in range(1, explained_var.shape[0]):
-            if total_var_explained + explained_var[i] < 0.75:
+            if total_var_explained + explained_var[i] < 0.75 and i < n_clusters:
                 total_var_explained += explained_var[i]
                 n_components += 1
         logger.info('Selecting %s components', n_components)
         return n_components
 
+    def _collect_components(self, model, n_components):
+        components = np.abs(model.components_[0:n_components] * model.explained_variance_[0:n_components, np.newaxis])
+        return components.T
+
     def get_feature_importance(self, model, samples, labels):
         n_components = self.n_components
         if (self.n_components is None):
-            n_components = self.get_n_components(model)
-        feature_importances = np.sum(np.abs(model.components_[0:n_components]*model.explained_variance_[0:n_components,np.newaxis]), axis=0)
+            n_clusters = labels.shape[1]
+            n_components = self._get_n_components(model, n_clusters)
+        logger.info('n_components: '+str(n_components))
+        feature_importances = self._collect_components(model, n_components)
+        # Removed: summing over eigenvectors:
+        #feature_importances = np.sum(np.abs(model.components_[0:n_components]*model.explained_variance_[0:n_components,np.newaxis]), axis=0)
         return feature_importances

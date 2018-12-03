@@ -32,6 +32,7 @@ class RbmFeatureExtractor(FeatureExtractor):
         if self.n_components is None:
             self.n_components = int(train_set.shape[1] / 10)
             logger.info("Automatically set n_components to %s", self.n_components)
+
         classifier = sklearn.neural_network.BernoulliRBM(
             random_state=(None if self.randomize else 89274),
             n_components=self.n_components
@@ -43,8 +44,9 @@ class RbmFeatureExtractor(FeatureExtractor):
         # TODO we should look into the effect of using sigmoid instead of ReLu activation here!
         nframes, nfeatures = data.shape
         classifier.intercept_hidden_
-        #data_propagation = np.copy(data)
+
         labels_propagation = classifier.transform(data) #same as perfect classification
+
         # Calculate relevance
         # see https://scikit-learn.org/stable/modules/neural_networks_unsupervised.html
         layers = [
@@ -55,14 +57,24 @@ class RbmFeatureExtractor(FeatureExtractor):
         relevance = propagator.propagate(data, labels_propagation)
 
         # Average relevance per cluster
-        result = np.zeros((nfeatures, 1))
+        nclusters = labels.shape[1]
+
+        result = np.zeros((nfeatures, nclusters))
+        frames_per_cluster = np.zeros((nclusters))
+
+        # Rescale relevance according to min and max relevance in each frame
+        for i in range(relevance.shape[0]):
+            ind_negative = np.where(relevance[i, :] < 0)[0]
+            relevance[i, ind_negative] = 0
+            relevance[i, :] = (relevance[i, :] - np.min(relevance[i, :])) / (
+                    np.max(relevance[i, :]) - np.min(relevance[i, :]) + 0.000000001)
+
+        for frame_idx, frame in enumerate(labels):
+            cluster_idx = labels[frame_idx].argmax()
+            frames_per_cluster[cluster_idx] += 1
+
         for frame_idx, rel in enumerate(relevance):
-            ind_negative = np.where(rel < 0)[0]
-            rel[ind_negative] = 0
-            rel -= rel.min()
-            scale = rel.max() - rel.min()
-            if scale < 1e-9:
-                scale = 1e-9
-            rel /= scale
-            result[:, 0] += rel / nframes
+            cluster_idx = labels[frame_idx].argmax()
+            result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
+
         return result

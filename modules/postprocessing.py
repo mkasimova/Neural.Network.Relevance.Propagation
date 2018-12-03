@@ -280,7 +280,7 @@ def rescale_feature_importance(relevances, std_relevances=None):
             return relevances
 
 
-def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
+def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=0):
     """
     Filter feature importances based on significance
     Return filtered residue feature importances (average + std within the states/clusters)
@@ -294,7 +294,7 @@ def filter_feature_importance(relevances, std_relevances, n_sigma_threshold=2):
     indices_not_filtered = np.where(relevances[:,0]>=0)[0]
 
     for i in range(n_states):
-        global_mean = np.mean(relevances[indices_not_filtered, i])
+        global_mean = np.median(relevances[indices_not_filtered, i])
         global_sigma = np.std(relevances[indices_not_filtered, i])
 
         # Identify insignificant features

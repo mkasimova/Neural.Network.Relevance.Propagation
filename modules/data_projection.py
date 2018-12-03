@@ -42,6 +42,8 @@ class DataProjector():
         self.separation_score = None
         self.projection_class_entropy = None
         self.cluster_projection_class_entropy = None
+
+        self.test_projection_class_entropy = None
         return
 
     def project(self, do_coloring=False):
@@ -69,11 +71,30 @@ class DataProjector():
         total posterior entropy.
         :return:
         """
-        # TODO: implement
+        tmp_importances = np.copy(self.pop.importance_per_cluster)
+
+        nonzero_inds = np.where(tmp_importances > 0)[0]
+        sort_importance_ind = np.argsort(tmp_importances[nonzero_inds].sum(axis=1))
+        n_chunks = 5.0
+        n_features = nonzero_inds.shape[0]
+        chunk_size = int(n_features/n_chunks)
+
+        self.test_projection_class_entropy = np.zeros(int(n_chunks))
+        logger.info("Evaluating importance robustness by removing features")
+
+        for i_feat in range(int(n_chunks)):
+            logger.info(str(i_feat+1)+'/'+str(int(n_chunks)))
+            # Remove feature
+            tmp_importances[nonzero_inds[sort_importance_ind[int(i_feat*chunk_size):int((i_feat+1)*chunk_size)]],:] = 0
+
+            # Re-project points and compute projection uncertainty (entropy)
+            projection = self._project_on_relevance_basis_vectors(self.samples, tmp_importances)
+            _, self.test_projection_class_entropy[i_feat] = self.score_projection(projection=projection)
+
         return
 
 
-    def score_projection(self, raw_projection=True, use_GMM=True):
+    def score_projection(self, raw_projection=True, use_GMM=True, projection=None):
         """
         Score the resulting projection by approximating each cluster as a Gaussian (or Gaussian mixture)
         distribution and classify points using the posterior distribution over classes.
@@ -81,12 +102,14 @@ class DataProjector():
         :return: itself
         """
 
-        if raw_projection:
+        if raw_projection and projection is None:
             proj = np.copy(self.raw_projection)
             logger.info("Scoring raw projections.")
-        else:
+        elif projection is None:
             proj = np.copy(self.basis_vector_projection)
             logger.info("Scoring basis vector projections.")
+        else:
+            proj = np.copy(projection)
 
         priors = self._set_class_prior()
 
@@ -108,8 +131,12 @@ class DataProjector():
 
         # Compute separation score
         correct_separation = new_classes==self.labels
-        self.separation_score = correct_separation.sum()/n_points
-        self.projection_class_entropy = class_entropies.mean()
+        if projection is None:
+            self.separation_score = correct_separation.sum()/n_points
+            self.projection_class_entropy = class_entropies.mean()
+        else:
+            return correct_separation.sum()/n_points, class_entropies.mean()
+
 
         # Compute per-cluster projection entropy
         self.cluster_projection_class_entropy = np.zeros(self.n_clusters)

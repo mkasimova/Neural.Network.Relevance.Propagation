@@ -31,13 +31,11 @@ def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, co
         ax.plot([x_val,x_val], [y_val-std_val,y_val+std_val], color='k', linewidth=1, linestyle='-',marker='s',markersize=1)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-
     if show_legends:
         ax.legend()
 
-def vis_per_cluster_projection_entropy(x_val, y_val, ax, col, extractor_name, std_val=None, xlabel='',ylabel='',ylim=None):
-
-    ax.bar(x_val,y_val,color=col,edgecolor='',label=extractor_name)
+def vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_name, std_val=None, xlabel='',ylabel='',ylim=None):
+    ax.bar(x_val,y_val,width, color=col,edgecolor='',label=extractor_name)
     if std_val is not None:
         for i in range(x_val.shape[0]):
             ax.plot([x_val[i],x_val[i]],[y_val[i] - std_val[i], y_val[i] + std_val[i]], color='k', linewidth=1, linestyle='-',marker='s',markersize=1)
@@ -65,6 +63,8 @@ def vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_clu
     n_estimators = metrics[0].shape[0]
     n_metrics = len(metrics)
 
+    width = 1.0 / n_estimators - 0.05
+
     ave_metrics = []
     std_metrics = []
 
@@ -77,10 +77,10 @@ def vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_clu
 
     cluster_proj_entroy_ylim = [0,np.max(ave_per_cluster_projection_entropies+std_per_cluster_projection_entropies+0.1)]
 
-    x_val_clusters = np.arange(ave_per_cluster_projection_entropies.shape[1])
+    x_val_clusters = np.arange(ave_per_cluster_projection_entropies.shape[1])-width*n_estimators/2.0
 
     fig1, _ = plt.subplots(1, n_metrics, figsize=(38, 5))
-    fig2, _ = plt.subplots(1, n_estimators, figsize=(40, 5))
+    fig2, _ = plt.subplots(1, 1, figsize=(20, 5))
 
     for i_metric in range(n_metrics):
         fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric],color=[0.4,0.4,0.45],linewidth=1)
@@ -95,7 +95,7 @@ def vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_clu
                                     metric_labels[i_metric], extractor_names[i_estimator],
                                     colors[i_estimator], std_val=std_metrics[i_metric][i_estimator],show_legends=show_legends)
 
-        vis_per_cluster_projection_entropy(x_val_clusters, ave_per_cluster_projection_entropies[i_estimator,:], fig2.axes[i_estimator], colors[i_estimator],
+        vis_per_cluster_projection_entropy(x_val_clusters+width*i_estimator, ave_per_cluster_projection_entropies[i_estimator,:], width, fig2.axes[0], colors[i_estimator],
                                            extractor_names[i_estimator], std_val=std_per_cluster_projection_entropies[i_estimator,:],
                                            xlabel='Cluster',ylabel='Projection entropy',ylim=cluster_proj_entroy_ylim)
     return
@@ -172,6 +172,15 @@ def extract_metrics(postprocessors, data_projectors):
 
     return x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names
 
+def extract_test_projection_entropy(data_projectors):
+    n_runs = len(data_projectors[0])
+    n_estimators = len(data_projectors)
+    data = np.zeros((n_estimators, n_runs, data_projectors[0][0].test_projection_class_entropy.shape[0]))
+    for i_run in range(n_runs):
+        for i_estimator in range(n_estimators):
+            data[i_estimator,i_run,:] = data_projectors[i_estimator][i_run].test_projection_class_entropy
+    return data.mean(axis=1), data.std(axis=1)
+
 def visualize(postprocessors, data_projectors, show_importance=True, show_performance=True, show_projected_data=False):
     """
     Plots the feature per residue.
@@ -209,5 +218,15 @@ def visualize(postprocessors, data_projectors, show_importance=True, show_perfor
                 vis_projected_data(dp[i_run].raw_projection, dp[i_run].labels, plt.figure(fig_counter), "Raw projection "+dp[i_run].extractor.name)
                 fig_counter += 1
 
+    if data_projectors[0][0].test_projection_class_entropy is not None:
+        plt.figure(4)
+        ave_proj_entropies, std_proj_entropies = extract_test_projection_entropy(data_projectors)
+        x_val = np.arange(ave_proj_entropies.shape[1])
+
+        for i_estimator in range(ave_proj_entropies.shape[0]):
+            y_val = ave_proj_entropies[i_estimator,:]
+            std_val = std_proj_entropies[i_estimator,:]
+            plt.plot(x_val,y_val,color=cols[i_estimator,:],linewidth=2)
+            plt.fill_between(x_val, y_val - std_val, y_val + std_val, color=cols[i_estimator,:], alpha=0.2)
 
     plt.show()

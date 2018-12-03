@@ -32,16 +32,6 @@ class ReLU:
 
 
 # -------------------------
-# Logistic activation layer
-# -------------------------
-class Logistic:
-	def forward(self,X):
-		return 1.0/(1.0 + numpy.exp(-X))
-	
-	def gradprop(self,X):
-		pass
-
-# -------------------------
 # Fully-connected layer
 # -------------------------
 class Linear:

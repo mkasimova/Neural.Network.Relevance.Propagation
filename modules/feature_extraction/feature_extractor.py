@@ -17,7 +17,7 @@ logger = logging.getLogger("Extracting features")
 
 class FeatureExtractor(object):
 
-    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True, filter_by_DKL=False, filter_by_KS_test=False, n_splits=10, n_iterations=10, name='', error_limit=100):
+    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=filtering.contact_cutoff_default, use_inverse_distances=True, n_splits=10, n_iterations=10, name='', error_limit=5):
 
         # Setting parameters
         self.samples = samples
@@ -32,8 +32,6 @@ class FeatureExtractor(object):
         self.n_iterations = n_iterations
         self.scaling = scaling
         self.filter_by_distance_cutoff = filter_by_distance_cutoff
-        self.filter_by_DKL = filter_by_DKL
-        self.filter_by_KS_test = filter_by_KS_test
         self.name = name
         self.error_limit = error_limit
         self.use_inverse_distances = use_inverse_distances
@@ -79,26 +77,6 @@ class FeatureExtractor(object):
     def get_feature_importance(self, model, samples, labels):
         pass
 
-    def remap_after_filtering(self, feats, std_feats, n_features, res_indices_for_filtering):
-        """
-        After filtering remaps features to the matrix with initial dimensions
-        """
-
-        if len(feats.shape) == 1 and len(std_feats.shape) == 1:
-            n_clusters_for_output = 1
-            feats = feats.reshape((feats.shape[0], 1))
-            std_feats = std_feats.reshape((std_feats.shape[0], 1))
-        else:
-            n_clusters_for_output = feats.shape[1]
-
-        feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
-        feats_remapped[res_indices_for_filtering, :] = feats
-
-        std_feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
-        std_feats_remapped[res_indices_for_filtering, :] = std_feats
-
-        return feats_remapped, std_feats_remapped
-
     def extract_features(self):
 
         logger.info("Performing feature extraction with %s on data of shape %s", self.name, self.samples.shape)
@@ -107,19 +85,12 @@ class FeatureExtractor(object):
         # This is needed when filtering is applied and re-mapping is further used
         n_features = self.samples.shape[1]
         indices_for_filtering = np.arange(0, n_features, 1)
+        original_samples = np.copy(self.samples)
 
         if self.filter_by_distance_cutoff:
             self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
                                                                                       indices_for_filtering, cutoff=self.contact_cutoff,
                                                                                       inverse_distances=self.use_inverse_distances)
-
-        if self.filter_by_DKL:
-            self.samples, indices_for_filtering = filtering.filter_by_DKL(self.samples, self.cluster_indices,
-                                                                          indices_for_filtering)
-
-        if self.filter_by_KS_test:
-            self.samples, indices_for_filtering = filtering.filter_by_KS_test(self.samples, self.cluster_indices,
-                                                                              indices_for_filtering)
 
         if self.scaling:
             # Note that we must use the same scalers for all data
@@ -153,8 +124,7 @@ class FeatureExtractor(object):
 
                 if do_compute_importance:
                     # Get features importance
-                    feature_importance = self.get_feature_importance(model, train_set,
-                                                                     train_labels)  # TODO check for all data
+                    feature_importance = self.get_feature_importance(model, train_set, train_labels)
                     feats.append(feature_importance)
                 else:
                     logger.warn("At iteration %s of %s error %s is too high - not computing feature importance",
@@ -167,9 +137,9 @@ class FeatureExtractor(object):
 
         # Remapping features if filtering was applied
         # If no filtering was applied, return feats and std_feats
-        feats, std_feats = self.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
+        feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
 
         logger.info("Done with %s", self.name)
         logger.info("------------------------------")
-
+        self.samples = np.copy(original_samples)
         return feats, std_feats, errors

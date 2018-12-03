@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import logging
 import sys
 import numpy as np
+from modules import postprocessing as pop
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -11,35 +12,168 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import matplotlib.pyplot as plt
 
-logger = logging.getLogger("postprocessing")
+logger = logging.getLogger("visualization")
 
 
-def vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color):
+def vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None):
     ax.plot(x_val, y_val, color=color, label=extractor_name, linewidth=2)
     ax.fill_between(x_val, y_val - std_val, y_val + std_val, color=color, alpha=0.2)
+    if average is not None:
+        ax.plot(x_val,average,color='k',linestyle='--',label="Feature extractor average")
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
     ax.legend()
 
 
-def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False):
-    ax.bar(x_val, y_val, label=extractor_name, color=color, edgecolor=color, alpha=0.8)
+def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False,std_val=None):
+    ax.plot(x_val, y_val, label=extractor_name, color=color, linewidth=2, marker='o',markersize=5)
+    if std_val is not None:
+        ax.plot([x_val,x_val], [y_val-std_val,y_val+std_val], color='k', linewidth=1, linestyle='-',marker='s',markersize=1)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if show_legends:
         ax.legend()
 
-def vis_roc(x_val, y_val, ax, extractor_name, color):
-    ax.plot(x_val, y_val, color=color, label=extractor_name, linewidth=2)
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
+def vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_name, std_val=None, xlabel='',ylabel='',ylim=None):
+    ax.bar(x_val,y_val,width, color=col,edgecolor='',label=extractor_name)
+    if std_val is not None:
+        for i in range(x_val.shape[0]):
+            ax.plot([x_val[i],x_val[i]],[y_val[i] - std_val[i], y_val[i] + std_val[i]], color='k', linewidth=1, linestyle='-',marker='s',markersize=1)
+
+    if ylim is not None:
+        ax.set_ylim(ylim)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     ax.legend()
+    return
 
+def vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
+                                         extractor_names, colors):
+    """
+    Visualize (average + stddev) performance metrics of multiple runs.
+    :param x_vals:
+    :param metrics:
+    :param metric_labels:
+    :param per_cluster_projection_entropies:
+    :param extractor_names:
+    :param colors:
+    :return:
+    """
+    n_estimators = metrics[0].shape[0]
+    n_metrics = len(metrics)
 
-def visualize(postprocessors,
-              show_importance=True,
-              show_performance=True,
-              show_roc=True):
+    width = 1.0 / n_estimators - 0.05
+
+    ave_metrics = []
+    std_metrics = []
+
+    for i in range(n_metrics):
+        ave_metrics.append(metrics[i].mean(axis=1))
+        std_metrics.append(metrics[i].std(axis=1))
+
+    ave_per_cluster_projection_entropies = per_cluster_projection_entropies.mean(axis=1)
+    std_per_cluster_projection_entropies = per_cluster_projection_entropies.std(axis=1)
+
+    cluster_proj_entroy_ylim = [0,np.max(ave_per_cluster_projection_entropies+std_per_cluster_projection_entropies+0.1)]
+
+    x_val_clusters = np.arange(ave_per_cluster_projection_entropies.shape[1])-width*n_estimators/2.0
+
+    fig1, _ = plt.subplots(1, n_metrics, figsize=(38, 5))
+    fig2, _ = plt.subplots(1, 1, figsize=(20, 5))
+
+    for i_metric in range(n_metrics):
+        fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric],color=[0.4,0.4,0.45],linewidth=1)
+
+    for i_estimator in range(n_estimators):
+        # Visualize each performance metric for current estimator with average+-std, in each axis
+        show_legends = False
+        for i_metric in range(n_metrics):
+            if i_metric == n_metrics -1:
+                show_legends = True
+            vis_performance_metrics(x_vals[i_estimator], ave_metrics[i_metric][i_estimator], fig1.axes[i_metric], 'Estimator',
+                                    metric_labels[i_metric], extractor_names[i_estimator],
+                                    colors[i_estimator], std_val=std_metrics[i_metric][i_estimator],show_legends=show_legends)
+
+        vis_per_cluster_projection_entropy(x_val_clusters+width*i_estimator, ave_per_cluster_projection_entropies[i_estimator,:], width, fig2.axes[0], colors[i_estimator],
+                                           extractor_names[i_estimator], std_val=std_per_cluster_projection_entropies[i_estimator,:],
+                                           xlabel='Cluster',ylabel='Projection entropy',ylim=cluster_proj_entroy_ylim)
+    return
+
+def vis_projected_data(proj_data, cluster_indices, fig, title):
+    """
+    Scatter plot of projected data and cluster labels.
+    :param proj_data:
+    :param cluster_indices:
+    :param fig:
+    :param title:
+    :return:
+    """
+    n_dims = proj_data.shape[1]
+    n_combi = float(n_dims*(n_dims-1)/2)
+    counter = 1
+    plt.title(title)
+    axes = []
+
+    if n_dims == 1:
+        plt.scatter(proj_data[:, 0],np.zeros(proj_data.shape[0]), s=15, c=cluster_indices, edgecolor='')
+    else:
+        plt.axis('off')
+        for i in range(n_dims):
+            for j in range(i+1,n_dims):
+                axes.append(fig.add_subplot(np.ceil(n_combi/3),3,counter))
+                axes[counter-1].scatter(proj_data[:,i],proj_data[:,j],s=15,c=cluster_indices,edgecolor='')
+                counter += 1
+    return
+
+def get_average_feature_importance(postprocessors,i_run):
+    importances = []
+    for pp in postprocessors:
+        importances.append(pp[i_run].importance_per_residue)
+    importances = np.asarray(importances).mean(axis=0)
+    importances,_ = pop.rescale_feature_importance(importances, importances)
+    return importances
+
+def extract_metrics(postprocessors):
+    """
+    Extract performance metrics from multiple runs.
+    :param postprocessors:
+    :param data_projection:
+    :return:
+    """
+    n_runs = len(postprocessors[0])
+    n_estimators = len(postprocessors)
+    n_clusters = postprocessors[0][0].data_projector.n_clusters
+
+    x_vals = np.arange(n_estimators)
+    standard_devs = np.zeros((n_estimators,n_runs))
+    entropies = np.zeros((n_estimators,n_runs))
+    test_set_errors = np.zeros((n_estimators,n_runs))
+    separation_scores = np.zeros((n_estimators,n_runs))
+    projection_entropies = np.zeros((n_estimators,n_runs))
+    per_cluster_projection_entropies = np.zeros((n_estimators, n_runs, n_clusters))
+    extractor_names = []
+
+    for i_run in range(n_runs):
+        for i_estimator in range(n_estimators):
+        	pp = postprocessors[i_estimator][i_run]
+            standard_devs[i_estimator,i_run] = pp.average_std
+            entropies[i_estimator,i_run] = pp.entropy
+            test_set_errors[i_estimator,i_run] = pp.test_set_errors
+            separation_scores[i_estimator,i_run] = pp.data_projector.separation_score
+            projection_entropies[i_estimator,i_run] = pp.data_projector.projection_class_entropy
+            per_cluster_projection_entropies[i_estimator,i_run,:] = pp.data_projector.cluster_projection_class_entropy
+            if i_run == 0:
+                extractor_names.append(pp.extractor.name)
+
+    metric_labels = ['Average standard deviation','Average relevance entropy','Average test set error',
+                     'Separation score','Projection entropy']
+
+    metrics = [standard_devs, entropies, test_set_errors, separation_scores, projection_entropies]
+
+    return x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names
+
+def visualize(postprocessors, show_importance=True, show_performance=True, show_projected_data=False):
     """
     Plots the feature per residue.
     TODO visualize features too with std etc
@@ -48,46 +182,33 @@ def visualize(postprocessors,
     """
 
     n_feature_extractors = len(postprocessors)
-    cols = np.asarray([[0.8, 0, 0.2], [0, 0.5, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.8,0.4,0.2],[0, 0, 0]])  # TODO: pick better colors
+    cols = np.asarray([[0.7, 0.0, 0.08], [0, 0.5, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.8, 0.6, 0.2], [1, 0.8, 0]])
 
-    if show_importance:
-        fig1, axes1 = plt.subplots(1, n_feature_extractors, figsize=(35, 5))
     if show_performance:
-        if postprocessors[0].predefined_relevant_residues is None:
-            fig2, axes2 = plt.subplots(1, 3, figsize=(28, 5))
-        else:
-            fig2, axes2 = plt.subplots(1, 5, figsize=(35, 5))
-    if show_roc:
-        fig3, axes3 = plt.subplots(1, n_feature_extractors, figsize=(35, 5))
+        x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names = extract_metrics(postprocessors)
 
-    counter = 0
-    for pp, ax in zip(postprocessors, fig1.axes):
-        if show_importance:
-            vis_feature_importance(pp.index_to_resid, pp.importance_per_residue, pp.std_importance_per_residue,
-                                   ax, pp.extractor.name, cols[counter, :])
+        vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
+                                             extractor_names, cols)
 
-        if show_performance:
-            vis_performance_metrics(counter, pp.entropy, fig2.axes[0], 'Estimator', 'Relevance entropy',
-                                    pp.extractor.name, cols[counter, :])
+    # Visualize the first run
+    i_run = 0
+    if show_importance:
+        ave_feats = get_average_feature_importance(postprocessors, i_run)
 
-            vis_performance_metrics(counter, pp.average_std, fig2.axes[1], 'Estimator', 'Average standard deviation',
-                                    pp.extractor.name, cols[counter, :])
+        fig1, axes1 = plt.subplots(1, n_feature_extractors, figsize=(35, 3))
+        counter = 0
+        for pp, ax in zip(postprocessors, fig1.axes):
+            vis_feature_importance(pp[i_run].index_to_resid, pp[i_run].importance_per_residue, pp[i_run].std_importance_per_residue,
+                                   ax, pp[i_run].extractor.name, cols[counter, :], average=ave_feats)
+            counter+=1
 
-            vis_performance_metrics(counter, pp.test_set_errors, fig2.axes[2], 'Estimator', 'Test set error',
-                                    pp.extractor.name, cols[counter, :])
 
-            if pp.predefined_relevant_residues is not None:
-                vis_performance_metrics(counter, pp.correct_relevance_peaks, fig2.axes[3], 'Estimator',
-                                        'Number of correctly predicted relevances',
-                                        pp.extractor.name, cols[counter, :])
+    if show_projected_data:
+        fig_counter = 3
+        for pp in postprocessors:
+        	dp = pp[i_run].data_projector
+            if dp.raw_projection is not None:
+                vis_projected_data(dp.raw_projection, dp.labels, plt.figure(fig_counter), "Raw projection "+pp[i_run].extractor.name)
+                fig_counter += 1
 
-                vis_performance_metrics(counter, pp.false_positives, fig2.axes[4], 'Estimator',
-                                        'Number of false positives',
-                                        pp.extractor.name, cols[counter, :], show_legends=True)
-        counter += 1
-    counter = 0
-    for pp, ax in zip(postprocessors, fig3.axes):
-        if show_roc:
-            vis_roc(pp.fp_rate, pp.tp_rate, ax, pp.extractor.name, cols[counter, :])
-        counter += 1
     plt.show()

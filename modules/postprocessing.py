@@ -139,7 +139,7 @@ class PostProcessor(object):
         """
 
         self._compute_average_std()
-        #self._compute_projection_classification_entropy()
+        self._compute_projection_classification_entropy()
 
         if self.predefined_relevant_residues is not None:
             self._compute_area_under_ROC()

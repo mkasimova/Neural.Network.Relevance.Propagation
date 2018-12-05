@@ -45,12 +45,7 @@ def remap_after_filtering(feats, std_feats, n_features, res_indices_for_filterin
     After filtering remaps features to the matrix with initial dimensions
     """
 
-    if len(feats.shape) == 1 and len(std_feats.shape) == 1:
-        n_clusters_for_output = 1
-        feats = feats.reshape((feats.shape[0], 1))
-        std_feats = std_feats.reshape((std_feats.shape[0], 1))
-    else:
-        n_clusters_for_output = feats.shape[1]
+    n_clusters_for_output = feats.shape[1]
 
     feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
     feats_remapped[res_indices_for_filtering, :] = feats

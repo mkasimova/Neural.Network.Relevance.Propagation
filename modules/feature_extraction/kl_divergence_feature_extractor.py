@@ -19,9 +19,9 @@ logger = logging.getLogger("KL")
 
 class KLFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True, filter_by_DKL=False, filter_by_KS_test=False, bin_size=None):
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5, bin_size=None):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances, name="KL")
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name="KL")
         self.bin_size = bin_size
         self.feature_importances = None
 
@@ -30,7 +30,6 @@ class KLFeatureExtractor(FeatureExtractor):
 
         self.feature_importances = np.zeros((n_clusters, data.shape[1]))
         for i_cluster in range(n_clusters):
-            logger.info('Cluster: '+str(i_cluster+1)+'/'+str(n_clusters))
             data_cluster = data[labels[:, i_cluster] == 1, :]
             data_rest = data[labels[:, i_cluster] == 0, :]
             self.feature_importances[i_cluster, :] = self._KL_divergence(data_cluster[:,:,np.newaxis], data_rest[:,:,np.newaxis])

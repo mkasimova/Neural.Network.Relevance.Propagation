@@ -57,13 +57,11 @@ def main(parser):
                                hidden_layer_sizes=(100,)),
     ]
 
-
+ 
     postprocessors = []
-    data_projectors = []
 
     for extractor in feature_extractors:
         tmp_pp = []
-        tmp_dp = []
         for i_run in range(n_runs):
             feats, std_feats, errors = extractor.extract_features()
 
@@ -75,18 +73,11 @@ def main(parser):
 
 
             p.average().persist()
-
-            projector = dp.DataProjector(p, samples)
-            projector.project().score_projection()
-            #projector.evaluate_importance_robustness()
-
-            tmp_dp.append(projector)
             tmp_pp.append(p)
 
         postprocessors.append(tmp_pp)
-        data_projectors.append(tmp_dp)
 
-    visualization.visualize(postprocessors,data_projectors)
+    visualization.visualize(postprocessors)
 
 parser = argparse.ArgumentParser(epilog='Feature importance extraction.')
 parser.add_argument('-od', '--out_directory', help='Folder where files are written.', default='')

@@ -17,9 +17,9 @@ logger = logging.getLogger("PCA featurizer")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=False, filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True, filter_by_DKL=False, filter_by_KS_test=False, n_components=None, name="PCA"):
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5, n_components=None, name="PCA"):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances, name=name)
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name=name)
         self.n_components = n_components
         return
 
@@ -40,7 +40,6 @@ class PCAFeatureExtractor(FeatureExtractor):
             if total_var_explained + explained_var[i] < 0.75 and i < n_clusters:
                 total_var_explained += explained_var[i]
                 n_components += 1
-        logger.info('Selecting %s components', n_components)
         return n_components
 
     def _collect_components(self, model, n_components):

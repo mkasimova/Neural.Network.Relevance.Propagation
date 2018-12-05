@@ -11,6 +11,7 @@ import sklearn
 
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
+from sklearn.neural_network import BernoulliRBM
 
 logger = logging.getLogger("rbm")
 
@@ -18,12 +19,12 @@ logger = logging.getLogger("rbm")
 class RbmFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, randomize=True,
-                 n_components=None, filter_by_distance_cutoff=True, contact_cutoff=0.5, use_inverse_distances=True,
-                 filter_by_DKL=False, filter_by_KS_test=False, name="RBM"):
+                 n_components=None, filter_by_distance_cutoff=False, contact_cutoff=0.5, 
+                 name="RBM"):
 
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                  contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances,
+                                  contact_cutoff=contact_cutoff, 
                                   name=name)
         self.randomize = randomize
         self.n_components = n_components
@@ -33,7 +34,7 @@ class RbmFeatureExtractor(FeatureExtractor):
             self.n_components = int(train_set.shape[1] / 10)
             logger.info("Automatically set n_components to %s", self.n_components)
 
-        classifier = sklearn.neural_network.BernoulliRBM(
+        classifier = BernoulliRBM(
             random_state=(None if self.randomize else 89274),
             n_components=self.n_components
         )

@@ -120,7 +120,9 @@ def rescale_feature_importance(relevances, std_relevances):
     """
 
     logger.info("Rescaling feature importances ...")
-
+    if len(relevances.shape) == 1:
+        relevances = relevances[:,np.newaxis]
+        std_relevances = std_relevances[:,np.newaxis]
     n_states = relevances.shape[1]
     n_features = relevances.shape[0]
 

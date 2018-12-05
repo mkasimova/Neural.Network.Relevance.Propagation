@@ -29,8 +29,8 @@ class DataProjector():
         self.samples = samples
         self.labels = labels-labels.min()
 
-        self.n_clusters = self.labels.max()+1
-		
+        self.n_clusters = int(np.rint(self.labels.max() + 1))
+        
         self.basis_vector_projection = None
         self.raw_projection = None
 
@@ -97,12 +97,16 @@ class DataProjector():
         :return: itself
         """
 
-        if raw_projection and projection is None:
-            proj = np.copy(self.raw_projection)
-            logger.info("Scoring raw projections.")
-        elif projection is None:
-            proj = np.copy(self.basis_vector_projection)
-            logger.info("Scoring basis vector projections.")
+        if projection is None:
+            if raw_projection:
+                proj = np.copy(self.raw_projection)
+                logger.info("Scoring raw projections.")
+            elif self.basis_vector_projection is not None:
+                proj = np.copy(self.basis_vector_projection)
+                logger.info("Scoring basis vector projections.")
+            else:
+                logger.warn("No projection data.")
+                return self
         else:
             proj = np.copy(projection)
 
@@ -139,7 +143,7 @@ class DataProjector():
             inds = self.labels==i_cluster
             self.cluster_projection_class_entropy[i_cluster] = class_entropies[inds].mean()
 
-        return
+        return self
 
     def persist(self):
         """
@@ -218,7 +222,7 @@ class DataProjector():
         models = []
 
         for i_cluster in range(self.n_clusters):
-            cluster = proj[self.labels == i_cluster, :]
+            cluster = proj[self.labels == i_cluster] #, :]
 
             n_components = self._estimate_n_GMM_components(cluster,n_component_lim)
 

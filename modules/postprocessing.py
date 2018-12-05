@@ -65,6 +65,7 @@ class PostProcessor(object):
         self.index_to_resid = None
 
         # Performance metrics
+        self.predefined_relevant_residues = predefined_relevant_residues
         self.average_std = None
         self.test_set_errors = test_set_errors.mean()
         self.data_projector = None

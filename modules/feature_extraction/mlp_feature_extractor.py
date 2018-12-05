@@ -9,7 +9,7 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-import sklearn
+import sklearn.neural_network
 
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor

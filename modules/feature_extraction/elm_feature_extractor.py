@@ -17,12 +17,12 @@ logger = logging.getLogger("elm")
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True,
-                 filter_by_distance_cutoff=True, contact_cutoff=None, use_inverse_distances=True, filter_by_DKL=False,
+                 filter_by_distance_cutoff=False, contact_cutoff=0.5, 
                  activation=relprop.relu,
-                 filter_by_KS_test=False, n_nodes=None, alpha=1):
+                 n_nodes=None, alpha=1):
         MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                      scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                     contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances,
+                                     contact_cutoff=contact_cutoff, 
                                      activation=activation,
                                      name="ELM")
         self.n_nodes = n_nodes

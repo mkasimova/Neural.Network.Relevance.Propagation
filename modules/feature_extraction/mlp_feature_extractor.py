@@ -20,11 +20,8 @@ logger = logging.getLogger("mlp")
 class MlpFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True,
-                 filter_by_distance_cutoff=True,
-                 contact_cutoff=None,
-                 use_inverse_distances=True,
-                 filter_by_DKL=False,
-                 filter_by_KS_test=False,
+                 filter_by_distance_cutoff=False,
+                 contact_cutoff=0.5,
                  name="MLP",
                  hidden_layer_sizes=(100,),
                  solver='lbfgs',
@@ -33,7 +30,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                  training_max_iter=100000):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                  contact_cutoff=contact_cutoff, use_inverse_distances=use_inverse_distances,
+                                  contact_cutoff=contact_cutoff, 
                                   name=name)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.randomize = randomize

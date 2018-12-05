@@ -135,6 +135,10 @@ class FeatureExtractor(object):
         std_feats = np.std(feats, axis=0)
         feats = np.mean(feats, axis=0)
 
+        if len(feats.shape) == 1 and len(std_feats.shape) == 1:
+            feats = feats.reshape((feats.shape[0], 1))
+            std_feats = std_feats.reshape((std_feats.shape[0], 1))
+
         # Remapping features if filtering was applied
         # If no filtering was applied, return feats and std_feats
         feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)

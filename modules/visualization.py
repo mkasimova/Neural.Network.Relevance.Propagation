@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import logging
 import sys
 import numpy as np
-from modules import postprocessing as pop
+from modules import postprocessing as pop, utils
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -16,6 +16,7 @@ logger = logging.getLogger("visualization")
 
 
 def vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None):
+    y_val, std_val = y_val.squeeze(), std_val.squeeze() #Remove unnecessary unit dimensions for visualization
     ax.plot(x_val, y_val, color=color, label=extractor_name, linewidth=2)
     ax.fill_between(x_val, y_val - std_val, y_val + std_val, color=color, alpha=0.2)
     if average is not None:
@@ -128,11 +129,14 @@ def vis_projected_data(proj_data, cluster_indices, fig, title):
 
 def get_average_feature_importance(postprocessors,i_run):
     importances = []
+    std_importances = []
     for pp in postprocessors:
         importances.append(pp[i_run].importance_per_residue)
+        std_importances.append(pp[i_run].std_importance_per_residue)
     importances = np.asarray(importances).mean(axis=0)
-    importances,_ = pop.rescale_feature_importance(importances, importances)
-    return importances
+    std_importances = np.asarray(std_importances).mean(axis=0)
+    importances, std_importances = utils.rescale_feature_importance(importances, std_importances)
+    return importances, std_importances
 
 def extract_metrics(postprocessors):
     """
@@ -193,8 +197,7 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
     # Visualize the first run
     i_run = 0
     if show_importance:
-        ave_feats = get_average_feature_importance(postprocessors, i_run)
-
+        ave_feats, std_feats = get_average_feature_importance(postprocessors, i_run)
         fig1, axes1 = plt.subplots(1, n_feature_extractors, figsize=(35, 3))
         counter = 0
         for pp, ax in zip(postprocessors, fig1.axes):

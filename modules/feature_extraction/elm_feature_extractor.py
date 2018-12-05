@@ -58,7 +58,8 @@ def pseudo_inverse(x, alpha=None):
 
 def random_matrix(L, n):
     return np.random.normal(0, 0.25, (L, n))
-    # return np.random.rand(L, n)
+    #return 2*(np.random.rand(L, n)-0.5)
+    #return np.random.rand(L, n)
 
 
 def g_ELM(x, func_name):

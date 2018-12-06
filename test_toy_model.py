@@ -56,13 +56,13 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
 
 ####
 
-n_iter_per_example = 5
+n_iter_per_example = 20
 n_splits = 1
 n_iterations = 5
 
 #test_model = ['linear','non-linear','non-linear-random-displacement','non-linear-p-displacement']
-test_model = ['non-linear-p-displacement']
-test_noise = [1e-2,1e-2]
+test_model = ['non-linear']
+test_noise = [1e-2,1e-2,1e-1]
 
 n_feature_extractors = 4
 average_std = np.zeros((n_feature_extractors,len(test_model),len(test_noise),n_iter_per_example))

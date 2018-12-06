@@ -139,7 +139,7 @@ class PostProcessor(object):
         """
 
         self._compute_average_std()
-        #self._compute_projection_classification_entropy()
+        self._compute_projection_classification_entropy()
 
         if self.predefined_relevant_residues is not None:
             self._compute_area_under_ROC()
@@ -158,8 +158,8 @@ class PostProcessor(object):
         """
         Computes separation of clusters in the projected space given by the feature importances
         """
-        self.data_projection = dp.DataProjector(self.extractor.samples,self.cluster_indices)
-        self.data_projection.project(self.importance_per_cluster).score_projection()
+        self.data_projector = dp.DataProjector(self.extractor.samples,self.cluster_indices)
+        self.data_projector.project(self.importance_per_cluster).score_projection()
 
         return self
 

@@ -35,7 +35,7 @@ class FeatureExtractor(object):
         self.name = name
         self.error_limit = error_limit
         self.use_inverse_distances = use_inverse_distances
-        self.contact_cutoff = contact_cutoff
+        self.contact_cutoff = filtering.contact_cutoff_default if contact_cutoff is None else contact_cutoff
 
     def split_train_test(self):
         """

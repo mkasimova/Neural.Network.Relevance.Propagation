@@ -151,7 +151,6 @@ def extract_metrics(postprocessors):
 
     x_vals = np.arange(n_estimators)
     standard_devs = np.zeros((n_estimators,n_runs))
-    entropies = np.zeros((n_estimators,n_runs))
     test_set_errors = np.zeros((n_estimators,n_runs))
     separation_scores = np.zeros((n_estimators,n_runs))
     projection_entropies = np.zeros((n_estimators,n_runs))
@@ -162,7 +161,6 @@ def extract_metrics(postprocessors):
         for i_estimator in range(n_estimators):
             pp = postprocessors[i_estimator][i_run]
             standard_devs[i_estimator,i_run] = pp.average_std
-            entropies[i_estimator,i_run] = pp.entropy
             test_set_errors[i_estimator,i_run] = pp.test_set_errors
             separation_scores[i_estimator,i_run] = pp.data_projector.separation_score
             projection_entropies[i_estimator,i_run] = pp.data_projector.projection_class_entropy
@@ -170,10 +168,10 @@ def extract_metrics(postprocessors):
             if i_run == 0:
                 extractor_names.append(pp.extractor.name)
 
-    metric_labels = ['Average standard deviation','Average relevance entropy','Average test set error',
+    metric_labels = ['Average standard deviation','Average test set error',
                      'Separation score','Projection entropy']
 
-    metrics = [standard_devs, entropies, test_set_errors, separation_scores, projection_entropies]
+    metrics = [standard_devs, test_set_errors, separation_scores, projection_entropies]
 
     return x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names
 

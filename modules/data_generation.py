@@ -90,6 +90,9 @@ class DataGenerator(object):
                     if self.test_model == 'linear':
                         conf[a,:] += [self.displacement,self.displacement,self.displacement]
 
+                    # The next atom moves along the circle whose center is the previous atom
+                    # First in XY plane
+                    # And next in YZ plane
                     if self.test_model == 'non-linear':
 
                         if ind_a==0:
@@ -110,86 +113,50 @@ class DataGenerator(object):
                             z = np.sin(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])+np.cos(angle_of_rotation)*(conf[a,2]-conf[a_minus_1,2])
                             conf[a,1:3] = conf[a_minus_1,1:3]+[y,z]
 
-                    '''
-                        if ind_a%4==0:
-                            conf[a,:] += [c*self.displacement,\
-                                          0,\
-                                          self.displacement-c*self.displacement]
-                        if ind_a%4==1:
-                            a_minus_1 = self.moved_atoms[c][ind_a-1]
-                            conf[a,:] += [self.displacement*np.sin(conf[a_minus_1,0]**2),\
-                                          self.displacement*np.cos(conf[a_minus_1,0]**2),\
-                                          self.displacement*np.sin(conf[a_minus_1,2]**2)]
-                            print([self.displacement*np.sin(conf[a_minus_1,0]**2),\
-                                          self.displacement*np.cos(conf[a_minus_1,0]**2),\
-                                          self.displacement*np.sin(conf[a_minus_1,2]**2)])
-                        if ind_a%4==2:
-                            a_minus_1 = self.moved_atoms[c][ind_a-1]
-                            a_minus_2 = self.moved_atoms[c][ind_a-2]
-                            conf[a,:] += [self.displacement*np.cos(np.exp(conf[a_minus_1,0])),\
-                                          self.displacement*np.cos(np.exp(conf[a_minus_2,0])),\
-                                          -self.displacement*np.sin(np.exp(conf[a_minus_1,2])+np.exp(conf[a_minus_2,2]))]
-                            print([self.displacement*np.cos(np.exp(conf[a_minus_1,0])),\
-                                          self.displacement*np.cos(np.exp(conf[a_minus_2,0])),\
-                                          -self.displacement*np.sin(np.exp(conf[a_minus_1,2])+np.exp(conf[a_minus_2,2]))])
-                        if ind_a%4==3:
-                            a_minus_1 = self.moved_atoms[c][ind_a-1]
-                            a_minus_2 = self.moved_atoms[c][ind_a-2]
-                            conf[a,:] += [self.displacement*(np.sin(conf[a_minus_1,0]*conf[a_minus_2,0])-np.cos(np.sum(conf[a,:]))),\
-                                          self.displacement*(np.cos(conf[a_minus_1,0]+conf[a_minus_2,0])),\
-                                          self.displacement*(np.cos(conf[a_minus_2,2]**2))]
-                            print([self.displacement*(np.sin(conf[a_minus_1,0]*conf[a_minus_2,0])-np.cos(np.sum(conf[a,:]))),\
-                                          self.displacement*(np.cos(conf[a_minus_1,0]+conf[a_minus_2,0])),\
-                                          self.displacement*(np.cos(conf[a_minus_2,2]**2))])
-                        '''
-
+                    # Displacement of the first atom is random
+                    # The rest depends on the first atom
                     if self.test_model == 'non-linear-random-displacement':
-                        if ind_a%4==0:
+
+                        if ind_a==0:
                             conf[a,:] += [c*self.displacement+np.random.rand()*self.displacement,\
                                           0+np.random.rand()*self.displacement,\
                                           self.displacement-c*self.displacement+np.random.rand()*self.displacement]
-                        if ind_a%4==1:
+                        else:
                             a_minus_1 = self.moved_atoms[c][ind_a-1]
-                            conf[a,:] += [self.displacement-c*self.displacement,\
-                                          self.displacement*np.sin(conf[a_minus_1,1]**2),\
-                                          c*self.displacement]
-                        if ind_a%4==2:
-                            a_minus_1 = self.moved_atoms[c][ind_a-1]
-                            a_minus_2 = self.moved_atoms[c][ind_a-2]
-                            conf[a,:] += [self.displacement*np.cos(np.exp(conf[a_minus_1,1])),\
-                                          self.displacement,\
-                                          -self.displacement*np.sin(np.exp(conf[a_minus_2,2]))]
-                        if ind_a%4==3:
-                            a_minus_1 = self.moved_atoms[c][ind_a-1]
-                            a_minus_2 = self.moved_atoms[c][ind_a-2]
-                            conf[a,:] += [self.displacement*(np.sin(conf[a_minus_1,0]*conf[a_minus_2,0])-np.cos(np.sum(conf[a,:]))),\
-                                          self.displacement+c*self.displacement,\
-                                          0]
+                            radius = np.sqrt(np.sum((conf[a,0:2]-conf[a_minus_1,0:2])**2))
+                            angle_of_rotation = (-1)**(ind_a%2)*self.displacement/radius
+                            x = np.cos(angle_of_rotation)*(conf[a,0]-conf[a_minus_1,0])-np.sin(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])
+                            y = np.sin(angle_of_rotation)*(conf[a,0]-conf[a_minus_1,0])+np.cos(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])
+                            conf[a,0:2] = conf[a_minus_1,0:2]+[x,y]
 
+                            radius = np.sqrt(np.sum((conf[a,1:3]-conf[a_minus_1,1:3])**2))
+                            angle_of_rotation = (-1)**(c)*0.5*self.displacement/radius
+                            y = np.cos(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])-np.sin(angle_of_rotation)*(conf[a,2]-conf[a_minus_1,2])
+                            z = np.sin(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])+np.cos(angle_of_rotation)*(conf[a,2]-conf[a_minus_1,2])
+                            conf[a,1:3] = conf[a_minus_1,1:3]+[y,z]
+
+                    # Atoms move with 50% probability
                     if self.test_model == 'non-linear-p-displacement':
+
                         decision = np.random.rand()
                         if decision>=0.5:
-                            if ind_a%4==0:
+                            if ind_a==0:
                                 conf[a,:] += [c*self.displacement,\
                                               0,\
                                               self.displacement-c*self.displacement]
-                            if ind_a%4==1:
+                            else:
                                 a_minus_1 = self.moved_atoms[c][ind_a-1]
-                                conf[a,:] += [self.displacement-c*self.displacement,\
-                                              self.displacement*np.sin(conf[a_minus_1,1]**2),\
-                                              c*self.displacement]
-                            if ind_a%4==2:
-                                a_minus_1 = self.moved_atoms[c][ind_a-1]
-                                a_minus_2 = self.moved_atoms[c][ind_a-2]
-                                conf[a,:] += [self.displacement*np.cos(np.exp(conf[a_minus_1,1])),\
-                                              self.displacement,\
-                                              -self.displacement*np.sin(np.exp(conf[a_minus_2,2]))]
-                            if ind_a%4==3:
-                                a_minus_1 = self.moved_atoms[c][ind_a-1]
-                                a_minus_2 = self.moved_atoms[c][ind_a-2]
-                                conf[a,:] += [self.displacement*(np.sin(conf[a_minus_1,0]*conf[a_minus_2,0])-np.cos(np.sum(conf[a,:]))),\
-                                              self.displacement+c*self.displacement,\
-                                              0]
+                                radius = np.sqrt(np.sum((conf[a,0:2]-conf[a_minus_1,0:2])**2))
+                                angle_of_rotation = (-1)**(ind_a%2)*self.displacement/radius
+                                x = np.cos(angle_of_rotation)*(conf[a,0]-conf[a_minus_1,0])-np.sin(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])
+                                y = np.sin(angle_of_rotation)*(conf[a,0]-conf[a_minus_1,0])+np.cos(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])
+                                conf[a,0:2] = conf[a_minus_1,0:2]+[x,y]
+
+                                radius = np.sqrt(np.sum((conf[a,1:3]-conf[a_minus_1,1:3])**2))
+                                angle_of_rotation = (-1)**(c)*0.5*self.displacement/radius
+                                y = np.cos(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])-np.sin(angle_of_rotation)*(conf[a,2]-conf[a_minus_1,2])
+                                z = np.sin(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])+np.cos(angle_of_rotation)*(conf[a,2]-conf[a_minus_1,2])
+                                conf[a,1:3] = conf[a_minus_1,1:3]+[y,z]
 
                     ind_a = ind_a+1
 

@@ -17,10 +17,12 @@ logger = logging.getLogger("PCA featurizer")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5, n_components=None, name="PCA"):
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5,
+                 variance_cutoff=0.75, n_components=None, name="PCA"):
 
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name=name)
         self.n_components = n_components
+        self.variance_cutoff = 0.75
         return
 
     def train(self, train_set, train_labels):
@@ -31,13 +33,13 @@ class PCAFeatureExtractor(FeatureExtractor):
 
     def _get_n_components(self, model, n_clusters):
         """
-        Decide the number of components to keep based on a 75% variance cutoff
+        Decide the number of components to keep based on a variance cutoff
         """
         explained_var = model.explained_variance_ratio_
         n_components = 1
         total_var_explained = explained_var[0]
         for i in range(1, explained_var.shape[0]):
-            if total_var_explained + explained_var[i] < 0.75 and i < n_clusters:
+            if total_var_explained + explained_var[i] < self.variance_cutoff and i < n_clusters:
                 total_var_explained += explained_var[i]
                 n_components += 1
         return n_components

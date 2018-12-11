@@ -21,6 +21,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name=name)
         self.n_estimators = n_estimators
         self.njobs = njobs
+        self.randomize=randomize
         return
 
     def train(self, train_set, train_labels):

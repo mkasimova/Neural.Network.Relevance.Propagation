@@ -123,7 +123,7 @@ def vis_projected_data(proj_data, cluster_indices, fig, title):
         for i in range(n_dims):
             for j in range(i+1,n_dims):
                 axes.append(fig.add_subplot(np.ceil(n_combi/3),3,counter))
-                axes[counter-1].scatter(proj_data[:,i],proj_data[:,j],s=15,c=cluster_indices,edgecolor='')
+                axes[counter-1].scatter(proj_data[:,i],proj_data[:,j],s=15,c=cluster_indices,edgecolor='', alpha=0.3)
                 counter += 1
     return
 

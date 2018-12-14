@@ -32,14 +32,14 @@ class RelevancePropagator(object):
         return D
 
 
-class Network(hm_modules.Network):
+class Network(hm_modules.Network): #TODO move forward from heatmapping_modules.py? remove heatmapping.py?
     def relprop(self, R):
         for l in self.layers[::-1]:
             R = l.relprop(R)
         return R
 
 
-class ReLU(hm_modules.ReLU):
+class ReLU(hm_modules.ReLU): #TODO move forward from heatmapping.py?
     def relprop(self, R):
         return R
 
@@ -47,7 +47,7 @@ class ReLU(hm_modules.ReLU):
 class LogisticSigmoid:
     """Used for RBM"""
 
-    def __init__(self):
+    def __init__(self): #TODO remove?
         pass
 
     @staticmethod
@@ -59,7 +59,7 @@ class LogisticSigmoid:
         # self.X = X
         return self.logistic(X)
 
-    def gradprop(self, DY):
+    def gradprop(self, DY): #TODO remove?
         # self.DY = DY
         # TODO double check implementation
         l = self.logistic(DY)
@@ -69,22 +69,22 @@ class LogisticSigmoid:
         return R
 
 
-class Linear(hm_modules.Linear):
+class Linear(hm_modules.Linear): #TODO remove?
     def __init__(self, weight, bias):
         self.W = weight
         self.B = bias
 
 
-class FirstLinear(Linear):
+class FirstLinear(Linear): #TODO remove Linear? move forward from heatmapping.py?
     """For z-beta rule"""
 
     def relprop(self, R):
         min_val, max_val = np.min(self.X, axis=0), np.max(self.X, axis=0)
-        if min_val.min() < 0:
+        if min_val.min() < 0: #TODO do we need this condition (and the following)?
             logger.warn("Expected input to be scaled between 0 and 1. Minimum value was %s", min_val)
         else:
             min_val = 0
-        if max_val.max() > 1 + 1e-3:
+        if max_val.max() > 1 + 1e-3: #TODO remove 1e-3?
             logger.warn("Expected input to be scaled between 0 and 1. Max value was %s", max_val)
         else:
             max_val = 1
@@ -92,13 +92,12 @@ class FirstLinear(Linear):
         X, L, H = self.X, self.X * 0 + min_val, self.X * 0 + max_val
         Z = np.dot(X, W) - np.dot(L, V) - np.dot(H, U) + 1e-9
         S = R / Z
-        Wt = W if isinstance(W, int) or isinstance(W,
-                                                   float) else W.T  # a constant just corresponds to a diagonal matrix with that constant along the diagonal
+        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T # a constant just corresponds to a diagonal matrix with that constant along the diagonal #TODO why do we need this condition?
         R = X * np.dot(S, Wt) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
         return R
 
 
-class NextLinear(Linear):
+class NextLinear(Linear): #TODO remove Linear? move forward from heatmapping.py?
     """For z+ rule"""
 
     def relprop(self, R):

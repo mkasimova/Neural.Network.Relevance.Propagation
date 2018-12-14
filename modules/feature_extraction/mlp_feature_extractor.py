@@ -30,7 +30,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                  training_max_iter=100000):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                  contact_cutoff=contact_cutoff, 
+                                  contact_cutoff=contact_cutoff,
                                   name=name)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.randomize = randomize
@@ -67,7 +67,7 @@ class MlpFeatureExtractor(FeatureExtractor):
             ind_negative = np.where(relevance[i, :] < 0)[0]
             relevance[i, ind_negative] = 0
             relevance[i, :] = (relevance[i, :] - np.min(relevance[i, :])) / (
-                    np.max(relevance[i, :]) - np.min(relevance[i, :]) + 0.000000001)
+                    np.max(relevance[i, :]) - np.min(relevance[i, :]) + 1e-9)
 
         for frame_idx, frame in enumerate(labels):
             cluster_idx = labels[frame_idx].argmax()
@@ -79,7 +79,7 @@ class MlpFeatureExtractor(FeatureExtractor):
         return result
 
 
-def _create_layers(activation_function, classifier):
+def _create_layers(activation_function, classifier): #TODO put inside the MLP class
     weights = classifier.coefs_
     biases = classifier.intercepts_
     layers = []
@@ -90,11 +90,9 @@ def _create_layers(activation_function, classifier):
         elif activation_function == relprop.relu:
             l = relprop.NextLinear(weight, biases[idx])
         elif activation_function == relprop.logistic_sigmoid:
-            l = relprop.FirstLinear(weight, biases[idx])
+            l = relprop.FirstLinear(weight, biases[idx]) #TODO Are we sure???
         else:
-            raise Exception(
-                "Unsupported activation function {}. Supported values are {}".format(activation_function,
-                                                                                     relprop.activation_functions))
+            raise Exception("Unsupported activation function {}. Supported values are {}".format(activation_function, relprop.activation_functions))
         layers.append(l)
         if idx < len(weights) - 1:
             # Add activation to all except output layer

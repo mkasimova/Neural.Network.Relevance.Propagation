@@ -112,7 +112,7 @@ class FeatureExtractor(object):
                 # Train model
                 model = self.train(train_set, train_labels)
 
-                if self.name != "PCA" and model is not None and hasattr(model, "predict"):
+                if self.name != "PCA" and model is not None and hasattr(model, "predict"): #TODO remove PCA and model is not None conditions?
                     # Test classifier
                     error = utils.check_for_overfit(test_set, test_labels, model)
                     errors[i_split * self.n_iterations + i_iter] = error

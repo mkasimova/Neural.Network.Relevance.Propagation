@@ -167,6 +167,42 @@ class PostProcessor(object):
         """
         Computes ROC curve and area under it
         """
+        n_residues = self.importance_per_residue_and_cluster.shape[0]
+        n_clusters = self.importance_per_residue_and_cluster.shape[1]
+
+        auc = 0
+
+        for i in range(n_clusters):
+
+            actives = np.chararray(n_residues)
+            actives[:] = 'd'
+            ind_a = self.predefined_relevant_residues[i]
+            actives[ind_a] = 'a'
+
+            actives_len = len(ind_a)
+            decoys_len = n_residues - actives_len
+
+            ind_scores_sorted = np.argsort(-self.importance_per_residue_and_cluster[:,i])
+            actives_sorted = actives[ind_scores_sorted]
+
+            tp=0
+            fp=0
+            tp_rate = []
+            fp_rate = []
+            for j in actives_sorted:
+                if j=='a':
+                    tp+=1
+                else:
+                    fp+=1
+                tp_rate.append(float(tp)/float(actives_len))
+                fp_rate.append(float(fp)/float(decoys_len))
+
+            for j in range(len(fp_rate)-1):
+                auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
+
+        self.auc = auc/n_clusters
+
+        '''
         n_residues = self.importance_per_residue.shape[0]
         actives = np.chararray(n_residues)
         actives[:] = 'd'
@@ -198,6 +234,7 @@ class PostProcessor(object):
         self.tp_rate = tp_rate
         self.fp_rate = fp_rate
         self.auc = auc
+        '''
 
     def persist(self):
         """

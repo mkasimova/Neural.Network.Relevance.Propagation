@@ -13,14 +13,12 @@ import scipy.special
 
 relu = "relu"
 logistic_sigmoid = "logistic"
-activation_functions = [relu, logistic_sigmoid]
-logger = logging.getLogger("mlp")
+logger = logging.getLogger("relevance_propagation")
 
 
 class RelevancePropagator(object):
 
-    def __init__(self, layers, activation_function=relu):
-        self.activation_function = activation_function
+    def __init__(self, layers):
         self.layers = layers
 
     def propagate(self, X, T):
@@ -32,14 +30,27 @@ class RelevancePropagator(object):
         return D
 
 
-class Network(hm_modules.Network): #TODO move forward from heatmapping_modules.py? remove heatmapping.py?
+class Network:
+
+    def __init__(self, layers):
+        self.layers = layers
+
+    def forward(self, X):
+        for l in self.layers: X = l.forward(X)
+        return X
+
     def relprop(self, R):
         for l in self.layers[::-1]:
             R = l.relprop(R)
         return R
 
 
-class ReLU(hm_modules.ReLU): #TODO move forward from heatmapping.py?
+class ReLU:
+
+    def forward(self, X):
+        self.Z = X > 0
+        return X * self.Z
+
     def relprop(self, R):
         return R
 
@@ -47,57 +58,43 @@ class ReLU(hm_modules.ReLU): #TODO move forward from heatmapping.py?
 class LogisticSigmoid:
     """Used for RBM"""
 
-    def __init__(self): #TODO remove?
-        pass
-
-    @staticmethod
-    def logistic(X):
-        # return 1.0 / (1.0 + np.exp(-X))
+    def _logistic(self, X):
         return scipy.special.expit(X)
 
     def forward(self, X):
-        # self.X = X
-        return self.logistic(X)
-
-    def gradprop(self, DY): #TODO remove?
-        # self.DY = DY
-        # TODO double check implementation
-        l = self.logistic(DY)
-        return l * (1 - l)
+        return self._logistic(X)
 
     def relprop(self, R):
         return R
 
 
-class Linear(hm_modules.Linear): #TODO remove?
+class Linear:
     def __init__(self, weight, bias):
         self.W = weight
         self.B = bias
 
+    def forward(self, X):
+        self.X = X
+        return numpy.dot(self.X, self.W) + self.B
 
-class FirstLinear(Linear): #TODO remove Linear? move forward from heatmapping.py?
+
+class FirstLinear(Linear):
     """For z-beta rule"""
 
     def relprop(self, R):
         min_val, max_val = np.min(self.X, axis=0), np.max(self.X, axis=0)
-        if min_val.min() < 0: #TODO do we need this condition (and the following)?
-            logger.warn("Expected input to be scaled between 0 and 1. Minimum value was %s", min_val)
-        else:
-            min_val = 0
-        if max_val.max() > 1 + 1e-3: #TODO remove 1e-3?
-            logger.warn("Expected input to be scaled between 0 and 1. Max value was %s", max_val)
-        else:
-            max_val = 1
+        min_val = 0
+        max_val = 1
         W, V, U = self.W, np.maximum(0, self.W), np.minimum(0, self.W)
         X, L, H = self.X, self.X * 0 + min_val, self.X * 0 + max_val
         Z = np.dot(X, W) - np.dot(L, V) - np.dot(H, U) + 1e-9
         S = R / Z
-        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T # a constant just corresponds to a diagonal matrix with that constant along the diagonal #TODO why do we need this condition?
+        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T # a constant just corresponds to a diagonal matrix with that constant along the diagonal
         R = X * np.dot(S, Wt) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
         return R
 
 
-class NextLinear(Linear): #TODO remove Linear? move forward from heatmapping.py?
+class NextLinear(Linear):
     """For z+ rule"""
 
     def relprop(self, R):

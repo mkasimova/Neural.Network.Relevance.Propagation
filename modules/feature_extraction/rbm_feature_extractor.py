@@ -53,9 +53,9 @@ class RbmFeatureExtractor(FeatureExtractor):
 
         # Calculate relevance
         # see https://scikit-learn.org/stable/modules/neural_networks_unsupervised.html
-        layers = self._create_layers(self,classifier)
+        layers = self._create_layers(classifier)
 
-        propagator = relprop.RelevancePropagator(layers, activation_function=relprop.logistic_sigmoid)
+        propagator = relprop.RelevancePropagator(layers)
         relevance = propagator.propagate(data, labels_propagation)
 
         # Average relevance per cluster

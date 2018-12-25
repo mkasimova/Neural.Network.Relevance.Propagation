@@ -75,7 +75,7 @@ class Linear:
 
     def forward(self, X):
         self.X = X
-        return numpy.dot(self.X, self.W) + self.B
+        return np.dot(self.X, self.W) + self.B
 
 
 class FirstLinear(Linear):

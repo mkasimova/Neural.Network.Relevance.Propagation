@@ -9,7 +9,6 @@ logging.basicConfig(
 import os
 import numpy as np
 
-#import modules.data_generation as data_generation
 from modules.data_generation import DataGenerator
 from modules import utils, feature_extraction as fe, postprocessing as pp
 from modules import filtering, data_projection as dp
@@ -21,13 +20,12 @@ logger = logging.getLogger("dataGenNb")
 
 def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_atoms):
 
-    n_iterations, n_splits = 5, 1
     feature_extractors = [
     fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None),
-    fe.RbmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations),
+    fe.RbmFeatureExtractor(data, cluster_indices, 10, n_splits=n_splits, n_iterations=n_iterations),
     fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations),
     fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits),
-    fe.ElmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations),
+    fe.ElmFeatureExtractor(data, cluster_indices, 1000, n_splits=n_splits, n_iterations=n_iterations),
     fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, hidden_layer_sizes=(100,)),
     ]
 
@@ -44,7 +42,7 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
     area_under_roc = []
     for (extractor, feature_importance, std_feature_importance, errors) in results:
         p = pp.PostProcessor(extractor, feature_importance, std_feature_importance, errors, cluster_indices,
-                         working_dir='/media/mkasimova/Data2/NN_VSD/toy_model/testing.different.toy.models/many.points/',
+                         working_dir='/media/mkasimova/Data2/NN_VSD/toy_model/debug.after.cleaning/',
                          predefined_relevant_residues=moved_atoms)
         p.average().evaluate_performance()
         average_std.append(p.average_std)
@@ -55,9 +53,9 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
 
 ####
 
-n_iter_per_example = 10
+n_iter_per_example = 1
 n_splits = 1
-n_iterations = 5
+n_iterations = 1
 
 test_model = ['linear','non-linear','non-linear-random-displacement','non-linear-p-displacement']
 test_noise = [1e-2,1e-2,2e-1,2e-1]
@@ -95,6 +93,6 @@ for i, i_model in enumerate(test_model):
             average_std[:,i,j,k], projection_entropy[:,i,j,k], area_under_roc[:,i,j,k] = run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,dg.moved_atoms)
 
 
-np.save('/media/mkasimova/Data2/NN_VSD/toy_model/testing.different.toy.models/many.points/average_std.all_tests_2clusters.PER_CLUSTER.npy',average_std)
-np.save('/media/mkasimova/Data2/NN_VSD/toy_model/testing.different.toy.models/many.points/projection_entropy.all_tests_2clusters.PER_CLUSTER.npy',projection_entropy)
-np.save('/media/mkasimova/Data2/NN_VSD/toy_model/testing.different.toy.models/many.points/area_under_roc.all_tests_2clusters.PER_CLUSTER.npy',area_under_roc)
+np.save('/media/mkasimova/Data2/NN_VSD/toy_model/debug.after.cleaning/average_std.all_tests_2clusters.PER_CLUSTER.npy',average_std)
+np.save('/media/mkasimova/Data2/NN_VSD/toy_model/debug.after.cleaning/projection_entropy.all_tests_2clusters.PER_CLUSTER.npy',projection_entropy)
+np.save('/media/mkasimova/Data2/NN_VSD/toy_model/debug.after.cleaning/area_under_roc.all_tests_2clusters.PER_CLUSTER.npy',area_under_roc)

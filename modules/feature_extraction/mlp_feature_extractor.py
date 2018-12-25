@@ -59,7 +59,7 @@ class MlpFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using NN ...")
-        self._create_layers(self, classifier)
+        self._create_layers(classifier)
         # Calculate relevance
         propagator = relprop.RelevancePropagator(self.layers)
         relevance = propagator.propagate(data, labels)
@@ -106,4 +106,4 @@ class MlpFeatureExtractor(FeatureExtractor):
                 elif self.activation == relprop.relu:
                     layers.append(relprop.ReLU())
 
-        layers = self.layers
+        self.layers = layers

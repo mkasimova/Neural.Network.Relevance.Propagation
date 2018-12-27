@@ -8,7 +8,6 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
-from modules import heatmapping_modules as hm_modules
 import scipy.special
 
 relu = "relu"

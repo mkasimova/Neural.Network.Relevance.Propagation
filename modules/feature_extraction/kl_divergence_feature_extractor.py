@@ -10,29 +10,36 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 from scipy.stats import entropy
-from sklearn.mixture import GaussianMixture
-from scipy.stats import multivariate_normal
+from sklearn.mixture import GaussianMixture #TODO Remove?
+from scipy.stats import multivariate_normal #TODO Remove?
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 
-logger = logging.getLogger("KL")
+logger = logging.getLogger("KL divergence")
 
 
 class KLFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5, bin_size=None):
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5, bin_size=None, name="KL"):
 
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name="KL")
+        logger.debug("Initializing KL with the following parameters: \
+                      n_splits %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
+                      bin_size %s", \
+                      n_splits, scaling, filter_by_distance_cutoff, contact_cutoff, \
+                      bin_size)
         self.bin_size = bin_size
-        self.feature_importances = None
+        self.feature_importances = None #TODO do we need this? (never initialized in other fe)
 
     def train(self, data, labels):
+        logger.debug("Training KL with %s samples and %s features ...", data.shape[0], data.shape[1])
         n_clusters = labels.shape[1]
+        n_features = data.shape[1]
 
-        self.feature_importances = np.zeros((n_clusters, data.shape[1]))
+        self.feature_importances = np.zeros((n_clusters, n_features))
         for i_cluster in range(n_clusters):
             data_cluster = data[labels[:, i_cluster] == 1, :]
             data_rest = data[labels[:, i_cluster] == 0, :]
-            self.feature_importances[i_cluster, :] = self._KL_divergence(data_cluster[:,:,np.newaxis], data_rest[:,:,np.newaxis])
+            self.feature_importances[i_cluster, :] = self._KL_divergence(data_cluster[:,:,np.newaxis], data_rest[:,:,np.newaxis]) #TODO why do we need newaxis?
 
     def _KL_divergence(self, x, y):
         """
@@ -43,7 +50,8 @@ class KLFeatureExtractor(FeatureExtractor):
             std = np.zeros(n_features)
             for i_feature in range(n_features):
                 std[i_feature] = np.std(x[:, i_feature])
-            self.bin_size = np.mean(std)
+            self.bin_size = np.mean(std) #TODO should we try adaptive bin_size, meaning different per feature? this should be useful when different features are fed
+            logger.debug("bin_size for KL is %s", self.bin_size)
 
         DKL = np.zeros(n_features)
         for i_feature in range(n_features):
@@ -60,23 +68,24 @@ class KLFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, model, data, labels):
         """
-        Get the feature importance of KL divergence by comparing each cluster to all other clusters.
+        Get the feature importance of KL divergence by comparing each cluster to all other clusters
         """
+        logger.debug("Extracting feature importance using KL ...")
         return self.feature_importances.T
 
-    def _alternative_train(self, model, data, labels):
+    def _alternative_train(self, model, data, labels): #TODO remove?
         """Alternative method comparing one vs one instead of one vs all"""
         nclusters = labels.shape[1]
         nfeatures = data.shape[1]
-        self.feature_importances = np.zeros((nfeatures, nclusters))
+        self.feature_importances = np.zeros((nfeatures, nclusters)) #TODO shape is different from train function - (nclusters,nfeatures)
         for c1 in range(nclusters):
-            data_c1 = data[labels[:, c1] > 0]
+            data_c1 = data[labels[:, c1] > 0] #TODO==1
             for c2 in range(c1 + 1, nclusters):
-                data_c2 = data[labels[:, c2] > 0]
+                data_c2 = data[labels[:, c2] > 0] #TODO==1
                 if len(data_c1) == 0 or len(data_c2) == 0:
-                    logger.warn("Unbalanced data partitioning. No data for one cluster. Ignoring...")
+                    logger.warn("While computing KL noticed unbalanced data partitioning: no data for one cluster. Ignoring ...")
                     continue
                 dkl = self.KL_divergence(data_c1, data_c2)
                 self.feature_importances[:, [c1, c2]] += dkl  # add relevance for both these clusters
-        
-        return self.feature_importances.T
+
+        return self.feature_importances.T #TODO remove .T and put feature_importances in a correct shape initially?

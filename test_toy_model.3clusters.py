@@ -78,13 +78,13 @@ for i, i_model in enumerate(test_model):
             # for j%2==1 use constant noise with noise_natoms=12
             if j%2==1:
 
-                dg = DataGenerator(natoms=100, nclusters=2, natoms_per_cluster=[12,12], nframes_per_cluster=1200, test_model=i_model,\
+                dg = DataGenerator(natoms=100, nclusters=3, natoms_per_cluster=[8,8,8], nframes_per_cluster=1200, test_model=i_model,\
                                noise_natoms=12, noise_level=j_noise,\
                                displacement=0.1)
 
             else:
 
-                dg = DataGenerator(natoms=100, nclusters=2, natoms_per_cluster=[12,12], nframes_per_cluster=1200, test_model=i_model,\
+                dg = DataGenerator(natoms=100, nclusters=3, natoms_per_cluster=[8,8,8], nframes_per_cluster=1200, test_model=i_model,\
                                noise_natoms=None, noise_level=j_noise,\
                                displacement=0.1)
 

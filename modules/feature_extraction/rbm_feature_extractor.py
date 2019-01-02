@@ -12,27 +12,33 @@ import sklearn
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 from sklearn.neural_network import BernoulliRBM
+import scipy
 
 logger = logging.getLogger("rbm")
 
 
 class RbmFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, randomize=True,
-                 n_components=None, filter_by_distance_cutoff=False, contact_cutoff=0.5, 
+    def __init__(self, samples, cluster_indices, n_components, n_splits=10, n_iterations=10, scaling=True, randomize=True,
+                 filter_by_distance_cutoff=False, contact_cutoff=0.5, method="from_lrp",
                  name="RBM"):
 
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                  contact_cutoff=contact_cutoff, 
+                                  contact_cutoff=contact_cutoff,
                                   name=name)
-        self.randomize = randomize
+        logger.debug("Initializing RBM with the following parameters: \
+                      n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
+                      n_components %s, randomize %s, method %s", \
+                      n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
+                      n_components, randomize, method)
+
         self.n_components = n_components
+        self.randomize = randomize
+        self.method = method
 
     def train(self, train_set, train_labels):
-        if self.n_components is None:
-            self.n_components = int(train_set.shape[1] / 10)
-            logger.info("Automatically set n_components to %s", self.n_components)
+        logger.debug("Training RBM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
 
         classifier = BernoulliRBM(
             random_state=(None if self.randomize else 89274),
@@ -42,40 +48,72 @@ class RbmFeatureExtractor(FeatureExtractor):
         return classifier
 
     def get_feature_importance(self, classifier, data, labels):
-        # TODO we should look into the effect of using sigmoid instead of ReLu activation here!
-        nframes, nfeatures = data.shape
-        classifier.intercept_hidden_
+        logger.debug("Extracting feature importance using RBM ...")
 
-        labels_propagation = classifier.transform(data) #same as perfect classification
+        if self.method=="from_lrp":
+            nframes, nfeatures = data.shape
 
-        # Calculate relevance
-        # see https://scikit-learn.org/stable/modules/neural_networks_unsupervised.html
-        layers = [
-            relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
-            relprop.LogisticSigmoid()
-        ]
-        propagator = relprop.RelevancePropagator(layers, activation_function=relprop.logistic_sigmoid)
-        relevance = propagator.propagate(data, labels_propagation)
+            labels_propagation = classifier.transform(data) # same as perfect classification
 
-        # Average relevance per cluster
-        nclusters = labels.shape[1]
+            # Calculate relevance
+            # see https://scikit-learn.org/stable/modules/neural_networks_unsupervised.html
+            layers = self._create_layers(classifier)
 
-        result = np.zeros((nfeatures, nclusters))
-        frames_per_cluster = np.zeros((nclusters))
+            propagator = relprop.RelevancePropagator(layers)
+            relevance = propagator.propagate(data, labels_propagation)
 
-        # Rescale relevance according to min and max relevance in each frame
-        for i in range(relevance.shape[0]):
-            ind_negative = np.where(relevance[i, :] < 0)[0]
-            relevance[i, ind_negative] = 0
-            relevance[i, :] = (relevance[i, :] - np.min(relevance[i, :])) / (
-                    np.max(relevance[i, :]) - np.min(relevance[i, :]) + 0.000000001)
+            # Average relevance per cluster
+            nclusters = labels.shape[1]
 
-        for frame_idx, frame in enumerate(labels):
-            cluster_idx = labels[frame_idx].argmax()
-            frames_per_cluster[cluster_idx] += 1
+            result = np.zeros((nfeatures, nclusters))
+            frames_per_cluster = np.zeros((nclusters))
 
-        for frame_idx, rel in enumerate(relevance):
-            cluster_idx = labels[frame_idx].argmax()
-            result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
+            # Rescale relevance according to min and max relevance in each frame
+            logger.debug("Rescaling feature importance extracted using RBM in each frame between min and max ...")
+
+            for i in range(relevance.shape[0]):
+                ind_negative = np.where(relevance[i, :] < 0)[0]
+                relevance[i, ind_negative] = 0
+                relevance[i, :] = (relevance[i, :] - np.min(relevance[i, :])) / (
+                    np.max(relevance[i, :]) - np.min(relevance[i, :]) + 1e-9)
+
+            for frame_idx, frame in enumerate(labels):
+                cluster_idx = labels[frame_idx].argmax()
+                frames_per_cluster[cluster_idx] += 1
+
+            for frame_idx, rel in enumerate(relevance):
+                cluster_idx = labels[frame_idx].argmax()
+                result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
+
+        elif self.method=="from_components":
+
+            # Extract components and compute their variance
+            components = classifier.components_ #TODO How should we sort components? Based on 75% variance as for PCA? Or should we use a gap between variances?
+            projection = scipy.special.expit( np.matmul(data, components.T) )
+            components_var = projection.var(axis=0)
+
+            # Sort components according to their variance
+            ind_components_var_sorted = np.argsort(-components_var)
+            components_var_sorted = components_var[ind_components_var_sorted]
+            components_sorted = components[ind_components_var_sorted,:]
+
+            # Consider only those components whose summed variance constitutes 75% of total variance
+            var = components_var_sorted[0]
+            result = np.abs(components_sorted[0])*components_var_sorted[0]
+            components_var_sum = components_var.sum()
+            nclusters = labels.shape[1]
+            for i in range(1,components_var_sorted.shape[0]):
+                if var + components_var_sorted[i] < 0.75*components_var_sum and i < nclusters:
+                    var += components_var_sorted[i]
+                    result = np.vstack(( result,np.abs(components_sorted[i])*components_var_sorted[i] ))
+                else:
+                    break
+            result = result.T
 
         return result
+
+    def _create_layers(self, classifier):
+        return [ relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
+                 relprop.LogisticSigmoid()
+               ]
+

@@ -32,15 +32,21 @@ class MlpFeatureExtractor(FeatureExtractor):
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
                                   contact_cutoff=contact_cutoff,
                                   name=name)
+        logger.debug("Initializing MLP with the following parameters: \
+                      n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
+                      hidden_layer_sizes %s, solver %s, activation function %s, randomize %s, training_max_iter %s", \
+                      n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
+                      hidden_layer_sizes, solver, activation, randomize, training_max_iter) #TODO for all feature extractors?
         self.hidden_layer_sizes = hidden_layer_sizes
-        self.randomize = randomize
         self.solver = solver
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
-            logger.warn("Relevance propagation currently only supported for relu or logistic")
+            Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
+        self.randomize = randomize
         self.training_max_iter = training_max_iter
 
     def train(self, train_set, train_labels):
+        logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
         classifier = sklearn.neural_network.MLPClassifier(
             solver=self.solver,
             hidden_layer_sizes=self.hidden_layer_sizes,
@@ -52,17 +58,19 @@ class MlpFeatureExtractor(FeatureExtractor):
         return classifier
 
     def get_feature_importance(self, classifier, data, labels):
-        layers = _create_layers(self.activation, classifier)
+        logger.debug("Extracting feature importance using MLP ...")
+        self._create_layers(classifier)
         # Calculate relevance
-        propagator = relprop.RelevancePropagator(layers, activation_function=relprop.relu)
+        propagator = relprop.RelevancePropagator(self.layers)
         relevance = propagator.propagate(data, labels)
-        # average relevance per cluster
+        # Average relevance per cluster
         nclusters = labels.shape[1]
         nfeatures = relevance.shape[1]
         result = np.zeros((nfeatures, nclusters))
         frames_per_cluster = np.zeros((nclusters))
 
         # Rescale relevance according to min and max relevance in each frame
+        logger.debug("Rescaling feature importance extracted using MLP in each frame between min and max ...")
         for i in range(relevance.shape[0]):
             ind_negative = np.where(relevance[i, :] < 0)[0]
             relevance[i, ind_negative] = 0
@@ -78,27 +86,24 @@ class MlpFeatureExtractor(FeatureExtractor):
             result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
         return result
 
+    def _create_layers(self, classifier):
+        weights = classifier.coefs_
+        biases = classifier.intercepts_
+        layers = []
+        for idx, weight in enumerate(weights):
 
-def _create_layers(activation_function, classifier): #TODO put inside the MLP class
-    weights = classifier.coefs_
-    biases = classifier.intercepts_
-    layers = []
-    for idx, weight in enumerate(weights):
+            if idx == 0:
+                l = relprop.FirstLinear(weight, biases[idx])
+            elif self.activation == relprop.relu:
+                l = relprop.NextLinear(weight, biases[idx])
+            elif self.activation == relprop.logistic_sigmoid:
+                l = relprop.FirstLinear(weight, biases[idx])
+            layers.append(l)
+            if idx < len(weights) - 1:
+                # Add activation to all except output layer
+                if self.activation == relprop.logistic_sigmoid:
+                    layers.append(relprop.LogisticSigmoid())
+                elif self.activation == relprop.relu:
+                    layers.append(relprop.ReLU())
 
-        if idx == 0:
-            l = relprop.FirstLinear(weight, biases[idx])
-        elif activation_function == relprop.relu:
-            l = relprop.NextLinear(weight, biases[idx])
-        elif activation_function == relprop.logistic_sigmoid:
-            l = relprop.FirstLinear(weight, biases[idx]) #TODO Are we sure???
-        else:
-            raise Exception("Unsupported activation function {}. Supported values are {}".format(activation_function, relprop.activation_functions))
-        layers.append(l)
-        if idx < len(weights) - 1:
-            # Add activation to all except output layer
-            if activation_function == relprop.logistic_sigmoid:
-                layers.append(relprop.LogisticSigmoid())
-            elif activation_function == relprop.relu:
-                layers.append(relprop.ReLU())
-
-    return layers
+        self.layers = layers

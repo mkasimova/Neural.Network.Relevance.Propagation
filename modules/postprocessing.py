@@ -80,6 +80,7 @@ class PostProcessor(object):
         Sets the fields importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
         :return: itself
         """
+        # TODO: Should we just rename all self.importance_per_cluster to self.feature_importance and remove this line (and same for stddev)?
         self.importance_per_cluster = self.feature_importance # compute_importance_per_cluster(importance, cluster_indices)
         self.std_importance_per_cluster = self.std_feature_importance
         self._compute_importance_per_residue_and_cluster()
@@ -200,8 +201,9 @@ class PostProcessor(object):
             for j in range(len(fp_rate)-1):
                 auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
 
-        self.auc = auc/n_clusters
+        self.auc = auc/n_clusters # TODO: Compute AUC per cluster too?
 
+        # TODO: Remove the commented region below?
         '''
         n_residues = self.importance_per_residue.shape[0]
         actives = np.chararray(n_residues)

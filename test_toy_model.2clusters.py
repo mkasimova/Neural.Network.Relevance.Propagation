@@ -103,7 +103,7 @@ for i, i_model in enumerate(test_model):
 
             average_std[:,i,j,k], projection_entropy[:,i,j,k], area_under_roc[:,i,j,k], importance_per_residue[:,i,j,k,:] = run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,dg.moved_atoms)
 
-
+# TODO: Where are these visualized?
 np.save('/media/mkasimova/Data2/NN_VSD/toy_model/debug.after.cleaning/average_std.linear_smallnoise.RBM_2methods.npy',average_std)
 np.save('/media/mkasimova/Data2/NN_VSD/toy_model/debug.after.cleaning/projection_entropy.linear_smallnoise.RBM_2methods.npy',projection_entropy)
 np.save('/media/mkasimova/Data2/NN_VSD/toy_model/debug.after.cleaning/area_under_roc.linear_smallnoise.RBM_2methods.npy',area_under_roc)

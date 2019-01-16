@@ -27,6 +27,7 @@ def compare(postprocessors):
     n_features_shift = 1
 
     # Consider up to 75% of all features
+    # TODO: Why does it start at n_features_per_iteration?
     top_features_array = np.arange(n_features_per_iteration,int(0.75*n_features),n_features_shift)
 
     n_features_extractors = len(postprocessors)
@@ -55,14 +56,16 @@ def compare(postprocessors):
                 # Compare how much p1_ind_top_features and p2_ind_top_features overlap
                 overlap_ind = np.intersect1d(p1_ind_top_features,p2_ind_top_features)
 
+                # TODO: Or fraction of overlap?
                 difference_rank[i,j,k] = (len(p1_top_features)+len(p2_top_features)-2*len(overlap_ind))/(len(p1_top_features)+len(p2_top_features))
                 difference_rank[i,k,j] = difference_rank[i,j,k]
 
     # Average over all features extractors
+    # TODO ?: difference_rank = np.mean(difference_rank,axis=(1,2))
     difference_rank = np.sum(np.sum(difference_rank,axis=2),axis=1)/(n_features_extractors-1)/n_features_extractors
-    difference_rank = 1 - difference_rank
+    difference_rank = 1 - difference_rank # TODO: If we would you fraction, this would not be needed, I think.
 
-    x = (top_features_array - n_features_per_iteration)[:-1]+n_features_per_iteration
+    x = (top_features_array - n_features_per_iteration)[:-1]+n_features_per_iteration # TODO: Isn't this the same as top_features_array[:-1], that is all values except the last?
     diff_popt, diff_pcov = curve_fit(func, x, difference_rank)
     difference_rank_fit = func(x, *diff_popt)
 

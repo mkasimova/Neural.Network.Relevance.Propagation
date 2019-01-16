@@ -74,6 +74,8 @@ class DataGenerator(object):
         """
         Generates and returns artificial frames with noise for the clusters
         """
+        # TODO: This function is a bit too long now. Can we reduce it? E.g. one function for each test_model case?
+        # There seem to be some repetative code below.
         logger.info("Generating frames ...")
         start_conf = self._generate_conformation()
         labels = np.zeros((self.nframes_per_cluster*self.nclusters, self.nclusters))
@@ -96,6 +98,7 @@ class DataGenerator(object):
                     if self.test_model == 'non-linear':
 
                         if ind_a==0:
+                            # TODO: Why are we using c*self.displacement?
                             conf[a,:] += [c*self.displacement,\
                                           0,\
                                           self.displacement-c*self.displacement]
@@ -103,6 +106,7 @@ class DataGenerator(object):
                             a_minus_1 = self.moved_atoms[c][ind_a-1]
                             radius = np.sqrt(np.sum((conf[a,0:2]-conf[a_minus_1,0:2])**2))
                             angle_of_rotation = (-1)**(ind_a%2)*self.displacement/radius
+                            # TODO: is this correct? ---v
                             x = np.cos(angle_of_rotation)*(conf[a,0]-conf[a_minus_1,0])-np.sin(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])
                             y = np.sin(angle_of_rotation)*(conf[a,0]-conf[a_minus_1,0])+np.cos(angle_of_rotation)*(conf[a,1]-conf[a_minus_1,1])
                             conf[a,0:2] = conf[a_minus_1,0:2]+[x,y]
@@ -114,7 +118,7 @@ class DataGenerator(object):
                             conf[a,1:3] = conf[a_minus_1,1:3]+[y,z]
 
                     # Displacement of the first atom is random
-                    # The rest depends on the first atom
+                    # The rest depend on the first atom
                     if self.test_model == 'non-linear-random-displacement':
 
                         if ind_a==0:
@@ -164,7 +168,6 @@ class DataGenerator(object):
                     for a in self.moved_noise_atoms:
                         if frame_idx%3==0:
                             conf[a,:] += [10*self.displacement,-10*self.displacement,10*self.displacement]
-
                 conf = self._perturb(conf)
                 features = self._to_features(conf)
                 data[frame_idx,:] = features
@@ -189,7 +192,7 @@ class DataGenerator(object):
         for n1, coords1 in enumerate(conf):
             for n2 in range(n1 + 1, self.natoms):
                 coords2 = conf[n2]
-                dists[idx] = np.linalg.norm(coords1-coords2) # Not inverse dist, is it ok?
+                dists[idx] = np.linalg.norm(coords1-coords2) # Not inverse dist, is it ok? # AW: Should be ok, but maybe we should test with inverse too?
                 idx += 1
         return dists
 

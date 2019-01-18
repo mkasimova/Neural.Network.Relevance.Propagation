@@ -15,7 +15,7 @@ logger = logging.getLogger("dataGen")
 
 class DataGenerator(object):
 
-    def __init__(self, natoms, nclusters, natoms_per_cluster, nframes_per_cluster, test_model='linear', noise_level=1e-2, noise_natoms=None, displacement=0.1):
+    def __init__(self, natoms, nclusters, natoms_per_cluster, nframes_per_cluster, test_model='linear', noise_level=1e-2, noise_natoms=None, displacement=0.1, feature_type='dist'):
         """
         Class which generates artificial atoms, puts them into artifical clusters and adds noise to them
         :param natoms: number of atoms
@@ -29,7 +29,6 @@ class DataGenerator(object):
         if natoms < nclusters:
             raise Exception("Cannot have more clusters than atoms")
         self.natoms = natoms
-        self.nfeatures = int(self.natoms*(self.natoms-1)/2)
         self.nclusters = nclusters
         self.natoms_per_cluster = natoms_per_cluster
         self.nframes_per_cluster = nframes_per_cluster
@@ -37,6 +36,8 @@ class DataGenerator(object):
         self.noise_level = noise_level
         self.noise_natoms = noise_natoms
         self.displacement = displacement
+        self.feature_type = feature_type
+        self.nfeatures = int(self.natoms*(self.natoms-1)/2) if self.feature_type == 'dist' else self.natoms*3 #For xyz
 
     def select_atoms_to_move(self):
 
@@ -166,30 +167,93 @@ class DataGenerator(object):
                             conf[a,:] += [10*self.displacement,-10*self.displacement,10*self.displacement]
 
                 conf = self._perturb(conf)
+                if self.feature_type == 'carteesian':
+                    conf = self._random_rotation(conf)
+                    conf = self._random_translation(conf)
                 features = self._to_features(conf)
                 data[frame_idx,:] = features
                 frame_idx += 1
 
         return data, labels
 
+    
     def _generate_conformation(self):
         conf = np.zeros((self.natoms, 3))
         for n in range(self.natoms):
             conf[n] = (np.random.rand(3,)*2 -1) # Distributed between [-1,1)
         return conf
 
+    
     def _perturb(self, conf):
         for n in range(self.natoms):
             conf[n] += (np.random.rand(3,)*2 - 1)*self.noise_level
         return conf
+    
 
     def _to_features(self, conf):
-        dists = np.empty((self.nfeatures,))
+        feats = np.empty((self.nfeatures,))
         idx = 0
         for n1, coords1 in enumerate(conf):
-            for n2 in range(n1 + 1, self.natoms):
-                coords2 = conf[n2]
-                dists[idx] = np.linalg.norm(coords1-coords2) # Not inverse dist, is it ok?
+            if self.feature_type == 'carteesian':
+                feats[idx] = coords1[0] #x
                 idx += 1
-        return dists
+                feats[idx] = coords1[1] #y
+                idx += 1
+                feats[idx] = coords1[2] #z
+                idx += 1
+            else:
+                for n2 in range(n1 + 1, self.natoms):
+                    coords2 = conf[n2]
+                    feats[idx] = np.linalg.norm(coords1-coords2) # Not inverse dist, is it ok?
+                    idx += 1
+        return feats
+    
+    
+    def feature_to_resids(self):
+        if self.feature_type == 'dist':
+            return None # TODO fix later; default anyway
+        elif self.feature_type == 'carteesian':
+            mapping = []
+            for a in range(self.natoms):
+                mapping.append([a, a]) #x
+                mapping.append([a, a]) #y
+                mapping.append([a, a]) #z
+            return np.array(mapping)
+        else:
+            raise Exception("Unknown feature type {}".format(self.feature_type))
+            
+            
+    def _random_translation(self, xyz):
+        """Translate each frame randomly along all axis"""
+        sizes = xyz.max(axis=1) - xyz.min(axis=1)
+        for atom_idx in range(self.natoms):
+            #Can be done with less code and more efficient numpy notation, but writing for readabilit now
+            [dx, dy, dz] = 2*(np.random.rand(3) - 1) #random values within box size
+            xyz[atom_idx,0] += dx
+            xyz[atom_idx,1] += dy
+            xyz[atom_idx,2] += dz
+        xyz = xyz % 2 - 1 #enforce PBC
+        return xyz
+    
 
+    def _random_rotation(self, xyz):
+        """Rotate each frame randomly along all axis"""
+    #     for frame_idx in range(len(xyz)):
+    #         q = Quaternion.random() #TOO SLOW!
+    #         for atom_idx in range(xyz.shape[1]):
+    #             xyz[frame_idx, atom_idx] = q.rotate(xyz[frame_idx, atom_idx])
+        #Random angles between 0 and 2pi
+        phi, theta = 2*np.pi*np.random.rand(), 2*np.pi*np.random.rand()
+        #rotate xy plane
+        xyz = self._rotate(phi, xyz, [0,1])
+        #rotate yz plane    
+        xyz = self._rotate(theta, xyz, [1,2])
+        return xyz
+    
+    def _rotate(self, phi, xyz, dims):
+        cos_phi = np.cos(phi)
+        sin_phi = np.sin(phi)
+        xy = xyz[:,dims] #.swapaxes(0,1)
+        xyz[:,dims[0]] = (cos_phi*xy[:,0]-sin_phi*xy[:,1]).T #TODO should it be with a transpose or not?
+        xyz[:,dims[1]] = (sin_phi*xy[:,0]+cos_phi*xy[:,1]).T
+        return xyz

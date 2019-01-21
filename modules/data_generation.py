@@ -25,7 +25,7 @@ class DataGenerator(object):
         :param noise_level: strength of noise to be added
         :param noise_natoms: number of atoms for constant noise
         :param displacement: length of displacement vector for cluster generation 
-        :param feature_type: 'dist' to use inter-atomic distances (natoms*(natoms-1)/2 features in total) or anything that starts with 'carteesian' to use atom xyz coordiantes (3*natoms features). Use 'carteesian_rot' to add a random roation to the xyz coordaintes
+        :param feature_type: 'dist' to use inter-atomic distances (natoms*(natoms-1)/2 features in total) or anything that starts with 'carteesian' to use atom xyz coordiantes (3*natoms features). Use 'carteesian_rot', 'carteesian_trans' or 'carteesian_rot_trans' to add a random roation and/or translations to the xyz coordaintes
         """
         if natoms < nclusters:
             raise Exception("Cannot have more clusters than atoms")
@@ -168,9 +168,11 @@ class DataGenerator(object):
                             conf[a,:] += [10*self.displacement,-10*self.displacement,10*self.displacement]
 
                 conf = self._perturb(conf)
-                if self.feature_type == 'carteesian_rot':
-                    conf = self._random_rotation(conf)
-                    #conf = self._random_translation(conf) #This assumes we have support for periodic PBC which we don't I think
+                if self.feature_type.startswith("carteesian"):
+                    if "_rot" in self.feature_type:
+                        conf = self._random_rotation(conf)
+                    if "_trans" in self.feature_type:
+                        conf = self._random_translation(conf) 
                 features = self._to_features(conf)
                 data[frame_idx,:] = features
                 frame_idx += 1
@@ -233,7 +235,7 @@ class DataGenerator(object):
             xyz[atom_idx,0] += dx
             xyz[atom_idx,1] += dy
             xyz[atom_idx,2] += dz
-        #xyz = xyz % 2 - 1 #enforce PBC
+        #xyz = xyz % 2 - 1 #enforce PBC, TODO This assumes we have support for periodic PBC which we don't I think
         return xyz
     
 

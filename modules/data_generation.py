@@ -228,13 +228,10 @@ class DataGenerator(object):
             
     def _random_translation(self, xyz):
         """Translate each frame randomly along all axis"""
-        sizes = xyz.max(axis=1) - xyz.min(axis=1)
-        for atom_idx in range(self.natoms):
-            #Can be done with less code and more efficient numpy notation, but writing for readabilit now
-            [dx, dy, dz] = 2*(np.random.rand(3) - 1) #random values within box size
-            xyz[atom_idx,0] += dx
-            xyz[atom_idx,1] += dy
-            xyz[atom_idx,2] += dz
+        [dx, dy, dz] = 5*(np.random.rand(3) - 0.5) #random values within box size
+        xyz[:, 0] += dx
+        xyz[:, 1] += dy
+        xyz[:, 2] += dz
         #xyz = xyz % 2 - 1 #enforce PBC, TODO This assumes we have support for periodic PBC which we don't I think
         return xyz
     

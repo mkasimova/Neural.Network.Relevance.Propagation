@@ -25,6 +25,7 @@ class DataGenerator(object):
         :param noise_level: strength of noise to be added
         :param noise_natoms: number of atoms for constant noise
         :param displacement: length of displacement vector for cluster generation 
+        :param feature_type: 'dist' to use inter-atomic distances (natoms*(natoms-1)/2 features in total) or anything that starts with 'carteesian' to use atom xyz coordiantes (3*natoms features). Use 'carteesian_rot' to add a random roation to the xyz coordaintes
         """
         if natoms < nclusters:
             raise Exception("Cannot have more clusters than atoms")
@@ -167,9 +168,9 @@ class DataGenerator(object):
                             conf[a,:] += [10*self.displacement,-10*self.displacement,10*self.displacement]
 
                 conf = self._perturb(conf)
-                if self.feature_type == 'carteesian':
+                if self.feature_type == 'carteesian_rot':
                     conf = self._random_rotation(conf)
-                    conf = self._random_translation(conf)
+                    #conf = self._random_translation(conf) #This assumes we have support for periodic PBC which we don't I think
                 features = self._to_features(conf)
                 data[frame_idx,:] = features
                 frame_idx += 1
@@ -194,7 +195,7 @@ class DataGenerator(object):
         feats = np.empty((self.nfeatures,))
         idx = 0
         for n1, coords1 in enumerate(conf):
-            if self.feature_type == 'carteesian':
+            if self.feature_type.startswith("carteesian"):
                 feats[idx] = coords1[0] #x
                 idx += 1
                 feats[idx] = coords1[1] #y
@@ -212,7 +213,7 @@ class DataGenerator(object):
     def feature_to_resids(self):
         if self.feature_type == 'dist':
             return None # TODO fix later; default anyway
-        elif self.feature_type == 'carteesian':
+        elif self.feature_type.startswith("carteesian"):
             mapping = []
             for a in range(self.natoms):
                 mapping.append([a, a]) #x
@@ -232,7 +233,7 @@ class DataGenerator(object):
             xyz[atom_idx,0] += dx
             xyz[atom_idx,1] += dy
             xyz[atom_idx,2] += dz
-        xyz = xyz % 2 - 1 #enforce PBC
+        #xyz = xyz % 2 - 1 #enforce PBC
         return xyz
     
 
@@ -243,9 +244,12 @@ class DataGenerator(object):
     #         for atom_idx in range(xyz.shape[1]):
     #             xyz[frame_idx, atom_idx] = q.rotate(xyz[frame_idx, atom_idx])
         #Random angles between 0 and 2pi
-        phi, theta = 2*np.pi*np.random.rand(), 2*np.pi*np.random.rand()
-        #rotate xy plane
-        xyz = self._rotate(phi, xyz, [0,1])
+        phi, psi, theta = 2*np.pi*np.random.rand(), 2*np.pi*np.random.rand(), np.pi*np.random.rand()
+        #see http://mathworld.wolfram.com/EulerAngles.html
+        xyz = self._rotate(phi, xyz, [0,1]) #rotate xy plane plane
+        xyz = self._rotate(theta, xyz, [1,2]) #rotate new yz plane
+        xyz = self._rotate(psi, xyz, [0,1]) #rotate new xy plane
+
         #rotate yz plane    
         xyz = self._rotate(theta, xyz, [1,2])
         return xyz
@@ -254,6 +258,6 @@ class DataGenerator(object):
         cos_phi = np.cos(phi)
         sin_phi = np.sin(phi)
         xy = xyz[:,dims] #.swapaxes(0,1)
-        xyz[:,dims[0]] = (cos_phi*xy[:,0]-sin_phi*xy[:,1]).T #TODO should it be with a transpose or not?
-        xyz[:,dims[1]] = (sin_phi*xy[:,0]+cos_phi*xy[:,1]).T
+        xyz[:,dims[0]] = (cos_phi*xy[:,0]+sin_phi*xy[:,1]) 
+        xyz[:,dims[1]] = (-sin_phi*xy[:,0]+cos_phi*xy[:,1])
         return xyz

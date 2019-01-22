@@ -20,7 +20,7 @@ class PCAFeatureExtractor(FeatureExtractor):
     def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5,
                  variance_cutoff=0.75, n_components=None, name="PCA"):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name=name)
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name=name, is_unsupervised=True)
         logger.debug("Initializing PCA with the following parameters: \
                       n_splits %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
                       n_components %s", \

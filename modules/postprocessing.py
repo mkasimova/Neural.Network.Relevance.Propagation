@@ -90,9 +90,11 @@ class PostProcessor(object):
     def _compute_importance_per_residue_and_cluster(self):
 
         importance = self.importance_per_cluster
-        index_to_resid = set(self.feature_to_resids.flatten()) # at index X we have residue number
+        index_to_resid = np.unique(np.asarray(self.feature_to_resids.flatten())) # at index X we have residue number
         self.nresidues = len(index_to_resid)
+
         index_to_resid = [r for r in index_to_resid]
+
         res_id_to_index = {} # a map pointing back to the index in the array index_to_resid
         for idx, resid in enumerate(index_to_resid):
             res_id_to_index[resid] = idx

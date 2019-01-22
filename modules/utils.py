@@ -157,7 +157,8 @@ def get_default_feature_to_resids(n_features):
 def get_feature_to_resids_from_pdb(n_features,pdb_file):
     pdb = PandasPdb()
     pdb.read_pdb(pdb_file)
-    resid_numbers = list(set(pdb.df['ATOM']['residue_number']))
+    
+    resid_numbers = np.unique(np.asarray(list(pdb.df['ATOM']['residue_number'])))
     n_residues = len(resid_numbers)
 
     n_residues_check = 0.5 * (1 + np.sqrt(8 * n_features + 1))

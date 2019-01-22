@@ -42,14 +42,14 @@ class RbmFeatureExtractor(FeatureExtractor):
 
         classifier = BernoulliRBM(
             random_state=(None if self.randomize else 89274),
-            n_components=self.n_components
-        )
+            n_components=self.n_components)
         classifier.fit(train_set)
         return classifier
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using RBM ...")
-
+        logger.info("RBM psuedo-loglikelihood: "+str(classifier.score_samples(data).mean()))
+		
         if self.method=="from_lrp":
             nframes, nfeatures = data.shape
 

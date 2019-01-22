@@ -14,7 +14,7 @@ import comparison_bw_fe as comp_fe
 
 def main(parser):
 
-    n_runs = 3
+    n_runs = 1
 
     args = parser.parse_args()
     working_dir = args.out_directory
@@ -25,6 +25,7 @@ def main(parser):
     labels = cluster_indices
 
     contact_cutoff = 1.0
+    n_components = 2
 
     # Check if samples format is correct
     if len(samples.shape)!=2:
@@ -34,45 +35,42 @@ def main(parser):
         fe.PCAFeatureExtractor(samples, labels,
                                n_splits=args.number_of_k_splits,
                                scaling=False, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
-                               filter_by_DKL=False, filter_by_KS_test=False, n_components=None),
-        fe.RbmFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
+                               n_components=None),
+        fe.RbmFeatureExtractor(samples, labels,n_components, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations, scaling=True,
-                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff, filter_by_DKL=False,
-                               filter_by_KS_test=False),
+                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
         fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations,
-                               scaling=True, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
-                               filter_by_DKL=False, filter_by_KS_test=False),
-        fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,  scaling=True,
-                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
-                               filter_by_DKL=False, filter_by_KS_test=False),
-        fe.ElmFeatureExtractor(samples, labels,
-        					   n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations,
-        					   scaling=True, filter_by_distance_cutoff=True,contact_cutoff=0.8,
-        					   filter_by_DKL=False, filter_by_KS_test=False),
+                               scaling=True, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
+        #fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,  scaling=True,
+        #                       filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
+        #fe.ElmFeatureExtractor(samples, labels,
+       # 					   n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations,
+       # 					   scaling=True, filter_by_distance_cutoff=True,contact_cutoff=0.8),
         fe.MlpFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations, scaling=True,
                                filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
-                               filter_by_DKL=False, filter_by_KS_test=False,
                                hidden_layer_sizes=(100,)),
     ]
 
- 
+
     postprocessors = []
+    data_projectors = []
 
     for extractor in feature_extractors:
         tmp_pp = []
+        tmp_dp = []
         for i_run in range(n_runs):
             feats, std_feats, errors = extractor.extract_features()
 
             # Post-process data (rescale and filter feature importances)
             p = pp.PostProcessor(extractor, feats, std_feats, errors,
                                  cluster_indices, working_dir, rescale_results=True,
-                                 filter_results=True, filter_results_by_cutoff=False,
-                                 feature_to_resids=None, pdb_file=pdb_file)
+                                 filter_results=True, feature_to_resids=None, pdb_file=pdb_file)
 
+            p.average().evaluate_performance()
+            p.persist()
 
-            p.average().persist()
             tmp_pp.append(p)
 
         postprocessors.append(tmp_pp)

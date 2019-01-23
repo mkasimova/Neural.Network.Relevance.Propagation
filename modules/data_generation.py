@@ -25,7 +25,7 @@ class DataGenerator(object):
         :param noise_level: strength of noise to be added
         :param noise_natoms: number of atoms for constant noise
         :param displacement: length of displacement vector for cluster generation 
-        :param feature_type: 'dist' to use inter-atomic distances (natoms*(natoms-1)/2 features in total) or anything that starts with 'carteesian' to use atom xyz coordiantes (3*natoms features). Use 'carteesian_rot', 'carteesian_trans' or 'carteesian_rot_trans' to add a random roation and/or translations to the xyz coordaintes
+        :param feature_type: 'dist' to use inter-atomic distances (natoms*(natoms-1)/2 features in total) or anything that starts with 'cartesian' to use atom xyz coordiantes (3*natoms features). Use 'cartesian_rot', 'cartesian_trans' or 'cartesian_rot_trans' to add a random roation and/or translations to the xyz coordaintes
         """
         if natoms < nclusters:
             raise Exception("Cannot have more clusters than atoms")
@@ -168,7 +168,7 @@ class DataGenerator(object):
                             conf[a,:] += [10*self.displacement,-10*self.displacement,10*self.displacement]
 
                 conf = self._perturb(conf)
-                if self.feature_type.startswith("carteesian"):
+                if self.feature_type.startswith("cartesian"):
                     if "_rot" in self.feature_type:
                         conf = self._random_rotation(conf)
                     if "_trans" in self.feature_type:
@@ -197,7 +197,7 @@ class DataGenerator(object):
         feats = np.empty((self.nfeatures,))
         idx = 0
         for n1, coords1 in enumerate(conf):
-            if self.feature_type.startswith("carteesian"):
+            if self.feature_type.startswith("cartesian"):
                 feats[idx] = coords1[0] #x
                 idx += 1
                 feats[idx] = coords1[1] #y
@@ -215,7 +215,7 @@ class DataGenerator(object):
     def feature_to_resids(self):
         if self.feature_type == 'dist':
             return None # TODO fix later; default anyway
-        elif self.feature_type.startswith("carteesian"):
+        elif self.feature_type.startswith("cartesian"):
             mapping = []
             for a in range(self.natoms):
                 mapping.append([a, a]) #x

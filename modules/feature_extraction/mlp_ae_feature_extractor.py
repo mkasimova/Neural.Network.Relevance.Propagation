@@ -52,6 +52,6 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP Autoencoder ...")
-        res = MlpFeatureExtractor.get_feature_importance(self, self.classifier, data, data) #Note same input as output
+        res = MlpFeatureExtractor.get_feature_importance(self, self.classifier, data, data) #Note same input as output. #TODO: Should we get the dimensionality reduced data?
         return res.mean(axis=1)
 

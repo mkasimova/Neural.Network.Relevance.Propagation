@@ -248,9 +248,6 @@ class DataGenerator(object):
         xyz = self._rotate(phi, xyz, [0,1]) #rotate xy plane plane
         xyz = self._rotate(theta, xyz, [1,2]) #rotate new yz plane
         xyz = self._rotate(psi, xyz, [0,1]) #rotate new xy plane
-
-        #rotate yz plane    
-        xyz = self._rotate(theta, xyz, [1,2])
         return xyz
     
     def _rotate(self, phi, xyz, dims):

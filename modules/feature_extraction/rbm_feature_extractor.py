@@ -88,7 +88,7 @@ class RbmFeatureExtractor(FeatureExtractor):
         elif self.method=="from_components":
 
             # Extract components and compute their variance
-            components = classifier.components_ #TODO How should we sort components? Based on 75% variance as for PCA? Or should we use a gap between variances?
+            components = classifier.components_
             projection = scipy.special.expit( np.matmul(data, components.T) )
             components_var = projection.var(axis=0)
 

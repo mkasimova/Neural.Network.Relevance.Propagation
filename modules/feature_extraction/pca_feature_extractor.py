@@ -44,7 +44,7 @@ class PCAFeatureExtractor(FeatureExtractor):
         n_components = 1
         total_var_explained = explained_var[0]
         for i in range(1, explained_var.shape[0]):
-            if total_var_explained + explained_var[i] < self.variance_cutoff and i < n_clusters:  #TODO should we keep both conditions?
+            if total_var_explained + explained_var[i] < self.variance_cutoff and i < n_clusters: #TODO get rid of i < n_clusters? use gap as a condition first (the same for RBM)
                 total_var_explained += explained_var[i]
                 n_components += 1
         return n_components

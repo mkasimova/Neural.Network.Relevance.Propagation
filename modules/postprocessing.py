@@ -204,40 +204,6 @@ class PostProcessor(object):
 
         self.auc = auc/n_clusters
 
-        '''
-        n_residues = self.importance_per_residue.shape[0]
-        actives = np.chararray(n_residues)
-        actives[:] = 'd'
-        ind_a = [y for x in self.predefined_relevant_residues for y in x]
-        actives[ind_a] = 'a'
-
-        actives_len = len(ind_a)
-        decoys_len = n_residues - actives_len
-
-        ind_scores_sorted = np.argsort(-self.importance_per_residue)
-        actives_sorted = actives[ind_scores_sorted]
-
-        tp=0
-        fp=0
-        tp_rate = []
-        fp_rate = []
-        for i in actives_sorted:
-            if i=='a':
-                tp+=1
-            else:
-                fp+=1
-            tp_rate.append(float(tp)/float(actives_len))
-            fp_rate.append(float(fp)/float(decoys_len))
-
-        auc = 0
-        for i in range(len(fp_rate)-1):
-            auc += (fp_rate[i+1]-fp_rate[i])*(tp_rate[i+1]+tp_rate[i])/2
-
-        self.tp_rate = tp_rate
-        self.fp_rate = fp_rate
-        self.auc = auc
-        '''
-
     def persist(self):
         """
         Save .npy files of the different averages and pdb files with the beta column set to importance

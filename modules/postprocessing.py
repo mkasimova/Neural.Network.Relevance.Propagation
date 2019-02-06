@@ -29,8 +29,8 @@ class PostProcessor(object):
         :param feature_to_resids: an array of dimension nfeatures*2 which tells which two residues are involved in a feature
         """
         self.extractor = extractor
-        self.feature_importance = feature_importance
-        self.std_feature_importance = std_feature_importance
+        self.feature_importances = feature_importance
+        self.std_feature_importances = std_feature_importance
         self.cluster_indices = cluster_indices
         self.working_dir = working_dir
         self.pdb_file = pdb_file
@@ -39,14 +39,14 @@ class PostProcessor(object):
         # Rescale and filter results if needed
         self.rescale_results = rescale_results
         if rescale_results:
-            self.feature_importance, self.std_feature_importance = utils.rescale_feature_importance(self.feature_importance, self.std_feature_importance)
+            self.feature_importances, self.std_feature_importances = utils.rescale_feature_importance(self.feature_importances, self.std_feature_importances)
         if filter_results:
-            self.feature_importance, self.std_feature_importance = filtering.filter_feature_importance(self.feature_importance, self.std_feature_importance)
+            self.feature_importances, self.std_feature_importances = filtering.filter_feature_importance(self.feature_importances, self.std_feature_importances)
 
-        # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importance and self.std_feature_importance)
-        self.indices_filtered = np.where(self.feature_importance[:,0]==-1)[0]
-        self.feature_importance[self.indices_filtered,:] = 0
-        self.std_feature_importance[self.indices_filtered,:] = 0
+        # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importances and self.std_feature_importances)
+        self.indices_filtered = np.where(self.feature_importances[:,0]==-1)[0]
+        self.feature_importances[self.indices_filtered,:] = 0
+        self.std_feature_importances[self.indices_filtered,:] = 0
 
         # Set mapping from features to residues
         self.nfeatures, self.nclusters = feature_importance.shape
@@ -57,8 +57,6 @@ class PostProcessor(object):
         self.feature_to_resids = feature_to_resids
 
         # Set average feature importances to None
-        self.importance_per_cluster = None
-        self.std_importance_per_cluster = None
         self.importance_per_residue_and_cluster = None
         self.std_importance_per_residue_and_cluster = None
         self.importance_per_residue = None
@@ -80,8 +78,6 @@ class PostProcessor(object):
         Sets the fields importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
         :return: itself
         """
-        self.importance_per_cluster = self.feature_importance # compute_importance_per_cluster(importance, cluster_indices)
-        self.std_importance_per_cluster = self.std_feature_importance
         self._compute_importance_per_residue_and_cluster()
         self._compute_importance_per_residue()
 
@@ -89,7 +85,7 @@ class PostProcessor(object):
 
     def _compute_importance_per_residue_and_cluster(self):
 
-        importance = self.importance_per_cluster
+        importance = self.feature_importances
         index_to_resid = np.unique(np.asarray(self.feature_to_resids.flatten())) # at index X we have residue number
         self.nresidues = len(index_to_resid)
 
@@ -106,8 +102,8 @@ class PostProcessor(object):
             res2 = res_id_to_index[res2]
             importance_per_residue_and_cluster[res1, :] += rel
             importance_per_residue_and_cluster[res2, :] += rel
-            std_importance[res1,:] += self.std_importance_per_cluster[feature_idx,:]**2
-            std_importance[res2,:] += self.std_importance_per_cluster[feature_idx,:]**2
+            std_importance[res1,:] += self.std_feature_importances[feature_idx,:]**2
+            std_importance[res2,:] += self.std_feature_importances[feature_idx,:]**2
         std_importance = np.sqrt(std_importance)
 
         if self.rescale_results:
@@ -161,7 +157,7 @@ class PostProcessor(object):
         Computes separation of clusters in the projected space given by the feature importances
         """
         self.data_projector = dp.DataProjector(self.extractor.samples,self.cluster_indices)
-        self.data_projector.project(self.importance_per_cluster).score_projection()
+        self.data_projector.project(self.feature_importances).score_projection()
 
         return self
 
@@ -214,11 +210,10 @@ class PostProcessor(object):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        np.save(directory + "importance_per_cluster", self.importance_per_cluster)
         np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
         np.save(directory + "importance_per_residue", self.importance_per_residue)
-        np.save(directory + "feature_importance", self.feature_importance)
-        np.save(directory + "std_feature_importance", self.std_feature_importance)
+        np.save(directory + "feature_importance", self.feature_importances)
+        np.save(directory + "std_feature_importance", self.std_feature_importances)
 
         if self.pdb_file is not None:
             pdb = PandasPdb()

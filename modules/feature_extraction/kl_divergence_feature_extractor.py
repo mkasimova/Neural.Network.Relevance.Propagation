@@ -18,15 +18,17 @@ logger = logging.getLogger("KL divergence")
 class KLFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5,
-                 cluster_split_method="one_vs_rest", bin_size=None):
+                 cluster_split_method="one_vs_rest", bin_width=None):
 
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name="KL")
         logger.debug("Initializing KL with the following parameters: \
                       n_splits %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      bin_size %s", \
+                      bin_width %s", \
                       n_splits, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      bin_size)
-        self.bin_size = bin_size
+                      bin_width)
+        self.bin_width = bin_width
+        if bin_width is None:
+            logger.debug('Using standard deviation of each feature as bin size.')
         self.feature_importances = None
         self.cluster_split_method = cluster_split_method
 
@@ -44,23 +46,27 @@ class KLFeatureExtractor(FeatureExtractor):
         Compute Kullback-Leibler divergence
         """
         n_features = x.shape[1]
-        if self.bin_size is None:
-            std = np.zeros(n_features)
-            for i_feature in range(n_features):
-                std[i_feature] = np.std(x[:, i_feature]) #TODO do per feature
-            self.bin_size = np.mean(std)
-            logger.debug("bin_size for KL is %s", self.bin_size)
 
         DKL = np.zeros(n_features)
+        if self.bin_width is not None:
+            tmp_bin_width = self.bin_width
+
         for i_feature in range(n_features):
-            bin_min = np.min(np.concatenate((x[:, i_feature], y[:, i_feature])))
-            bin_max = np.max(np.concatenate((x[:, i_feature], y[:, i_feature])))
-            if self.bin_size >= (bin_max - bin_min):
+            xy = np.concatenate((x[:, i_feature], y[:, i_feature]))
+            bin_min = np.min(xy)
+            bin_max = np.max(xy)
+
+            if self.bin_width is None:
+                tmp_bin_width = np.std(x[:,i_feature])
+                if tmp_bin_width == 0:
+                    tmp_bin_width = 0.1 # Set arbitrary bin width if zero
+
+            if tmp_bin_width >= (bin_max - bin_min):
                 DKL[i_feature] = 0
             else:
-                bin_n = int((bin_max - bin_min) / self.bin_size)
-                x_prob = np.histogram(x[:, i_feature], bins=bin_n, range=(bin_min, bin_max), density=True)[0] + 1e-9
-                y_prob = np.histogram(y[:, i_feature], bins=bin_n, range=(bin_min, bin_max), density=True)[0] + 1e-9
+                bin_n = int((bin_max - bin_min) / tmp_bin_width)
+                x_prob = np.histogram(x[:,i_feature], bins=bin_n, range=(bin_min, bin_max), density=True)[0] + 1e-9
+                y_prob = np.histogram(y[:,i_feature], bins=bin_n, range=(bin_min, bin_max), density=True)[0] + 1e-9
                 DKL[i_feature] = 0.5 * (entropy(x_prob, y_prob) + entropy(y_prob, x_prob)) # An alternative is to use max
         return DKL
 

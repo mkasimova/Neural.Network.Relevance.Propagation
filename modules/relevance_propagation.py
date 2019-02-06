@@ -24,9 +24,6 @@ class RelevancePropagator(object):
         # Reinstantiating the neural network
         network = Network(self.layers)
         Y = network.forward(X)
-        if T is None:
-            #Useful for example for RBMs and autoencoders
-            T = Y
         # Performing relevance propagation
         D = network.relprop(Y * T)
         return D

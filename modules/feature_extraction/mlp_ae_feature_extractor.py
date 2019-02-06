@@ -26,7 +26,8 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
                  solver='lbfgs',
                  activation=relprop.relu,
                  randomize=True,
-                 training_max_iter=100000):
+                 training_max_iter=100000,
+                 use_reconstruction_for_lrp=False):
         MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
                  filter_by_distance_cutoff=filter_by_distance_cutoff,
                  contact_cutoff=contact_cutoff,
@@ -37,6 +38,7 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
                  randomize=randomize,
                  training_max_iter=training_max_iter)
         self.is_unsupervised = True
+        self.use_reconstruction_for_lrp = use_reconstruction_for_lrp
 
     def train(self, train_set, train_labels):
         logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
@@ -52,6 +54,7 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP Autoencoder ...")
-        res = MlpFeatureExtractor.get_feature_importance(self, self.classifier, data, data) #Note same input as output. #TODO: Should we get the dimensionality reduced data?
+        target_values = self.classifier.predict(data) if self.use_reconstruction_for_lrp else data
+        res = MlpFeatureExtractor.get_feature_importance(self, self.classifier, data, target_values) 
         return res.mean(axis=1)
 

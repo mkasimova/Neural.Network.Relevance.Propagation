@@ -238,10 +238,6 @@ class DataGenerator(object):
 
     def _random_rotation(self, xyz):
         """Rotate each frame randomly along all axis"""
-    #     for frame_idx in range(len(xyz)):
-    #         q = Quaternion.random() #TOO SLOW!
-    #         for atom_idx in range(xyz.shape[1]):
-    #             xyz[frame_idx, atom_idx] = q.rotate(xyz[frame_idx, atom_idx])
         #Random angles between 0 and 2pi
         phi, psi, theta = 2*np.pi*np.random.rand(), 2*np.pi*np.random.rand(), np.pi*np.random.rand()
         #see http://mathworld.wolfram.com/EulerAngles.html

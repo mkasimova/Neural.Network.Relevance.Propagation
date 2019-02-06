@@ -61,7 +61,7 @@ class SingleLayerELMClassifier(object):
         self.intercepts_ = [b1, np.zeros((1, t.shape[1]))]
 
     def _random_matrix(self, x):
-        return np.random.normal(0, 0.25, (x, self.n_nodes)) #TODO why this shape?
+        return np.random.normal(0, 0.25, (x, self.n_nodes))
 
     def _g_ELM(self, x):
         if self.activation_func == relprop.relu: # good if you use regularization

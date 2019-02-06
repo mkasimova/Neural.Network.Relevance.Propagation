@@ -36,7 +36,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
                       hidden_layer_sizes %s, solver %s, activation function %s, randomize %s, training_max_iter %s", \
                       n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      hidden_layer_sizes, solver, activation, randomize, training_max_iter) #TODO for all feature extractors?
+                      hidden_layer_sizes, solver, activation, randomize, training_max_iter)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.solver = solver
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:

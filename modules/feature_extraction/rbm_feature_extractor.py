@@ -43,14 +43,14 @@ class RbmFeatureExtractor(FeatureExtractor):
 
         classifier = BernoulliRBM(
             random_state=(None if self.randomize else 89274),
-            n_components=self.n_components
-        )
+            n_components=self.n_components)
         classifier.fit(train_set)
         return classifier
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using RBM ...")
-
+        logger.info("RBM psuedo-loglikelihood: "+str(classifier.score_samples(data).mean()))
+		
         if self.method=="from_lrp":
             nframes, nfeatures = data.shape
 
@@ -89,7 +89,7 @@ class RbmFeatureExtractor(FeatureExtractor):
         elif self.method=="from_components":
 
             # Extract components and compute their variance
-            components = classifier.components_ #TODO How should we sort components? Based on 75% variance as for PCA? Or should we use a gap between variances?
+            components = classifier.components_
             projection = scipy.special.expit( np.matmul(data, components.T) )
             components_var = projection.var(axis=0)
 

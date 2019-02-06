@@ -10,8 +10,6 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 from scipy.stats import entropy
-from sklearn.mixture import GaussianMixture #TODO Remove?
-from scipy.stats import multivariate_normal #TODO Remove?
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 
 logger = logging.getLogger("KL divergence")
@@ -49,10 +47,8 @@ class KLFeatureExtractor(FeatureExtractor):
         if self.bin_size is None:
             std = np.zeros(n_features)
             for i_feature in range(n_features):
-                #Can be done with x.std(axis=X).mean() instead of loop here.
-                std[i_feature] = np.std(x[:, i_feature])
-            self.bin_size = np.mean(std) #TODO should we try adaptive bin_size, meaning different per feature? this should be useful when different features are fed
-            # As long as we use MaxMinScaler it maxes sense to have fixed bindwith, or?
+                std[i_feature] = np.std(x[:, i_feature]) #TODO do per feature
+            self.bin_size = np.mean(std)
             logger.debug("bin_size for KL is %s", self.bin_size)
 
         DKL = np.zeros(n_features)
@@ -65,7 +61,7 @@ class KLFeatureExtractor(FeatureExtractor):
                 bin_n = int((bin_max - bin_min) / self.bin_size)
                 x_prob = np.histogram(x[:, i_feature], bins=bin_n, range=(bin_min, bin_max), density=True)[0] + 1e-9
                 y_prob = np.histogram(y[:, i_feature], bins=bin_n, range=(bin_min, bin_max), density=True)[0] + 1e-9
-                DKL[i_feature] = 0.5 * (entropy(x_prob, y_prob) + entropy(y_prob, x_prob)) #Is mean the way to go? What about using max or min?
+                DKL[i_feature] = 0.5 * (entropy(x_prob, y_prob) + entropy(y_prob, x_prob)) # An alternative is to use max
         return DKL
 
     def get_feature_importance(self, model, data, labels):
@@ -83,22 +79,5 @@ class KLFeatureExtractor(FeatureExtractor):
         for i_cluster in range(n_clusters):
             data_cluster = data[labels[:, i_cluster] == 1, :]
             data_rest = data[labels[:, i_cluster] == 0, :]
-            self.feature_importances[i_cluster, :] = self._KL_divergence(data_cluster[:,:,np.newaxis], data_rest[:,:,np.newaxis]) #TODO why do we need newaxis?
+            self.feature_importances[i_cluster, :] = self._KL_divergence(data_cluster, data_rest)
         return self     
-            
-    def _train_one_vs_one(self, data, labels):
-        """Alternative method comparing one vs one instead of one vs all"""
-        nclusters = labels.shape[1]
-        nfeatures = data.shape[1]
-        self.feature_importances = np.zeros((nfeatures, nclusters)) #TODO shape is different from train function - (nclusters,nfeatures)
-        for c1 in range(nclusters):
-            data_c1 = data[labels[:, c1] > 0] #TODO==1
-            for c2 in range(c1 + 1, nclusters):
-                data_c2 = data[labels[:, c2] > 0] #TODO==1
-                if len(data_c1) == 0 or len(data_c2) == 0:
-                    logger.warn("While computing KL noticed unbalanced data partitioning: no data for one cluster. Ignoring ...")
-                    continue
-                dkl = self.KL_divergence(data_c1, data_c2)
-                self.feature_importances[:, [c1, c2]] += dkl  # add relevance for both these clusters
-
-        return self

@@ -42,7 +42,7 @@ class PCAFeatureExtractor(FeatureExtractor):
         n_components = 1
         total_var_explained = explained_var[0]
         for i in range(1, explained_var.shape[0]):
-            if total_var_explained + explained_var[i] < 0.75 and i < n_clusters: #TODO should we keep both conditions?
+            if total_var_explained + explained_var[i] < 0.75 and i < n_clusters: #TODO should we keep both conditions? #TODO keep only total_var_explained in the condition?
                 total_var_explained += explained_var[i]
                 n_components += 1
         return n_components

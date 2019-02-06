@@ -62,7 +62,7 @@ class RbmFeatureExtractor(FeatureExtractor):
             propagator = relprop.RelevancePropagator(layers)
             relevance = propagator.propagate(data, labels_propagation)
 
-            # Average relevance per cluster
+            # Average relevance per cluster #TODO does it make sense to do it per cluster?
             nclusters = labels.shape[1]
 
             result = np.zeros((nfeatures, nclusters))
@@ -103,7 +103,7 @@ class RbmFeatureExtractor(FeatureExtractor):
             components_var_sum = components_var.sum()
             nclusters = labels.shape[1]
             for i in range(1,components_var_sorted.shape[0]):
-                if var + components_var_sorted[i] < 0.75*components_var_sum and i < nclusters:
+                if var < 0.75*components_var_sum and i < nclusters: #TODO should we keep both conditions?
                     var += components_var_sorted[i]
                     result = np.vstack(( result,np.abs(components_sorted[i])*components_var_sorted[i] ))
                 else:

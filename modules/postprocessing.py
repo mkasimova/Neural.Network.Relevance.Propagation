@@ -31,11 +31,23 @@ class PostProcessor(object):
         self.extractor = extractor
         self.feature_importance = feature_importance
         self.std_feature_importance = std_feature_importance
+        self.test_set_errors = test_set_errors
         self.cluster_indices = cluster_indices
-        self.working_dir = working_dir
+        self.rescale_results = rescale_results
+        self.filter_results = filter_results
+        self.feature_to_resids = feature_to_resids
         self.pdb_file = pdb_file
         self.predefined_relevant_residues = predefined_relevant_residues
 
+        self.directory = working_dir + "/{}/".format(self.extractor.name)
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+
+    def ():
+        """
+        Writes general output - feature importance and std_feature_importance
+        For 
+        """
         # Rescale and filter results if needed
         self.rescale_results = rescale_results
         if rescale_results:
@@ -48,37 +60,39 @@ class PostProcessor(object):
         self.feature_importance[self.indices_filtered,:] = 0
         self.std_feature_importance[self.indices_filtered,:] = 0
 
-        # Set mapping from features to residues
-        self.nfeatures, self.nclusters = feature_importance.shape
+        np.save(self.directory + "feature_importance", self.feature_importance)
+        np.save(self.directory + "std_feature_importance", self.std_feature_importance)
+
+        return self
+
+    def average_per_residue_cluster(self):
+        """
+        Computes average importance per residue, and per residue and cluster
+        Sets the fields importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
+        :return: itself
+        """
+        self.importance_per_cluster = self.feature_importance # compute_importance_per_cluster(importance, cluster_indices)
+        self.std_importance_per_cluster = self.std_feature_importance
+        self._compute_importance_per_residue_and_cluster()
+        self._compute_importance_per_residue()
+
+        return self
+
+
+    def set_mapping_from_feat_2_resid():
+        self.nfeatures = feature_importance.shape[0] #TODO modified by Marina
         if feature_to_resids is None and self.pdb_file is None:
             feature_to_resids = utils.get_default_feature_to_resids(self.nfeatures)
         elif feature_to_resids is None and self.pdb_file is not None:
             feature_to_resids = utils.get_feature_to_resids_from_pdb(self.nfeatures,self.pdb_file)
         self.feature_to_resids = feature_to_resids
 
-        # Set average feature importances to None
-        self.importance_per_cluster = None
-        self.std_importance_per_cluster = None
-        self.importance_per_residue_and_cluster = None
-        self.std_importance_per_residue_and_cluster = None
-        self.importance_per_residue = None
-        self.std_importance_per_residue = None
-        self.index_to_resid = None
-
-        # Performance metrics
-        self.predefined_relevant_residues = predefined_relevant_residues
-        self.average_std = None
-        self.test_set_errors = test_set_errors.mean()
-        self.data_projector = None
-        self.tp_rate = None
-        self.fp_rate = None
-        self.auc = None
-
     def average(self):
         """
         Computes average importance per cluster and residue and residue etc.
         Sets the fields importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
         :return: itself
+        used for MLP and KL
         """
         self.importance_per_cluster = self.feature_importance # compute_importance_per_cluster(importance, cluster_indices)
         self.std_importance_per_cluster = self.std_feature_importance

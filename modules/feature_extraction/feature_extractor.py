@@ -42,14 +42,14 @@ class FeatureExtractor(object):
         Split the data into n_splits training and test sets
         """
         if self.n_splits < 2:
-            logger.info("Using all data in training and validation sets")
+            logger.debug("Using all data in training and validation sets")
             all_indices = np.empty((1, len(self.samples)))
             for i in range(len(self.samples)):
                 all_indices[0, i] = i
             all_indices = all_indices.astype(int)
             return all_indices, all_indices
 
-        kf = KFold(n_splits=self.n_splits, shuffle=False)
+        kf = KFold(n_splits=self.n_splits, shuffle=False) #TODO put else?
 
         train_inds = []
         test_inds = []
@@ -79,7 +79,7 @@ class FeatureExtractor(object):
 
     def extract_features(self):
 
-        logger.info("Performing feature extraction with %s on data of shape %s", self.name, self.samples.shape)
+        logger.info("Performing feature extraction with %s using %s samples and %s features ...", self.name, samples.shape[0], samples.shape[1])
 
         # Create a list of feature indices
         # This is needed when filtering is applied and re-mapping is further used
@@ -112,7 +112,7 @@ class FeatureExtractor(object):
                 # Train model
                 model = self.train(train_set, train_labels)
 
-                if self.name != "PCA" and model is not None and hasattr(model, "predict"): #TODO remove PCA and model is not None conditions?
+                if self.name != "PCA" and model is not None and hasattr(model, "predict"): #TODO remove PCA condition?
                     # Test classifier
                     error = utils.check_for_overfit(test_set, test_labels, model)
                     errors[i_split * self.n_iterations + i_iter] = error
@@ -132,9 +132,11 @@ class FeatureExtractor(object):
 
         feats = np.asarray(feats)
 
+        # Average over splits and iterations
         std_feats = np.std(feats, axis=0)
         feats = np.mean(feats, axis=0)
 
+        # Make feats have the same dimensionality for all feature extractors
         if len(feats.shape) == 1 and len(std_feats.shape) == 1:
             feats = feats.reshape((feats.shape[0], 1))
             std_feats = std_feats.reshape((std_feats.shape[0], 1))
@@ -145,5 +147,5 @@ class FeatureExtractor(object):
 
         logger.info("Done with %s", self.name)
         logger.info("------------------------------")
-        self.samples = np.copy(original_samples)
+        self.samples = np.copy(original_samples) #TODO do we need this?
         return feats, std_feats, errors

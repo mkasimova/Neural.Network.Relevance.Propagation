@@ -209,8 +209,8 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
         fig_counter = 3
         for pp in postprocessors:
             dp = pp[i_run].data_projector
-            if dp.raw_projection is not None:
-                vis_projected_data(dp.raw_projection, dp.labels, plt.figure(fig_counter), "Projection "+pp[i_run].extractor.name)
+            if dp.projection is not None:
+                vis_projected_data(dp.projection, dp.labels, plt.figure(fig_counter), "Projection "+pp[i_run].extractor.name)
                 fig_counter += 1
 
     plt.show()

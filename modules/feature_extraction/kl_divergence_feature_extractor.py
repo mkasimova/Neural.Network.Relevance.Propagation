@@ -75,15 +75,15 @@ class KLFeatureExtractor(FeatureExtractor):
         Get the feature importance of KL divergence by comparing each cluster to all other clusters
         """
         logger.debug("Extracting feature importance using KL ...")
-        return self.feature_importances.T
+        return self.feature_importances
     
     def _train_one_vs_rest(self, data, labels):
         n_clusters = labels.shape[1]
         n_features = data.shape[1]
 
-        self.feature_importances = np.zeros((n_clusters, n_features))
+        self.feature_importances = np.zeros((n_features,n_clusters))
         for i_cluster in range(n_clusters):
             data_cluster = data[labels[:, i_cluster] == 1, :]
             data_rest = data[labels[:, i_cluster] == 0, :]
-            self.feature_importances[i_cluster, :] = self._KL_divergence(data_cluster, data_rest)
+            self.feature_importances[:,i_cluster] = self._KL_divergence(data_cluster, data_rest)
         return self     

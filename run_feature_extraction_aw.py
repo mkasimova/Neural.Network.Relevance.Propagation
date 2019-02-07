@@ -14,7 +14,7 @@ import comparison_bw_fe as comp_fe
 
 def main(parser):
 
-    n_runs = 1
+    n_runs = 3
 
     args = parser.parse_args()
     working_dir = args.out_directory
@@ -73,7 +73,7 @@ def main(parser):
 
         postprocessors.append(tmp_pp)
 
-    visualization.visualize(postprocessors)
+    visualization.visualize(postprocessors, show_projected_data=True)
 
 parser = argparse.ArgumentParser(epilog='Feature importance extraction.')
 parser.add_argument('-od', '--out_directory', help='Folder where files are written.', default='')

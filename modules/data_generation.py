@@ -15,7 +15,7 @@ logger = logging.getLogger("dataGen")
 
 class DataGenerator(object):
 
-    def __init__(self, natoms, nclusters, natoms_per_cluster, nframes_per_cluster, test_model='linear', noise_level=1e-2, noise_natoms=None, displacement=0.1):
+    def __init__(self, natoms, nclusters, natoms_per_cluster, nframes_per_cluster, test_model='linear', noise_level=1e-2, noise_natoms=None, displacement=0.1, feature_type='dist'):
         """
         Class which generates artificial atoms, puts them into artifical clusters and adds noise to them
         :param natoms: number of atoms
@@ -25,11 +25,11 @@ class DataGenerator(object):
         :param noise_level: strength of noise to be added
         :param noise_natoms: number of atoms for constant noise
         :param displacement: length of displacement vector for cluster generation 
+        :param feature_type: 'dist' to use inter-atomic distances (natoms*(natoms-1)/2 features in total) or anything that starts with 'cartesian' to use atom xyz coordiantes (3*natoms features). Use 'cartesian_rot', 'cartesian_trans' or 'cartesian_rot_trans' to add a random roation and/or translations to the xyz coordaintes
         """
         if natoms < nclusters:
             raise Exception("Cannot have more clusters than atoms")
         self.natoms = natoms
-        self.nfeatures = int(self.natoms*(self.natoms-1)/2)
         self.nclusters = nclusters
         self.natoms_per_cluster = natoms_per_cluster
         self.nframes_per_cluster = nframes_per_cluster
@@ -37,6 +37,8 @@ class DataGenerator(object):
         self.noise_level = noise_level
         self.noise_natoms = noise_natoms
         self.displacement = displacement
+        self.feature_type = feature_type
+        self.nfeatures = int(self.natoms*(self.natoms-1)/2) if self.feature_type == 'dist' else self.natoms*3 #For xyz
 
     def select_atoms_to_move(self):
 
@@ -166,30 +168,88 @@ class DataGenerator(object):
                             conf[a,:] += [10*self.displacement,-10*self.displacement,10*self.displacement]
 
                 conf = self._perturb(conf)
+                if self.feature_type.startswith("cartesian"):
+                    if "_rot" in self.feature_type:
+                        conf = self._random_rotation(conf)
+                    if "_trans" in self.feature_type:
+                        conf = self._random_translation(conf) 
                 features = self._to_features(conf)
                 data[frame_idx,:] = features
                 frame_idx += 1
 
         return data, labels
 
+    
     def _generate_conformation(self):
         conf = np.zeros((self.natoms, 3))
         for n in range(self.natoms):
             conf[n] = (np.random.rand(3,)*2 -1) # Distributed between [-1,1)
         return conf
 
+    
     def _perturb(self, conf):
         for n in range(self.natoms):
             conf[n] += (np.random.rand(3,)*2 - 1)*self.noise_level
         return conf
+    
 
     def _to_features(self, conf):
-        dists = np.empty((self.nfeatures,))
+        feats = np.empty((self.nfeatures,))
         idx = 0
         for n1, coords1 in enumerate(conf):
-            for n2 in range(n1 + 1, self.natoms):
-                coords2 = conf[n2]
-                dists[idx] = np.linalg.norm(coords1-coords2) # Not inverse dist, is it ok?
+            if self.feature_type.startswith("cartesian"):
+                feats[idx] = coords1[0] #x
                 idx += 1
-        return dists
+                feats[idx] = coords1[1] #y
+                idx += 1
+                feats[idx] = coords1[2] #z
+                idx += 1
+            else:
+                for n2 in range(n1 + 1, self.natoms):
+                    coords2 = conf[n2]
+                    feats[idx] = np.linalg.norm(coords1-coords2) # Not inverse dist, is it ok?
+                    idx += 1
+        return feats
+    
+    
+    def feature_to_resids(self):
+        if self.feature_type == 'dist':
+            return None # TODO fix later; default anyway
+        elif self.feature_type.startswith("cartesian"):
+            mapping = []
+            for a in range(self.natoms):
+                mapping.append([a, a]) #x
+                mapping.append([a, a]) #y
+                mapping.append([a, a]) #z
+            return np.array(mapping)
+        else:
+            raise Exception("Unknown feature type {}".format(self.feature_type))
+            
+            
+    def _random_translation(self, xyz):
+        """Translate each frame randomly along all axis"""
+        [dx, dy, dz] = 5*(np.random.rand(3) - 0.5) #random values within box size
+        xyz[:, 0] += dx
+        xyz[:, 1] += dy
+        xyz[:, 2] += dz
+        #xyz = xyz % 2 - 1 #enforce PBC, TODO This assumes we have support for periodic PBC which we don't I think
+        return xyz
+    
 
+    def _random_rotation(self, xyz):
+        """Rotate each frame randomly along all axis"""
+        #Random angles between 0 and 2pi
+        phi, psi, theta = 2*np.pi*np.random.rand(), 2*np.pi*np.random.rand(), np.pi*np.random.rand()
+        #see http://mathworld.wolfram.com/EulerAngles.html
+        xyz = self._rotate(phi, xyz, [0,1]) #rotate xy plane plane
+        xyz = self._rotate(theta, xyz, [1,2]) #rotate new yz plane
+        xyz = self._rotate(psi, xyz, [0,1]) #rotate new xy plane
+        return xyz
+    
+    def _rotate(self, phi, xyz, dims):
+        cos_phi = np.cos(phi)
+        sin_phi = np.sin(phi)
+        xy = xyz[:,dims] #.swapaxes(0,1)
+        xyz[:,dims[0]] = (cos_phi*xy[:,0]+sin_phi*xy[:,1]) 
+        xyz[:,dims[1]] = (-sin_phi*xy[:,0]+cos_phi*xy[:,1])
+        return xyz

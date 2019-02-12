@@ -26,6 +26,7 @@ class RbmFeatureExtractor(FeatureExtractor):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
                                   contact_cutoff=contact_cutoff,
+                                  is_unsupervised=True,
                                   name=name)
         logger.debug("Initializing RBM with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \

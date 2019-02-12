@@ -14,7 +14,6 @@ from biopandas.pdb import PandasPdb
 from sklearn.preprocessing import MinMaxScaler
 logger = logging.getLogger("utils")
 
-
 def vectorize(data):
     """
     Vectorizes the input
@@ -55,22 +54,24 @@ def keep_datapoints(data, clustering, points_to_keep=[]):
     return data_keep, clustering_keep
 
 
-def scale(data):
+def scale(data, remove_outliers=True):
     """
     Scales the input and removes outliers
     """
     perc_2 = np.zeros(data.shape[1])
     perc_98 = np.zeros(data.shape[1])
 
-    for i in range(data.shape[1]):
-        perc_2[i] = np.percentile(data[:, i], 2)
-        perc_98[i] = np.percentile(data[:, i], 98)
+    #TODO you should be able to turn off this outlier filtration -> now you cannot do inverse scaling!
+    if remove_outliers:
+        for i in range(data.shape[1]):
+            perc_2[i] = np.percentile(data[:, i], 2)
+            perc_98[i] = np.percentile(data[:, i], 98)
 
-    for i in range(data.shape[1]):
-        perc_2_ind = np.where(data[:, i] < perc_2[i])[0]
-        perc_98_ind = np.where(data[:, i] > perc_98[i])[0]
-        data[perc_2_ind, i] = perc_2[i]
-        data[perc_98_ind, i] = perc_98[i]
+        for i in range(data.shape[1]):
+            perc_2_ind = np.where(data[:, i] < perc_2[i])[0]
+            perc_98_ind = np.where(data[:, i] > perc_98[i])[0]
+            data[perc_2_ind, i] = perc_2[i]
+            data[perc_98_ind, i] = perc_98[i]
 
     scaler = MinMaxScaler()
     scaler.fit(data)

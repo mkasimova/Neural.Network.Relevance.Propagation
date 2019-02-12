@@ -10,7 +10,6 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
-import networkx as nx
 import modules.utils as utils
 from scipy.spatial.distance import squareform
 from scipy.stats import multivariate_normal
@@ -31,79 +30,36 @@ class DataProjector():
 
         self.n_clusters = int(np.rint(self.labels.max() + 1))
         
-        self.basis_vector_projection = None
-        self.raw_projection = None
+        self.projection = None
 
         self.separation_score = None
         self.projection_class_entropy = None
         self.cluster_projection_class_entropy = None
-
-        self.test_projection_class_entropy = None
         return
 
-    def project(self, importance_per_cluster=None, feature_importance=None, do_coloring=False):
+    def project(self, feature_importances):
         """
         Project distances. Performs:
           1. Raw projection (projection onto cluster feature importances if feature_importances_per_cluster is given)
           2. Basis vector projection (basis vectors identified using graph coloring).
         """
 
-        if importance_per_cluster is not None:
-            self.raw_projection = self._project_on_relevance_basis_vectors(self.samples, importance_per_cluster)
-
-        if do_coloring and feature_importance is not None:
-            logger.info("Identifying basis vectors")
-            relevance_basis_vectors = self._identify_relevance_basis_vectors(squareform(feature_importance[:,0]))
-            logger.info("Projecting onto "+str(relevance_basis_vectors.shape[1])+" identified dimensions.")
-            if relevance_basis_vectors.shape[1] < 10 and relevance_basis_vectors.shape[0] > 0:
-                self.basis_vector_projection = self._project_on_relevance_basis_vectors(self.samples, relevance_basis_vectors)
-		
+        self.projection = self._project_on_relevance_basis_vectors(self.samples, feature_importances)
+        
         return self
 
-    def evaluate_importance_robustness(self, importance_per_cluster):
+    def score_projection(self, projection=None, use_GMM=True):
         """
-        Evaluating robustness of importances by removing one feature at a time and computing separation scores and
-        total posterior entropy.
-        :return:
-        """
-        tmp_importances = np.copy(importance_per_cluster)
-
-        nonzero_inds = np.where(tmp_importances > 0)[0]
-        sort_importance_ind = np.argsort(tmp_importances[nonzero_inds].sum(axis=1))
-        n_chunks = 5.0
-        n_features = nonzero_inds.shape[0]
-        chunk_size = int(n_features/n_chunks)
-
-        self.test_projection_class_entropy = np.zeros(int(n_chunks))
-        logger.info("Evaluating importance robustness by removing features")
-
-        for i_feat in range(int(n_chunks)):
-            logger.info(str(i_feat+1)+'/'+str(int(n_chunks)))
-            # Remove feature
-            tmp_importances[nonzero_inds[sort_importance_ind[int(i_feat*chunk_size):int((i_feat+1)*chunk_size)]],:] = 0
-
-            # Re-project points and compute projection uncertainty (entropy)
-            projection = self._project_on_relevance_basis_vectors(self.samples, tmp_importances)
-            _, self.test_projection_class_entropy[i_feat] = self.score_projection(projection=projection)
-
-        return
-
-
-    def score_projection(self, raw_projection=True, use_GMM=True, projection=None):
-        """
-        Score the resulting projection by approximating each cluster as a Gaussian (or Gaussian mixture)
+        Score the resulting projection by approximating each cluster as a Gaussian mixture (or Gaussian)
         distribution and classify points using the posterior distribution over classes.
         The number of correctly classified points divided by the number of points is the projection score.
         :return: itself
         """
 
         if projection is None:
-            if raw_projection:
-                proj = np.copy(self.raw_projection)
-                logger.info("Scoring raw projections.")
-            elif self.basis_vector_projection is not None:
-                proj = np.copy(self.basis_vector_projection)
-                logger.info("Scoring basis vector projections.")
+            if self.projection is not None:
+                proj = np.copy(self.projection)
+                logger.info("Scoring projections.")
             else:
                 logger.warn("No projection data.")
                 return self
@@ -124,7 +80,7 @@ class DataProjector():
             if use_GMM:
                 posteriors = self._compute_GM_posterior(proj[i_point, :], priors, GMMs)
             else:
-                posteriors = self._compute_posterior(proj[i_point,:], priors, means, covs)
+                posteriors = self._compute_gaussian_posterior(proj[i_point,:], priors, means, covs)
             class_entropies[i_point] = entropy(posteriors)
             new_classes[i_point] = np.argmax(posteriors)
 
@@ -135,7 +91,6 @@ class DataProjector():
             self.projection_class_entropy = class_entropies.mean()
         else:
             return correct_separation.sum()/n_points, class_entropies.mean()
-
 
         # Compute per-cluster projection entropy
         self.cluster_projection_class_entropy = np.zeros(self.n_clusters)
@@ -149,15 +104,15 @@ class DataProjector():
         """
         Write projected data to files.
         """
-        if self.raw_projection is not None:
-            np.save(self.directory + "relevance_raw_projection",self.raw_projection)
+        if self.projection is not None:
+            np.save(self.directory + "relevance_raw_projection",self.projection)
         if self.basis_vector_projection is not None:
             np.save(self.directory + "relevance_basis_vector_projection",self.basis_vector_projection)
         return
 
-    def _compute_posterior(self, x, priors, means, covs):
+    def _compute_gaussian_posterior(self, x, priors, means, covs):
         """
-        Compute class posteriors
+        Compute Gaussian class posteriors
         :param point:
         :param priors:
         :param means:
@@ -182,38 +137,44 @@ class DataProjector():
         :return:
         """
         posteriors = np.zeros(self.n_clusters)
+        n_dims = GMMs[0].covariances_[0].shape[0]
         for i_cluster in range(self.n_clusters):
             gmm = GMMs[i_cluster]
             density = 0.0
             for i_component in range(gmm.weights_.shape[0]):
                 density += gmm.weights_[i_component]*multivariate_normal.pdf(x, mean=gmm.means_[i_component],
-                                                                             cov=gmm.covariances_[i_component])
+                                                                             cov=gmm.covariances_[i_component]+1e-7*np.eye(n_dims))
             posteriors[i_cluster] = density*priors[i_cluster]
 
         posteriors /= posteriors.sum()
         return posteriors
 
-    def _estimate_n_GMM_components(self, x, n_component_lim=[1,4]):
-
-        n_points = x.shape[0]
-        n_half = int(n_points / 2.0)
-        train_set = x[0:n_half, :]
-        val_set = x[n_half + 1::, :]
-
+    def _estimate_GMM(self, x, n_component_lim=[1,3]):
+        """
+        Find the GMM that best fit the data in x using Bayesian information criterion.
+        """
         min_comp = n_component_lim[0]
         max_comp = n_component_lim[1]
 
-        log_likelihoods = np.zeros(max_comp+1-min_comp)
+        lowest_BIC = np.inf
+        
         counter=0
         for i_comp in range(min_comp,max_comp+1):
              GMM = GaussianMixture(i_comp)
-             GMM.fit(train_set)
-             log_likelihoods[counter] = GMM.score(val_set)
+             GMM.fit(x)
+             BIC = GMM.bic(x)
+             if BIC < lowest_BIC:
+                lowest_BIC = BIC
+                best_GMM = GaussianMixture(i_comp)
+                best_GMM.weights_ = GMM.weights_
+                best_GMM.means_ = GMM.means_
+                best_GMM.covariances_ = GMM.covariances_
+                
              counter+=1
 
-        return min_comp + np.argmax(log_likelihoods)
+        return best_GMM
 
-    def _fit_GM(self, proj, n_component_lim=[1,5]):
+    def _fit_GM(self, proj, n_component_lim=[1,3]):
         """
         Fit a Gaussian mixture model to the data in cluster
         :param proj:
@@ -222,14 +183,11 @@ class DataProjector():
         models = []
 
         for i_cluster in range(self.n_clusters):
-            cluster = proj[self.labels == i_cluster] #, :]
+            cluster = proj[self.labels == i_cluster] 
 
-            n_components = self._estimate_n_GMM_components(cluster,n_component_lim)
-
-            GMM = GaussianMixture(n_components)
-            GMM.fit(cluster)
+            GMM = self._estimate_GMM(cluster,n_component_lim)
             models.append(GMM)
-
+        
         return models
 
     def _fit_Gaussians(self,proj):
@@ -239,12 +197,13 @@ class DataProjector():
         """
         means = []
         covs = []
-
+        n_dims = proj.shape[1]
+		
         for i_cluster in range(self.n_clusters):
             cluster = proj[self.labels==i_cluster,:]
             means.append(cluster.mean(axis=0))
-            covs.append(np.cov(cluster.T,rowvar=True))
-
+            covs.append(np.cov(cluster.T,rowvar=True)+1e-7*np.eye(n_dims))
+		
         return means, covs
 
     def _set_class_prior(self):
@@ -254,54 +213,6 @@ class DataProjector():
             prior[i_cluster] = np.sum(self.labels==i_cluster)
         return prior
 
-    def _build_relevance_basis_vector(self,feature_importance, coloring, i_col, j_col):
-        """
-        Identify a basis vector as the relevances between two colors.
-        """
-
-        basis_vector = np.zeros(feature_importance.shape)
-
-        from_residues = np.where(coloring == i_col)[0]
-        to_residues = np.where(coloring == j_col)[0]
-
-        n_from = from_residues.shape[0]
-        n_to = to_residues.shape[0]
-
-        for i in range(n_from):
-            for j in range(n_to):
-                basis_vector[from_residues[i],to_residues[j]] = feature_importance[from_residues[i],to_residues[j]]
-
-        basis_vector = squareform(basis_vector + basis_vector.T)
-        return basis_vector
-
-    def _identify_relevance_basis_vectors(self, feature_importance):
-        """
-        Identify the relevance basis vectors for projections using collections of residues.
-        """
-
-        # Create binary graph
-        graph = np.zeros(feature_importance.shape)
-        graph[feature_importance>0] = 1
-
-        # Determine residue coloring
-        coloring = nx.coloring.greedy_color(nx.from_numpy_matrix(graph))
-        coloring = np.asarray(list(coloring.values()))
-
-        n_colors = int(coloring.max())+1
-
-        relevance_basis_vectors = []
-
-        # Find relevance basis vectors between all color to color combinations
-        for i_col in range(n_colors):
-            for j_col in range(i_col+1,n_colors):
-                tmp_vec = self._build_relevance_basis_vector(feature_importance, coloring, i_col, j_col)
-                if np.sum(tmp_vec) > 0:
-                    relevance_basis_vectors.append(tmp_vec)
-
-        relevance_basis_vectors = np.asarray(relevance_basis_vectors).T
-        if len(relevance_basis_vectors.shape)==1:
-            relevance_basis_vectors = relevance_basis_vectors[:,np.newaxis]
-        return relevance_basis_vectors
 
     def _project_on_relevance_basis_vectors(self,distances, relevance_basis_vectors):
         """
@@ -311,4 +222,3 @@ class DataProjector():
         projected_data = np.dot(distances, relevance_basis_vectors)
 
         return projected_data
-

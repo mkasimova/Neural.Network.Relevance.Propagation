@@ -26,8 +26,8 @@ def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, av
     ax.legend()
 
 
-def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False,std_val=None):
-    ax.plot(x_val, y_val, label=extractor_name, color=color, linewidth=2, marker='o',markersize=5)
+def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False, std_val=None):
+    ax.plot(x_val, y_val, label=extractor_name, color=color, linewidth=2, marker='o',markersize=10)
     if std_val is not None:
         ax.plot([x_val,x_val], [y_val-std_val,y_val+std_val], color='k', linewidth=1, linestyle='-',marker='s',markersize=1)
     ax.set_xlabel(xlabel)
@@ -84,7 +84,7 @@ def _vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_cl
     fig2, _ = plt.subplots(1, 1, figsize=(20, 5))
 
     for i_metric in range(n_metrics):
-        fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric],color=[0.4,0.4,0.45],linewidth=1)
+        fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric],color=[0.77,0.77,0.82],linewidth=4)
 
     for i_estimator in range(n_estimators):
         # Visualize each performance metric for current estimator with average+-std, in each axis
@@ -184,7 +184,8 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
     """
 
     n_feature_extractors = len(postprocessors)
-    cols = np.asarray([[0.7, 0.0, 0.08], [0, 0.5, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.8, 0.6, 0.2], [1, 0.8, 0]])
+    cols = np.asarray([[0.5, 0.0, 0.08], [0.0, 0.8, 0.0], [0, 0, 0.5], [0.7, 0.3, 0.6], [1, 0.6, 0], [0.4, 0.9, 0.5]])
+
 
     if show_performance:
         x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names = extract_metrics(postprocessors)
@@ -208,8 +209,8 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
         fig_counter = 3
         for pp in postprocessors:
             dp = pp[i_run].data_projector
-            if dp.raw_projection is not None:
-                _vis_projected_data(dp.raw_projection, dp.labels, plt.figure(fig_counter), "Raw projection "+pp[i_run].extractor.name)
+            if dp.projection is not None:
+                _vis_projected_data(dp.projection, dp.labels, plt.figure(fig_counter), "Projection "+pp[i_run].extractor.name)
                 fig_counter += 1
 
     plt.show()

@@ -14,7 +14,7 @@ import comparison_bw_fe as comp_fe
 
 def main(parser):
 
-    n_runs = 1
+    n_runs = 3
 
     args = parser.parse_args()
     working_dir = args.out_directory
@@ -42,8 +42,8 @@ def main(parser):
         fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations,
                                scaling=True, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
-        #fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,  scaling=True,
-        #                       filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
+        fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,  scaling=True,
+                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
         #fe.ElmFeatureExtractor(samples, labels,
        # 					   n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations,
        # 					   scaling=True, filter_by_distance_cutoff=True,contact_cutoff=0.8),
@@ -55,11 +55,9 @@ def main(parser):
 
 
     postprocessors = []
-    data_projectors = []
 
     for extractor in feature_extractors:
         tmp_pp = []
-        tmp_dp = []
         for i_run in range(n_runs):
             feats, std_feats, errors = extractor.extract_features()
 
@@ -75,7 +73,7 @@ def main(parser):
 
         postprocessors.append(tmp_pp)
 
-    visualization.visualize(postprocessors)
+    visualization.visualize(postprocessors, show_projected_data=True)
 
 parser = argparse.ArgumentParser(epilog='Feature importance extraction.')
 parser.add_argument('-od', '--out_directory', help='Folder where files are written.', default='')

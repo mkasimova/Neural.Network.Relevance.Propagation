@@ -45,7 +45,7 @@ class DataProjector():
         """
 
         self.projection = self._project_on_relevance_basis_vectors(self.samples, feature_importances)
-		
+        
         return self
 
     def score_projection(self, projection=None, use_GMM=True):
@@ -137,38 +137,44 @@ class DataProjector():
         :return:
         """
         posteriors = np.zeros(self.n_clusters)
+        n_dims = GMMs[0].covariances_[0].shape[0]
         for i_cluster in range(self.n_clusters):
             gmm = GMMs[i_cluster]
             density = 0.0
             for i_component in range(gmm.weights_.shape[0]):
                 density += gmm.weights_[i_component]*multivariate_normal.pdf(x, mean=gmm.means_[i_component],
-                                                                             cov=gmm.covariances_[i_component])
+                                                                             cov=gmm.covariances_[i_component]+1e-7*np.eye(n_dims))
             posteriors[i_cluster] = density*priors[i_cluster]
 
         posteriors /= posteriors.sum()
         return posteriors
 
-    def _estimate_n_GMM_components(self, x, n_component_lim=[1,4]):
-
-        n_points = x.shape[0]
-        n_half = int(n_points / 2.0)
-        train_set = x[0:n_half, :]
-        val_set = x[n_half + 1::, :]
-
+    def _estimate_GMM(self, x, n_component_lim=[1,3]):
+        """
+        Find the GMM that best fit the data in x using Bayesian information criterion.
+        """
         min_comp = n_component_lim[0]
         max_comp = n_component_lim[1]
 
-        log_likelihoods = np.zeros(max_comp+1-min_comp)
+        lowest_BIC = np.inf
+        
         counter=0
         for i_comp in range(min_comp,max_comp+1):
              GMM = GaussianMixture(i_comp)
-             GMM.fit(train_set)
-             log_likelihoods[counter] = GMM.score(val_set)
+             GMM.fit(x)
+             BIC = GMM.bic(x)
+             if BIC < lowest_BIC:
+                lowest_BIC = BIC
+                best_GMM = GaussianMixture(i_comp)
+                best_GMM.weights_ = GMM.weights_
+                best_GMM.means_ = GMM.means_
+                best_GMM.covariances_ = GMM.covariances_
+                
              counter+=1
 
-        return min_comp + np.argmax(log_likelihoods)
+        return best_GMM
 
-    def _fit_GM(self, proj, n_component_lim=[1,5]):
+    def _fit_GM(self, proj, n_component_lim=[1,3]):
         """
         Fit a Gaussian mixture model to the data in cluster
         :param proj:
@@ -177,14 +183,11 @@ class DataProjector():
         models = []
 
         for i_cluster in range(self.n_clusters):
-            cluster = proj[self.labels == i_cluster] #, :]
+            cluster = proj[self.labels == i_cluster] 
 
-            n_components = self._estimate_n_GMM_components(cluster,n_component_lim)
-
-            GMM = GaussianMixture(n_components)
-            GMM.fit(cluster)
+            GMM = self._estimate_GMM(cluster,n_component_lim)
             models.append(GMM)
-
+        
         return models
 
     def _fit_Gaussians(self,proj):
@@ -194,12 +197,13 @@ class DataProjector():
         """
         means = []
         covs = []
-
+        n_dims = proj.shape[1]
+		
         for i_cluster in range(self.n_clusters):
             cluster = proj[self.labels==i_cluster,:]
             means.append(cluster.mean(axis=0))
-            covs.append(np.cov(cluster.T,rowvar=True))
-
+            covs.append(np.cov(cluster.T,rowvar=True)+1e-7*np.eye(n_dims))
+		
         return means, covs
 
     def _set_class_prior(self):
@@ -218,4 +222,3 @@ class DataProjector():
         projected_data = np.dot(distances, relevance_basis_vectors)
 
         return projected_data
-

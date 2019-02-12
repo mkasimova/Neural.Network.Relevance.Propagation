@@ -17,7 +17,9 @@ logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None):
+    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, 
+    		rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None,
+    		use_GMM_estimator=True):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -35,6 +37,7 @@ class PostProcessor(object):
         self.working_dir = working_dir
         self.pdb_file = pdb_file
         self.predefined_relevant_residues = predefined_relevant_residues
+        self.use_GMM_estimator = use_GMM_estimator
 
         # Rescale and filter results if needed
         self.rescale_results = rescale_results
@@ -157,7 +160,7 @@ class PostProcessor(object):
         Computes separation of clusters in the projected space given by the feature importances
         """
         self.data_projector = dp.DataProjector(self.extractor.samples,self.cluster_indices)
-        self.data_projector.project(self.feature_importances).score_projection()
+        self.data_projector.project(self.feature_importances).score_projection(use_GMM=self.use_GMM_estimator)
 
         return self
 

@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 from modules.feature_extraction.feature_extractor import FeatureExtractor
+from modules.postprocessing import PostProcessor
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -20,7 +21,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
     def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True, filter_by_distance_cutoff=False,
                  contact_cutoff=0.5, n_estimators=30, njobs=-1, randomize=True, name="RF", one_vs_rest=True):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name=name)
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, supervised=True, name=name)
         logger.debug("Initializing RF with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
                       n_estimators %s, njobs %s", \
@@ -71,4 +72,16 @@ class RandomForestFeatureExtractor(FeatureExtractor):
             return feature_importances
         else:
             return classifier.feature_importances_
+
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+
+        return PostProcessor(extractor=self, \
+                             working_dir=working_dir, \
+                             rescale_results=rescale_results, \
+                             filter_results=filter_results, \
+                             feature_to_resids=feature_to_resids, \
+                             pdb_file=pdb_file, \
+                             predefined_relevant_residues=predefined_relevant_residues, \
+                             use_GMM_estimator=use_GMM_estimator, \
+                             supervised=True)
 

@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 
 from modules.feature_extraction.feature_extractor import FeatureExtractor
+from modules.postprocessing import PostProcessor
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -17,10 +18,9 @@ logger = logging.getLogger("PCA")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5,
-                 variance_cutoff=0.75, n_components=None, name="PCA"):
+    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5, variance_cutoff=0.75, n_components=None, name="PCA"):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name=name, is_unsupervised=True)
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, supervised=False, name=name)
         logger.debug("Initializing PCA with the following parameters: \
                       n_splits %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
                       n_components %s", \
@@ -62,3 +62,16 @@ class PCAFeatureExtractor(FeatureExtractor):
             logger.debug("n_components for PCA is %s", n_components)
         feature_importances = self._collect_components(model, n_components)
         return feature_importances
+
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+	
+        return PostProcessor(extractor=self, \
+                             working_dir=working_dir, \
+                             rescale_results=rescale_results, \
+                             filter_results=filter_results, \
+                             feature_to_resids=feature_to_resids, \
+                             pdb_file=pdb_file, \
+                             predefined_relevant_residues=predefined_relevant_residues, \
+                             use_GMM_estimator=use_GMM_estimator, \
+                             supervised=False)
+

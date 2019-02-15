@@ -17,9 +17,7 @@ logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, 
-    		rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None,
-    		use_GMM_estimator=True):
+    def __init__(self, extractor, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -31,11 +29,14 @@ class PostProcessor(object):
         :param feature_to_resids: an array of dimension nfeatures*2 which tells which two residues are involved in a feature
         """
         self.extractor = extractor
-        self.feature_importances = feature_importance
-        self.std_feature_importances = std_feature_importance
-        self.cluster_indices = cluster_indices
+        self.feature_importances = extractor.feature_importance
+        self.std_feature_importances = extractor.std_feature_importance
+        self.supervised = supervised
+        self.cluster_indices = extractor.cluster_indices
         self.nclusters = len(list(set(self.cluster_indices)))
         self.working_dir = working_dir
+        if self.working_dir is None:
+            self.working_dir = os.getcwd()
         self.pdb_file = pdb_file
         self.predefined_relevant_residues = predefined_relevant_residues
         self.use_GMM_estimator = use_GMM_estimator
@@ -53,7 +54,7 @@ class PostProcessor(object):
         self.std_feature_importances[self.indices_filtered,:] = 0
 
         # Set mapping from features to residues
-        self.nfeatures = feature_importance.shape[0]
+        self.nfeatures = self.feature_importances.shape[0]
         if feature_to_resids is None and self.pdb_file is None:
             feature_to_resids = utils.get_default_feature_to_resids(self.nfeatures)
         elif feature_to_resids is None and self.pdb_file is not None:
@@ -70,7 +71,7 @@ class PostProcessor(object):
         # Performance metrics
         self.predefined_relevant_residues = predefined_relevant_residues
         self.average_std = None
-        self.test_set_errors = test_set_errors.mean()
+        self.test_set_errors = extractor.test_set_errors.mean()
         self.data_projector = None
         self.tp_rate = None
         self.fp_rate = None
@@ -144,9 +145,9 @@ class PostProcessor(object):
         res_id_to_index = {} # a map pointing back to the index in the array index_to_resid
         for idx, resid in enumerate(self.index_to_resid):
             res_id_to_index[resid] = idx
-        importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importance.shape[1]))
-        std_importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importance.shape[1]))
-        for feature_idx, rel in enumerate(self.feature_importance):
+        importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
+        std_importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
+        for feature_idx, rel in enumerate(self.feature_importances):
             res1, res2 = self.feature_to_resids[feature_idx]
             res1 = res_id_to_index[res1]
             res2 = res_id_to_index[res2]
@@ -223,6 +224,7 @@ class PostProcessor(object):
             fp=0
             tp_rate = []
             fp_rate = []
+            print(ind_scores_sorted)
             for j in actives_sorted:
                 if j=='a':
                     tp+=1

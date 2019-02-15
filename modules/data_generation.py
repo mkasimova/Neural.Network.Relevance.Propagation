@@ -58,6 +58,7 @@ class DataGenerator(object):
                         break
             moved_atoms_all_clusters.append(moved_atoms_selected_cluster)
         self.moved_atoms = moved_atoms_all_clusters
+        print(self.moved_atoms)
 
         if self.noise_natoms is not None:
             moved_noise_atoms = []
@@ -88,6 +89,8 @@ class DataGenerator(object):
 
                 ind_a = 0
                 for a in self.moved_atoms[c]:
+                    if f==500:
+                        print(c,a)
 
                     if self.test_model == 'linear':
                         conf[a,:] += [self.displacement,self.displacement,self.displacement]

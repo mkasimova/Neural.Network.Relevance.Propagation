@@ -13,6 +13,7 @@ import sklearn.neural_network
 
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
+from modules.postprocessing import PostProcessor
 
 logger = logging.getLogger("mlp")
 
@@ -30,7 +31,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                  training_max_iter=100000):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                  contact_cutoff=contact_cutoff,
+                                  contact_cutoff=contact_cutoff, supervised=True,
                                   name=name)
         logger.debug("Initializing MLP with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
@@ -107,3 +108,16 @@ class MlpFeatureExtractor(FeatureExtractor):
                     layers.append(relprop.ReLU())
 
         self.layers = layers
+
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+
+        return PostProcessor(extractor=self, \
+                             working_dir=working_dir, \
+                             rescale_results=rescale_results, \
+                             filter_results=filter_results, \
+                             feature_to_resids=feature_to_resids, \
+                             pdb_file=pdb_file, \
+                             predefined_relevant_residues=predefined_relevant_residues, \
+                             use_GMM_estimator=use_GMM_estimator, \
+                             supervised=True)
+

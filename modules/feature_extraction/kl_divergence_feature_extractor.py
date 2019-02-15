@@ -11,6 +11,7 @@ logging.basicConfig(
 import numpy as np
 from scipy.stats import entropy
 from modules.feature_extraction.feature_extractor import FeatureExtractor
+from modules.postprocessing import PostProcessor
 
 logger = logging.getLogger("KL divergence")
 
@@ -20,7 +21,7 @@ class KLFeatureExtractor(FeatureExtractor):
     def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5,
                  cluster_split_method="one_vs_rest", bin_width=None):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name="KL")
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, supervised=True, name="KL")
         logger.debug("Initializing KL with the following parameters: \
                       n_splits %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
                       bin_width %s", \
@@ -86,4 +87,17 @@ class KLFeatureExtractor(FeatureExtractor):
             data_cluster = data[labels[:, i_cluster] == 1, :]
             data_rest = data[labels[:, i_cluster] == 0, :]
             self.feature_importances[:,i_cluster] = self._KL_divergence(data_cluster, data_rest)
-        return self     
+        return self
+
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+
+        return PostProcessor(extractor=self, \
+                             working_dir=working_dir, \
+                             rescale_results=rescale_results, \
+                             filter_results=filter_results, \
+                             feature_to_resids=feature_to_resids, \
+                             pdb_file=pdb_file, \
+                             predefined_relevant_residues=predefined_relevant_residues, \
+                             use_GMM_estimator=use_GMM_estimator, \
+                             supervised=True)
+

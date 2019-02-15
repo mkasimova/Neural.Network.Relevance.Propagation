@@ -88,7 +88,7 @@ def create_class_labels(clustering):
     number_of_clusters = len(set([t for t in clustering]))
     T = np.zeros((len(clustering), number_of_clusters), dtype=int)
     for i in range(0, len(clustering)):
-        T[i, int(clustering[i] - 1)] = 1
+        T[i, int(clustering[i])] = 1
     return T
 
 

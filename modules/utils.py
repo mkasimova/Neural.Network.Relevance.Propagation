@@ -172,3 +172,45 @@ def get_feature_to_resids_from_pdb(n_features,pdb_file):
             feature_to_resids[idx, 1] = resid_numbers[res2]
             idx += 1
     return feature_to_resids
+
+
+def _get_variance_cutoff(explained_variance, variance_cutoff):
+    if variance_cutoff is None or variance_cutoff == 'auto':
+        import matplotlib.pyplot as plt
+        plt.plot(explained_variance)
+        plt.show()
+        variance_cutoff = explained_variance[0]
+        for i in range(1, explained_variance.shape[0]):
+            prev_var, var = explained_variance[i - 1], explained_variance[i]
+            if prev_var / var > 10:
+                break
+            variance_cutoff += var
+        logger.debug("Computed band gap to find variance cutoff. Set it to %s",
+                     variance_cutoff)
+
+    return variance_cutoff
+
+
+def _get_n_components(explained_variance, variance_cutoff):
+    n_components = 1
+    total_var_explained = explained_variance[0]
+    for i in range(1, explained_variance.shape[0]):
+        if total_var_explained + explained_variance[i] < variance_cutoff:
+            total_var_explained += explained_variance[i]
+            n_components += 1
+    return n_components
+
+
+def compute_feature_importance_from_components(explained_variance, components, variance_cutoff):
+    """
+    Computes the feature importance per feature based on the components up to a cutoff in total variance explained
+    :param explained_variance:
+    :param components:
+    :param variance_cutoff:
+    :return:
+    """
+    variance_cutoff = _get_variance_cutoff(explained_variance, variance_cutoff)
+    n_components = _get_n_components(explained_variance, variance_cutoff)
+    logger.debug("Using %s components", n_components)
+    importance = np.abs(components[0:n_components] * explained_variance[0:n_components, np.newaxis])
+    return importance.T

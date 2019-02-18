@@ -7,11 +7,11 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-import sklearn
 
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
 from sklearn.neural_network import BernoulliRBM
+from modules import utils
 import scipy
 
 logger = logging.getLogger("rbm")
@@ -20,7 +20,9 @@ logger = logging.getLogger("rbm")
 class RbmFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_components, n_splits=10, n_iterations=10, scaling=True, randomize=True,
-                 filter_by_distance_cutoff=False, contact_cutoff=0.5, method="from_lrp",
+                 filter_by_distance_cutoff=False, contact_cutoff=0.5,
+                 relevance_method="from_lrp",
+                 variance_cutoff='auto',
                  name="RBM",
                  remove_outliers=False):
 
@@ -32,13 +34,14 @@ class RbmFeatureExtractor(FeatureExtractor):
                                   remove_outliers=remove_outliers)
         logger.debug("Initializing RBM with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      n_components %s, randomize %s, method %s, remove_outliers %s", \
-                      n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      n_components, randomize, method, remove_outliers)
+                      n_components %s, randomize %s, relevance_method %s, remove_outliers %s", \
+                     n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
+                     n_components, randomize, relevance_method, remove_outliers)
 
         self.n_components = n_components
         self.randomize = randomize
-        self.method = method
+        self.relevance_method = relevance_method
+        self.variance_cutoff = variance_cutoff
 
     def train(self, train_set, train_labels):
         logger.debug("Training RBM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
@@ -52,8 +55,7 @@ class RbmFeatureExtractor(FeatureExtractor):
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using RBM ...")
         logger.info("RBM psuedo-loglikelihood: "+str(classifier.score_samples(data).mean()))
-		
-        if self.method=="from_lrp":
+        if self.relevance_method == "from_lrp":
             nframes, nfeatures = data.shape
 
             labels_propagation = classifier.transform(data) # same as perfect classification
@@ -88,11 +90,13 @@ class RbmFeatureExtractor(FeatureExtractor):
                 cluster_idx = labels[frame_idx].argmax()
                 result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
 
-        elif self.method=="from_components":
+            return result
+
+        elif self.relevance_method == "from_components":
 
             # Extract components and compute their variance
             components = classifier.components_
-            projection = scipy.special.expit( np.matmul(data, components.T) )
+            projection = scipy.special.expit( np.matmul(data, components.T))
             components_var = projection.var(axis=0)
 
             # Sort components according to their variance
@@ -100,20 +104,11 @@ class RbmFeatureExtractor(FeatureExtractor):
             components_var_sorted = components_var[ind_components_var_sorted]
             components_sorted = components[ind_components_var_sorted,:]
 
-            # Consider only those components whose summed variance constitutes 75% of total variance
-            var = components_var_sorted[0]
-            result = np.abs(components_sorted[0])*components_var_sorted[0]
-            components_var_sum = components_var.sum()
-            nclusters = labels.shape[1]
-            for i in range(1,components_var_sorted.shape[0]):
-                if var + components_var_sorted[i] < 0.75*components_var_sum and i < nclusters:
-                    var += components_var_sorted[i]
-                    result = np.vstack(( result,np.abs(components_sorted[i])*components_var_sorted[i] ))
-                else:
-                    break
-            result = result.T
-
-        return result
+            return utils.compute_feature_importance_from_components(components_var_sorted,
+                                                                    components_sorted,
+                                                                    self.variance_cutoff)
+        else:
+            raise Exception("Method {} not supported".format(self.relevance_method))
 
     def _create_layers(self, classifier):
         return [ relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),

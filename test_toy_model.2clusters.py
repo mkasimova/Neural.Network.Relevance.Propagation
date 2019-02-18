@@ -22,8 +22,8 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
 
     feature_extractors = [
 #    fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None),
-    fe.RbmFeatureExtractor(data, cluster_indices, 10, n_splits=n_splits, n_iterations=n_iterations, method="from_lrp"),
-    fe.RbmFeatureExtractor(data, cluster_indices, 10, n_splits=n_splits, n_iterations=n_iterations, method="from_components"),
+    fe.RbmFeatureExtractor(data, cluster_indices, 10, n_splits=n_splits, n_iterations=n_iterations, relevance_method="from_lrp"),
+    fe.RbmFeatureExtractor(data, cluster_indices, 10, n_splits=n_splits, n_iterations=n_iterations, relevance_method="from_components"),
 #    fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations),
 #    fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits),
 #    fe.ElmFeatureExtractor(data, cluster_indices, 1000, n_splits=n_splits, n_iterations=n_iterations),

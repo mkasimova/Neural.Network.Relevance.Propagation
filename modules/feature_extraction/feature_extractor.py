@@ -17,7 +17,9 @@ logger = logging.getLogger("Extracting features")
 
 class FeatureExtractor(object):
 
-    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=filtering.contact_cutoff_default, use_inverse_distances=True, n_splits=10, n_iterations=10, name='', error_limit=5, is_unsupervised=False):
+    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=filtering.contact_cutoff_default,
+                 use_inverse_distances=True, n_splits=10, n_iterations=10, name='', error_limit=5, is_unsupervised=False,
+                 remove_outliers=False):
 
         # Setting parameters
         self.samples = samples
@@ -36,7 +38,8 @@ class FeatureExtractor(object):
         self.error_limit = error_limit
         self.use_inverse_distances = use_inverse_distances
         self.contact_cutoff = filtering.contact_cutoff_default if contact_cutoff is None else contact_cutoff
-        self.is_unsupervised = True
+        self.is_unsupervised = is_unsupervised
+        self.remove_outliers = remove_outliers
 
     def split_train_test(self):
         """
@@ -96,7 +99,7 @@ class FeatureExtractor(object):
         if self.scaling:
             # Note that we must use the same scalers for all data
             # It is important for some methods (relevance propagation in NN) that all data is scaled between 0 and 1
-            self.samples = utils.scale(self.samples)
+            self.samples = utils.scale(self.samples, remove_outliers=self.remove_outliers)
 
         train_inds, test_inds = self.split_train_test()
         errors = np.zeros(self.n_splits * self.n_iterations)

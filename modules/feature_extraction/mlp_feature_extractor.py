@@ -27,16 +27,19 @@ class MlpFeatureExtractor(FeatureExtractor):
                  solver='lbfgs',
                  activation=relprop.relu,
                  randomize=True,
-                 training_max_iter=100000):
+                 training_max_iter=100000,
+                 remove_outliers=False):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
                                   contact_cutoff=contact_cutoff,
-                                  name=name)
+                                  name=name,
+                                  is_unsupervised=False,
+                                  remove_outliers=remove_outliers)
         logger.debug("Initializing MLP with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      hidden_layer_sizes %s, solver %s, activation function %s, randomize %s, training_max_iter %s", \
+                      hidden_layer_sizes %s, solver %s, activation function %s, randomize %s, training_max_iter %s, remove_outliers %s", \
                       n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      hidden_layer_sizes, solver, activation, randomize, training_max_iter)
+                      hidden_layer_sizes, solver, activation, randomize, training_max_iter, remove_outliers)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.solver = solver
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:

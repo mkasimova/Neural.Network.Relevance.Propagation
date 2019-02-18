@@ -19,17 +19,18 @@ class ElmFeatureExtractor(MlpFeatureExtractor):
     def __init__(self, samples, cluster_indices, n_nodes, n_splits=10, n_iterations=10, scaling=True,
                  filter_by_distance_cutoff=False, contact_cutoff=0.5,
                  activation=relprop.relu,
-                 alpha=1, name="ELM"):
+                 alpha=1, remove_outliers=False):
         MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                      scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
                                      contact_cutoff=contact_cutoff,
                                      activation=activation,
-                                     name="ELM")
+                                     name="ELM",
+                                     remove_outliers=remove_outliers)
         logger.debug("Initializing ELM with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      n_nodes %s, activation function %s, alpha %s", \
+                      n_nodes %s, activation function %s, alpha %s, remove_outliers %s", \
                       n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      n_nodes, activation, alpha)
+                      n_nodes, activation, alpha, remove_outliers)
         self.n_nodes = n_nodes
         self.alpha = alpha
 

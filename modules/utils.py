@@ -54,15 +54,13 @@ def keep_datapoints(data, clustering, points_to_keep=[]):
     return data_keep, clustering_keep
 
 
-def scale(data, remove_outliers=True):
+def scale(data, remove_outliers=False):
     """
     Scales the input and removes outliers
     """
-    perc_2 = np.zeros(data.shape[1])
-    perc_98 = np.zeros(data.shape[1])
-
-    #TODO you should be able to turn off this outlier filtration -> now you cannot do inverse scaling!
     if remove_outliers:
+        perc_2 = np.zeros(data.shape[1])
+        perc_98 = np.zeros(data.shape[1])
         for i in range(data.shape[1]):
             perc_2[i] = np.percentile(data[:, i], 2)
             perc_98[i] = np.percentile(data[:, i], 98)

@@ -18,14 +18,17 @@ logger = logging.getLogger("KL divergence")
 class KLFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5,
-                 cluster_split_method="one_vs_rest", bin_width=None):
+                 cluster_split_method="one_vs_rest", bin_width=None, remove_outliers=False):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name="KL")
+        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling,
+                                  filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff, name="KL",
+                                  is_unsupervised=False,
+                                  remove_outliers=remove_outliers)
         logger.debug("Initializing KL with the following parameters: \
                       n_splits %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      bin_width %s", \
+                      bin_width %s, remove_outliers %s", \
                       n_splits, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      bin_width)
+                      bin_width ,remove_outliers)
         self.bin_width = bin_width
         if bin_width is None:
             logger.debug('Using standard deviation of each feature as bin size.')

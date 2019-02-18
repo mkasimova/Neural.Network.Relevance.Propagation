@@ -8,13 +8,13 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
-import numpy as np
 import sklearn.neural_network
 
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
 
 logger = logging.getLogger("mlp_ae")
+
 
 class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
@@ -27,16 +27,19 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
                  activation=relprop.relu,
                  randomize=True,
                  training_max_iter=100000,
-                 use_reconstruction_for_lrp=False):
-        MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=scaling,
-                 filter_by_distance_cutoff=filter_by_distance_cutoff,
-                 contact_cutoff=contact_cutoff,
-                 name=name,
-                 hidden_layer_sizes=hidden_layer_sizes,
-                 solver=solver,
-                 activation=activation,
-                 randomize=randomize,
-                 training_max_iter=training_max_iter)
+                 use_reconstruction_for_lrp=False,
+                 remove_outliers=False):
+        MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
+                                     scaling=scaling,
+                                     filter_by_distance_cutoff=filter_by_distance_cutoff,
+                                     contact_cutoff=contact_cutoff,
+                                     name=name,
+                                     hidden_layer_sizes=hidden_layer_sizes,
+                                     solver=solver,
+                                     activation=activation,
+                                     randomize=randomize,
+                                     training_max_iter=training_max_iter,
+                                     remove_outliers=remove_outliers)
         self.is_unsupervised = True
         self.use_reconstruction_for_lrp = use_reconstruction_for_lrp
 
@@ -49,12 +52,11 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
             activation=self.activation,
             max_iter=self.training_max_iter)
 
-        classifier.fit(train_set, train_set) #note same output as input
+        classifier.fit(train_set, train_set)  # note same output as input
         self.classifier = classifier
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP Autoencoder ...")
         target_values = self.classifier.predict(data) if self.use_reconstruction_for_lrp else data
-        res = MlpFeatureExtractor.get_feature_importance(self, self.classifier, data, target_values) 
+        res = MlpFeatureExtractor.get_feature_importance(self, self.classifier, data, target_values)
         return res.mean(axis=1)
-

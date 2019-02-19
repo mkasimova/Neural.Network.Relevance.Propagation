@@ -174,29 +174,29 @@ def get_feature_to_resids_from_pdb(n_features,pdb_file):
     return feature_to_resids
 
 
-def _get_variance_cutoff(explained_variance, variance_cutoff):
-    if variance_cutoff is None or variance_cutoff == 'auto':
-        variance_cutoff = explained_variance[0]
+def _get_n_components(explained_variance, variance_cutoff):
+    if isinstance(variance_cutoff, str) and "_components" in variance_cutoff:
+        return int(variance_cutoff.replace("_components", ""))
+    elif variance_cutoff is None or variance_cutoff == 'auto':
+        n_components = 1
         for i in range(1, explained_variance.shape[0]):
             prev_var, var = explained_variance[i - 1], explained_variance[i]
-            if prev_var / var > 10:
+            if prev_var / var >= 10:
+                logger.debug("Computed band gap to find number of components Set it to %s",
+                             n_components)
                 break
-            variance_cutoff += var
-        logger.debug("Computed band gap to find variance cutoff. Set it to %s",
-                     variance_cutoff)
-    elif not isinstance(variance_cutoff, int) and not isinstance(variance_cutoff, float):
-        raise Exception("Invalid variance cutoff %s" % variance_cutoff)
-    return variance_cutoff
-
-
-def _get_n_components(explained_variance, variance_cutoff):
-    n_components = 1
-    total_var_explained = explained_variance[0]
-    for i in range(1, explained_variance.shape[0]):
-        if total_var_explained + explained_variance[i] < variance_cutoff:
-            total_var_explained += explained_variance[i]
             n_components += 1
-    return n_components
+        return n_components
+    elif isinstance(variance_cutoff, int) or isinstance(variance_cutoff, float):
+        n_components = 1
+        total_var_explained = explained_variance[0]
+        for i in range(1, explained_variance.shape[0]):
+            if total_var_explained + explained_variance[i] <= variance_cutoff:
+                total_var_explained += explained_variance[i]
+                n_components += 1
+        return n_components
+    else:
+        raise Exception("Invalid variance cutoff %s" % variance_cutoff)
 
 
 def compute_feature_importance_from_components(explained_variance, components, variance_cutoff):
@@ -204,11 +204,14 @@ def compute_feature_importance_from_components(explained_variance, components, v
     Computes the feature importance per feature based on the components up to a cutoff in total variance explained
     :param explained_variance:
     :param components:
-    :param variance_cutoff:
+    :param variance_cutoff: can be a numerical value, 'auto' or '{n}_components' where '{n}' is the number of components to use
     :return:
     """
-    variance_cutoff = _get_variance_cutoff(explained_variance, variance_cutoff)
     n_components = _get_n_components(explained_variance, variance_cutoff)
     logger.debug("Using %s components", n_components)
-    importance = np.abs(components[0:n_components].T * explained_variance[0:n_components])
+    importance = None
+    for i, c in enumerate(components[0:n_components]):
+        c = np.abs(c)
+        c *= explained_variance[i]
+        importance = c if importance is None else importance + c
     return importance

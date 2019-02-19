@@ -259,13 +259,12 @@ class DataGenerator(object):
 
     def _random_translation(self, xyz):
         """
-        Randomly translate each frame along each axis
+        Randomly translate each frame along each axis ; does not support PBC
         """
         [dx, dy, dz] = 5*(np.random.rand(3) - 0.5) # random values within box size
         xyz[:, 0] += dx
         xyz[:, 1] += dy
         xyz[:, 2] += dz
-        #xyz = xyz % 2 - 1 #enforce PBC, TODO This assumes we have support for periodic PBC which we don't I think
 
         return xyz
 

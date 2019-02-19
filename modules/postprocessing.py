@@ -224,7 +224,6 @@ class PostProcessor(object):
             fp=0
             tp_rate = []
             fp_rate = []
-            print(ind_scores_sorted)
             for j in actives_sorted:
                 if j=='a':
                     tp+=1

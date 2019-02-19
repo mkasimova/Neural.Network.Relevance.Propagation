@@ -176,9 +176,6 @@ def get_feature_to_resids_from_pdb(n_features,pdb_file):
 
 def _get_variance_cutoff(explained_variance, variance_cutoff):
     if variance_cutoff is None or variance_cutoff == 'auto':
-        import matplotlib.pyplot as plt
-        plt.plot(explained_variance)
-        plt.show()
         variance_cutoff = explained_variance[0]
         for i in range(1, explained_variance.shape[0]):
             prev_var, var = explained_variance[i - 1], explained_variance[i]
@@ -187,7 +184,8 @@ def _get_variance_cutoff(explained_variance, variance_cutoff):
             variance_cutoff += var
         logger.debug("Computed band gap to find variance cutoff. Set it to %s",
                      variance_cutoff)
-
+    elif not isinstance(variance_cutoff, int) and not isinstance(variance_cutoff, float):
+        raise Exception("Invalid variance cutoff %s" % variance_cutoff)
     return variance_cutoff
 
 
@@ -212,5 +210,5 @@ def compute_feature_importance_from_components(explained_variance, components, v
     variance_cutoff = _get_variance_cutoff(explained_variance, variance_cutoff)
     n_components = _get_n_components(explained_variance, variance_cutoff)
     logger.debug("Using %s components", n_components)
-    importance = np.abs(components[0:n_components] * explained_variance[0:n_components, np.newaxis])
-    return importance.T
+    importance = np.abs(components[0:n_components].T * explained_variance[0:n_components])
+    return importance

@@ -39,6 +39,7 @@ class PCAFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, model, samples, labels):
         logger.debug("Extracting feature importance using PCA ...")
-        return utils.compute_feature_importance_from_components(model.explained_variance_ratio_,
+        importance = utils.compute_feature_importance_from_components(model.explained_variance_ratio_,
                                                                 model.components_,
                                                                 self.variance_cutoff)
+        return importance

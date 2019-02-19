@@ -13,9 +13,9 @@ from modules.data_generation import DataGenerator
 
 logger = logging.getLogger("dataGenNb")
 
-dg = DataGenerator(natoms=10, nclusters=3, natoms_per_cluster=[1, 1, 1], nframes_per_cluster=200,
+dg = DataGenerator(natoms=20, nclusters=2, natoms_per_cluster=[1, 1], nframes_per_cluster=200,
                    noise_level=0.001,  # 1e-2, #1e-2,
-                   displacement=0.5,
+                   displacement=0.1,
                    noise_natoms=None,
                    feature_type='dist',  # carteesian_rot_trans
                    test_model='linear')
@@ -28,7 +28,7 @@ feature_to_resids = dg.feature_to_resids()
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
 
 n_iterations, n_splits = 1, 1
-variance_cutoff = "auto",
+variance_cutoff = "auto"
 filter_by_distance_cutoff = False
 feature_extractors = [
     # fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, #hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
@@ -41,20 +41,20 @@ feature_extractors = [
     #                     use_reconstruction_for_lrp=False,
     #                     activation="logistic"), #, solver="sgd"),
     fe.RbmFeatureExtractor(data, cluster_indices,
-                           n_splits=n_splits,
-                           n_iterations=n_iterations,
-                           n_components=dg.nclusters,
-                           relevance_method='from_components',
-                           variance_cutoff=variance_cutoff,
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
+                          n_splits=n_splits,
+                          n_iterations=n_iterations,
+                          n_components=10,#dg.nclusters,
+                          relevance_method='from_components',
+                          variance_cutoff=variance_cutoff,
+                          filter_by_distance_cutoff=filter_by_distance_cutoff),
 
-    fe.RbmFeatureExtractor(data, cluster_indices,
-                           n_splits=n_splits,
-                           n_iterations=n_iterations,
-                           n_components=dg.nclusters,
-                           relevance_method='from_lrp',
-                           variance_cutoff=variance_cutoff,
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
+    # fe.RbmFeatureExtractor(data, cluster_indices,
+    #                        n_splits=n_splits,
+    #                        n_iterations=n_iterations,
+    #                        n_components=dg.nclusters,
+    #                        relevance_method='from_lrp',
+    #                        variance_cutoff=variance_cutoff,
+    #                        filter_by_distance_cutoff=filter_by_distance_cutoff),
     #     fe.ElmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
     #                            activation="logistic",
     #                            n_nodes=3*dg.nfeatures,
@@ -65,9 +65,9 @@ feature_extractors = [
     fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None,
                            variance_cutoff=variance_cutoff,
                            filter_by_distance_cutoff=filter_by_distance_cutoff),
-    fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None,
-                           variance_cutoff=1,
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
+   fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None,
+                          variance_cutoff=0.7,
+                          filter_by_distance_cutoff=filter_by_distance_cutoff),
     #     fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
     #                                                                filter_by_distance_cutoff=filter_by_distance_cutoff, one_vs_rest=True),
 ]

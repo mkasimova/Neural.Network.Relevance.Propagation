@@ -143,9 +143,10 @@ class FeatureExtractor(object):
             feats = feats.reshape((feats.shape[0], 1))
             std_feats = std_feats.reshape((std_feats.shape[0], 1))
 
-        # Remapping features if filtering was applied
-        # If no filtering was applied, return feats and std_feats
-        feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
+        if self.filter_by_distance_cutoff:
+            # Remapping features if filtering was applied
+            # If no filtering was applied, return feats and std_feats
+            feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
 
         logger.info("Done with %s", self.name)
         logger.info("------------------------------")

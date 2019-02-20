@@ -11,6 +11,7 @@ import sklearn
 
 import modules.relevance_propagation as relprop
 from modules.feature_extraction.feature_extractor import FeatureExtractor
+from modules.postprocessing import PostProcessor
 from sklearn.neural_network import BernoulliRBM
 import scipy
 
@@ -27,9 +28,10 @@ class RbmFeatureExtractor(FeatureExtractor):
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
                                   scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
                                   contact_cutoff=contact_cutoff,
-                                  is_unsupervised=True,
+                                  supervised=False,
                                   name=name,
                                   remove_outliers=remove_outliers)
+
         logger.debug("Initializing RBM with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
                       n_components %s, randomize %s, method %s, remove_outliers %s", \
@@ -119,4 +121,16 @@ class RbmFeatureExtractor(FeatureExtractor):
         return [ relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
                  relprop.LogisticSigmoid()
                ]
+
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+
+        return PostProcessor(extractor=self, \
+                             working_dir=working_dir, \
+                             rescale_results=rescale_results, \
+                             filter_results=filter_results, \
+                             feature_to_resids=feature_to_resids, \
+                             pdb_file=pdb_file, \
+                             predefined_relevant_residues=predefined_relevant_residues, \
+                             use_GMM_estimator=use_GMM_estimator, \
+                             supervised=False)
 

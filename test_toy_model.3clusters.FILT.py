@@ -32,7 +32,7 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
 
     for extractor in feature_extractors:
         extractor.extract_features()
-        pp = extractor.postprocessing(predefined_relevant_residues=moved_atoms, rescale_results=True, filter_results=False)
+        pp = extractor.postprocessing(predefined_relevant_residues=moved_atoms, rescale_results=True, filter_results=True)
         pp.average().evaluate_performance()
         projection_entropy.append(pp.data_projector.projection_class_entropy)
         if pp.auc is not None:
@@ -82,6 +82,6 @@ for i, i_model in enumerate(test_model):
 
 work_dir = '/media/mkasimova/Data2/NN_VSD/toy_model/testing.different.toy.models/Febr.12.updated.code/'
 
-np.save(work_dir+'projection_entropy.npy',projection_entropy)
-np.save(work_dir+'area_under_roc.npy',area_under_roc)
+np.save(work_dir+'projection_entropy.FILT.npy',projection_entropy)
+np.save(work_dir+'area_under_roc.FILT.npy',area_under_roc)
 

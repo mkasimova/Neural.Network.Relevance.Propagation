@@ -71,9 +71,9 @@ class DataGenerator(object):
 
         frame_idx = 0
 
-        for f in range(self.nframes_per_cluster):
+        for c in range(self.nclusters):
 
-            for c in range(self.nclusters):
+            for f in range(self.nframes_per_cluster):
 
                 labels[frame_idx, c] = 1
                 conf = np.copy(conf0)
@@ -217,7 +217,7 @@ class DataGenerator(object):
         for n1, coords1 in enumerate(conf):
             for n2 in range(n1 + 1, self.natoms):
                 coords2 = conf[n2]
-                feats[idx] = np.linalg.norm(coords1-coords2)
+                feats[idx] = 1/np.linalg.norm(coords1-coords2+1e-9)
                 idx += 1
 
         return feats

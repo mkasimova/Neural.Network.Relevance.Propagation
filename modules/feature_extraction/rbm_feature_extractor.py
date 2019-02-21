@@ -8,10 +8,10 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 
-import modules.relevance_propagation as relprop
-from modules.feature_extraction.feature_extractor import FeatureExtractor
+from .. import relevance_propagation as relprop
+from .feature_extractor import FeatureExtractor
 from sklearn.neural_network import BernoulliRBM
-from modules import utils
+from .. import utils
 import scipy
 
 logger = logging.getLogger("rbm")

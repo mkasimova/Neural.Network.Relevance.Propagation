@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import logging
 import sys
 import numpy as np
-from modules import postprocessing as pop, utils
+from . import postprocessing as pop, utils
 
 logging.basicConfig(
     stream=sys.stdout,

@@ -3,8 +3,8 @@ import logging
 
 from sklearn.decomposition import PCA
 
-from modules.feature_extraction.feature_extractor import FeatureExtractor
-from modules import utils
+from .feature_extractor import FeatureExtractor
+from .. import utils
 
 logging.basicConfig(
     stream=sys.stdout,

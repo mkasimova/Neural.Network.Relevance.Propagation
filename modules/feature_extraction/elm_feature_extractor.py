@@ -7,8 +7,8 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-import modules.relevance_propagation as relprop
-from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
+from .. import relevance_propagation as relprop
+from .mlp_feature_extractor import MlpFeatureExtractor
 import scipy.special
 
 logger = logging.getLogger("elm")

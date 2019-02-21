@@ -10,7 +10,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
-import modules.utils as utils
+from . import utils
 from scipy.spatial.distance import squareform
 from scipy.stats import multivariate_normal
 from sklearn.mixture import GaussianMixture

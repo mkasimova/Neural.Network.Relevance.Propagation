@@ -10,7 +10,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 from scipy.stats import entropy
-from modules.feature_extraction.feature_extractor import FeatureExtractor
+from .feature_extractor import FeatureExtractor
 
 logger = logging.getLogger("KL divergence")
 

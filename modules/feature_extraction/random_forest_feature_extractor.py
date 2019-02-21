@@ -4,7 +4,7 @@ import numpy as np
 
 from sklearn.ensemble import RandomForestClassifier
 
-from modules.feature_extraction.feature_extractor import FeatureExtractor
+from .feature_extractor import FeatureExtractor
 
 logging.basicConfig(
     stream=sys.stdout,

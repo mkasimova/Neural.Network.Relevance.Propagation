@@ -10,8 +10,8 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import sklearn.neural_network
 
-import modules.relevance_propagation as relprop
-from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
+from .. import relevance_propagation as relprop
+from .mlp_feature_extractor import MlpFeatureExtractor
 
 logger = logging.getLogger("mlp_ae")
 

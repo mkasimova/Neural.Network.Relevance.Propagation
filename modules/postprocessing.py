@@ -9,9 +9,9 @@ logging.basicConfig(
 import os
 import numpy as np
 from biopandas.pdb import PandasPdb
-import modules.utils as utils
-import modules.filtering as filtering
-import modules.data_projection as dp
+from . import utils
+from . import filtering
+from . import data_projection as dp
 
 logger = logging.getLogger("postprocessing")
 

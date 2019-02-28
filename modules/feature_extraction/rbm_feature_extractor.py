@@ -21,6 +21,7 @@ class RbmFeatureExtractor(FeatureExtractor):
 
     def __init__(self, samples, cluster_indices, n_components, n_splits=10, n_iterations=10, scaling=True, randomize=True,
                  filter_by_distance_cutoff=False, contact_cutoff=0.5,
+                 use_inverse_distances=True,
                  relevance_method="from_lrp",
                  variance_cutoff='auto',
                  name="RBM",

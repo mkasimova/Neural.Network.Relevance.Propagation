@@ -17,12 +17,12 @@ dg = DataGenerator(natoms=20, nclusters=2, natoms_per_cluster=[1, 1], nframes_pe
                    noise_level=0.001,  # 1e-2, #1e-2,
                    displacement=0.1,
                    noise_natoms=None,
-                   feature_type='dist',  # carteesian_rot_trans
+                   feature_type='inv-dist',  # carteesian_rot_trans
                    test_model='linear')
 # dg.generate_frames()
 # dg.generate_clusters()
-dg.select_atoms_to_move()
-data, labels = dg.generate_frames()
+#dg.select_atoms_to_move()
+data, labels = dg.Generate_Data_ClustersLabels()
 cluster_indices = labels.argmax(axis=1)
 feature_to_resids = dg.feature_to_resids()
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
@@ -85,16 +85,20 @@ results = []
 for extractor in feature_extractors:
     extractor.error_limit = 500
     logger.info("Computing relevance for extractors %s", extractor.name)
-    feature_importance, std_feature_importance, errors = extractor.extract_features()
+    extractor.extract_features()
+    test_set_errors = extractor.test_set_errors
+    feature_importance = extractor.feature_importance
+    std_feature_importance = extractor.std_feature_importance
+
     # logger.info("Get feature_importance and std of shapes %s, %s", feature_importance.shape, std_feature_importance.shape)
-    results.append((extractor, feature_importance, std_feature_importance, errors))
+    results.append((extractor, feature_importance, std_feature_importance, test_set_errors))
 logger.info("Done")
 
 postprocessors = []
 filter_results = True
 for (extractor, feature_importance, std_feature_importance, errors) in results:
-    p = pp.PostProcessor(extractor, feature_importance, std_feature_importance, errors, cluster_indices,
-                         ".",
+    p = pp.PostProcessor(extractor,
+                         working_dir=".",
                          pdb_file=None,
                          feature_to_resids=feature_to_resids,
                          filter_results=filter_results)

@@ -17,9 +17,7 @@ logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, feature_importance, std_feature_importance, test_set_errors, cluster_indices, working_dir, 
-    		rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None,
-    		use_GMM_estimator=True):
+    def __init__(self, extractor, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -31,10 +29,14 @@ class PostProcessor(object):
         :param feature_to_resids: an array of dimension nfeatures*2 which tells which two residues are involved in a feature
         """
         self.extractor = extractor
-        self.feature_importances = feature_importance
-        self.std_feature_importances = std_feature_importance
-        self.cluster_indices = cluster_indices
+        self.feature_importances = extractor.feature_importance
+        self.std_feature_importances = extractor.std_feature_importance
+        self.supervised = supervised
+        self.cluster_indices = extractor.cluster_indices
+        self.nclusters = len(list(set(self.cluster_indices)))
         self.working_dir = working_dir
+        if self.working_dir is None:
+            self.working_dir = os.getcwd()
         self.pdb_file = pdb_file
         self.predefined_relevant_residues = predefined_relevant_residues
         self.use_GMM_estimator = use_GMM_estimator
@@ -52,7 +54,7 @@ class PostProcessor(object):
         self.std_feature_importances[self.indices_filtered,:] = 0
 
         # Set mapping from features to residues
-        self.nfeatures, self.nclusters = feature_importance.shape
+        self.nfeatures = self.feature_importances.shape[0]
         if feature_to_resids is None and self.pdb_file is None:
             feature_to_resids = utils.get_default_feature_to_resids(self.nfeatures)
         elif feature_to_resids is None and self.pdb_file is not None:
@@ -69,7 +71,7 @@ class PostProcessor(object):
         # Performance metrics
         self.predefined_relevant_residues = predefined_relevant_residues
         self.average_std = None
-        self.test_set_errors = test_set_errors.mean()
+        self.test_set_errors = extractor.test_set_errors.mean()
         self.data_projector = None
         self.tp_rate = None
         self.fp_rate = None
@@ -78,48 +80,90 @@ class PostProcessor(object):
     def average(self):
         """
         Computes average importance per cluster and residue and residue etc.
-        Sets the fields importance_per_cluster, importance_per_residue_and_cluster, importance_per_residue
+        Sets the fields importance_per_residue_and_cluster, importance_per_residue
         :return: itself
         """
-        self._compute_importance_per_residue_and_cluster()
+        self._map_feature_to_resids()
         self._compute_importance_per_residue()
+
+        if self.supervised:
+            self._compute_importance_per_residue_and_cluster()
 
         return self
 
-    def _compute_importance_per_residue_and_cluster(self):
+    def evaluate_performance(self):
+        """
+        Computes -average of standard deviation (per residue)
+                 -projection classification entropy
+                 -area under ROC (for toy model only)
+        """
 
-        importance = self.feature_importances
-        index_to_resid = np.unique(np.asarray(self.feature_to_resids.flatten())) # at index X we have residue number
-        self.nresidues = len(index_to_resid)
+        self._compute_average_std()
+        self._compute_projection_classification_entropy()
 
-        index_to_resid = [r for r in index_to_resid]
+        if self.supervised and self.predefined_relevant_residues is not None:
+            self._compute_area_under_ROC()
+
+        return self
+
+    def persist(self):
+        """
+        Save .npy files of the different averages and pdb files with the beta column set to importance
+        :return: itself
+        """
+        directory = self.working_dir + "/{}/".format(self.extractor.name)
+
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        np.save(directory + "importance_per_residue", self.importance_per_residue)
+        np.save(directory + "std_importance_per_residue", self.std_importance_per_residue)
+        np.save(directory + "feature_importance", self.feature_importances)
+        np.save(directory + "std_feature_importance", self.std_feature_importances)
+
+        if self.importance_per_residue_and_cluster is not None and self.std_importance_per_residue_and_cluster is not None:
+            np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
+            np.save(directory + "std_importance_per_residue_and_cluster", self.std_importance_per_residue_and_cluster)
+
+        if self.pdb_file is not None:
+            pdb = PandasPdb()
+            pdb.read_pdb(self.pdb_file)
+            self._save_to_pdb(pdb, directory + "importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
+
+            if self.importance_per_residue_and_cluster is not None:
+                for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
+                    self._save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
+
+        return self
+
+    def _map_feature_to_resids(self):
+
+        self.index_to_resid = np.unique(np.asarray(self.feature_to_resids.flatten())) # at index X we have residue number
+        self.index_to_resid = [r for r in self.index_to_resid]
+        self.nresidues = len(self.index_to_resid)
 
         res_id_to_index = {} # a map pointing back to the index in the array index_to_resid
-        for idx, resid in enumerate(index_to_resid):
+        for idx, resid in enumerate(self.index_to_resid):
             res_id_to_index[resid] = idx
-        importance_per_residue_and_cluster = np.zeros((self.nresidues, self.nclusters))
-        std_importance = np.zeros((self.nresidues, self.nclusters))
-        for feature_idx, rel in enumerate(importance):
+        importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
+        std_importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
+        for feature_idx, rel in enumerate(self.feature_importances):
             res1, res2 = self.feature_to_resids[feature_idx]
             res1 = res_id_to_index[res1]
             res2 = res_id_to_index[res2]
-            importance_per_residue_and_cluster[res1, :] += rel
-            importance_per_residue_and_cluster[res2, :] += rel
-            std_importance[res1,:] += self.std_feature_importances[feature_idx,:]**2
-            std_importance[res2,:] += self.std_feature_importances[feature_idx,:]**2
-        std_importance = np.sqrt(std_importance)
+            importance_mapped_to_resids[res1, :] += rel
+            importance_mapped_to_resids[res2, :] += rel
+            std_importance_mapped_to_resids[res1,:] += self.std_feature_importances[feature_idx,:]**2
+            std_importance_mapped_to_resids[res2,:] += self.std_feature_importances[feature_idx,:]**2
+        std_importance_mapped_to_resids = np.sqrt(std_importance_mapped_to_resids)
 
-        if self.rescale_results:
-            importance_per_residue_and_cluster, std_importance = utils.rescale_feature_importance(importance_per_residue_and_cluster, std_importance)
-
-        self.importance_per_residue_and_cluster = importance_per_residue_and_cluster
-        self.std_importance_per_residue_and_cluster = std_importance
-        self.index_to_resid = index_to_resid
+        self.importance_mapped_to_resids = importance_mapped_to_resids
+        self.std_importance_mapped_to_resids = std_importance_mapped_to_resids
 
     def _compute_importance_per_residue(self):
 
-        importance_per_residue = self.importance_per_residue_and_cluster.mean(axis=1)
-        std_importance_per_residue = np.sqrt(np.mean(self.std_importance_per_residue_and_cluster**2,axis=1))
+        importance_per_residue = self.importance_mapped_to_resids.mean(axis=1)
+        std_importance_per_residue = np.sqrt(np.mean(self.std_importance_mapped_to_resids**2,axis=1))
 
         if self.rescale_results:
             # Adds a second axis to feed to utils.rescale_feature_importance
@@ -132,20 +176,13 @@ class PostProcessor(object):
         self.importance_per_residue = importance_per_residue
         self.std_importance_per_residue = std_importance_per_residue
 
-    def evaluate_performance(self):
-        """
-        Computes -average of standard deviation (per residue)
-                 -projection classification entropy
-                 -area under ROC (for toy model only)
-        """
+    def _compute_importance_per_residue_and_cluster(self):
 
-        self._compute_average_std()
-        self._compute_projection_classification_entropy()
+        if self.rescale_results:
+            self.importance_mapped_to_resids, self.std_importance_mapped_to_resids = utils.rescale_feature_importance(self.importance_mapped_to_resids, self.std_importance_mapped_to_resids)
 
-        if self.predefined_relevant_residues is not None:
-            self._compute_area_under_ROC()
-
-        return self
+        self.importance_per_residue_and_cluster = self.importance_mapped_to_resids
+        self.std_importance_per_residue_and_cluster = self.std_importance_mapped_to_resids
 
     def _compute_average_std(self):
         """
@@ -168,20 +205,17 @@ class PostProcessor(object):
         """
         Computes ROC curve and area under it
         """
-        n_residues = self.importance_per_residue_and_cluster.shape[0]
-        n_clusters = self.importance_per_residue_and_cluster.shape[1]
 
         auc = 0
+        for i in range(self.nclusters):
 
-        for i in range(n_clusters):
-
-            actives = np.chararray(n_residues)
+            actives = np.chararray(self.nresidues)
             actives[:] = 'd'
             ind_a = self.predefined_relevant_residues[i]
             actives[ind_a] = 'a'
 
             actives_len = len(ind_a)
-            decoys_len = n_residues - actives_len
+            decoys_len = self.nresidues - actives_len
 
             ind_scores_sorted = np.argsort(-self.importance_per_residue_and_cluster[:,i])
             actives_sorted = actives[ind_scores_sorted]
@@ -201,31 +235,7 @@ class PostProcessor(object):
             for j in range(len(fp_rate)-1):
                 auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
 
-        self.auc = auc/n_clusters
-
-    def persist(self):
-        """
-        Save .npy files of the different averages and pdb files with the beta column set to importance
-        :return: itself
-        """
-        directory = self.working_dir + "/{}/".format(self.extractor.name)
-
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
-        np.save(directory + "importance_per_residue", self.importance_per_residue)
-        np.save(directory + "feature_importance", self.feature_importances)
-        np.save(directory + "std_feature_importance", self.std_feature_importances)
-
-        if self.pdb_file is not None:
-            pdb = PandasPdb()
-            pdb.read_pdb(self.pdb_file)
-            self._save_to_pdb(pdb, directory + "average_importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
-            for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
-                self._save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
-
-        return self
+        self.auc = auc/self.nclusters
 
     def _map_to_correct_residues(self, importance_per_residue):
         """

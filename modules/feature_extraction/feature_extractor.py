@@ -17,11 +17,19 @@ logger = logging.getLogger("Extracting features")
 
 class FeatureExtractor(object):
 
-    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=filtering.contact_cutoff_default,
-                 use_inverse_distances=True, n_splits=10, n_iterations=10, name='', error_limit=5, supervised=True,
+    def __init__(self, samples,
+                 cluster_indices=None,
+                 scaling=True,
+                 filter_by_distance_cutoff=True,
+                 contact_cutoff=filtering.contact_cutoff_default,
+                 use_inverse_distances=True,
+                 n_splits=10,
+                 n_iterations=10,
+                 name='FeatureExtractor',
+                 error_limit=5,
+                 supervised=True,
                  remove_outliers=False):
 
-        # Setting parameters
         self.samples = samples
         self.cluster_indices = cluster_indices
         self.n_clusters = len(list(set(self.cluster_indices)))
@@ -40,6 +48,11 @@ class FeatureExtractor(object):
         self.contact_cutoff = filtering.contact_cutoff_default if contact_cutoff is None else contact_cutoff
         self.remove_outliers = remove_outliers
         self.supervised = supervised
+        logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
+                     " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, "
+                     " remove_outliers %s, use_inverse_distances %s",
+                     name, n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff,
+                     remove_outliers, use_inverse_distances)
 
     def split_train_test(self):
         """
@@ -93,7 +106,8 @@ class FeatureExtractor(object):
 
         if self.filter_by_distance_cutoff:
             self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
-                                                                                      indices_for_filtering, cutoff=self.contact_cutoff,
+                                                                                      indices_for_filtering,
+                                                                                      cutoff=self.contact_cutoff,
                                                                                       inverse_distances=self.use_inverse_distances)
 
         if self.scaling:

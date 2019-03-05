@@ -1,5 +1,5 @@
-import sys
 import logging
+import sys
 
 from sklearn.decomposition import PCA
 
@@ -18,18 +18,19 @@ logger = logging.getLogger("PCA")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, scaling=True, filter_by_distance_cutoff=False, contact_cutoff=0.5,
-                 variance_cutoff='auto', n_components=None, name="PCA", remove_outliers=False):
+    def __init__(self, samples, cluster_indices,
+                 variance_cutoff='auto',
+                 n_components=None,
+                 name="PCA",
+                 **kwargs):
+        FeatureExtractor.__init__(self, samples, cluster_indices,
+                                  n_iterations=1,
+                                  name=name,
+                                  supervised=False,
+                                  **kwargs)
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=1, scaling=scaling,
-                                  filter_by_distance_cutoff=filter_by_distance_cutoff, contact_cutoff=contact_cutoff,
-                                  name=name, supervised=False, remove_outliers=remove_outliers)
-
-        logger.debug("Initializing PCA with the following parameters: \
-                      n_splits %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      n_components %s, remove_outliers %s", \
-                      n_splits, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      n_components, remove_outliers)
+        logger.debug("Initializing PCA with the following parameters: n_components %s, variance_cutoff %s",
+                     n_components, variance_cutoff)
         self.n_components = n_components
         self.variance_cutoff = variance_cutoff
 
@@ -42,12 +43,12 @@ class PCAFeatureExtractor(FeatureExtractor):
     def get_feature_importance(self, model, samples, labels):
         logger.debug("Extracting feature importance using PCA ...")
         importance = utils.compute_feature_importance_from_components(model.explained_variance_ratio_,
-                                                                model.components_,
-                                                                self.variance_cutoff)
+                                                                      model.components_,
+                                                                      self.variance_cutoff)
         return importance
 
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
-
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
+                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
         return PostProcessor(extractor=self, \
                              working_dir=working_dir, \
                              rescale_results=rescale_results, \
@@ -57,4 +58,3 @@ class PCAFeatureExtractor(FeatureExtractor):
                              predefined_relevant_residues=predefined_relevant_residues, \
                              use_GMM_estimator=use_GMM_estimator, \
                              supervised=False)
-

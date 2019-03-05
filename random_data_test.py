@@ -21,7 +21,7 @@ dg = DataGenerator(natoms=20, nclusters=2, natoms_per_cluster=[1, 1], nframes_pe
                    test_model='linear')
 # dg.generate_frames()
 # dg.generate_clusters()
-#dg.select_atoms_to_move()
+# dg.select_atoms_to_move()
 data, labels = dg.Generate_Data_ClustersLabels()
 cluster_indices = labels.argmax(axis=1)
 feature_to_resids = dg.feature_to_resids()
@@ -31,15 +31,16 @@ n_iterations, n_splits = 1, 1
 variance_cutoff = "auto"
 filter_by_distance_cutoff = False
 feature_extractors = [
-    # fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, #hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
-    #                       training_max_iter=10000,
-    #                       activation="logistic",
-    #                      filter_by_distance_cutoff=filter_by_distance_cutoff), #, solver="sgd"),
-    # fe.MlpAeFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-    #                      hidden_layer_sizes=(dg.nclusters,),#int(data.shape[1]/2),),
-    #                      #training_max_iter=10000,
-    #                     use_reconstruction_for_lrp=False,
-    #                     activation="logistic"), #, solver="sgd"),
+    fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
+                           # hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
+                           training_max_iter=10000,
+                           activation="logistic",
+                           filter_by_distance_cutoff=filter_by_distance_cutoff),  # , solver="sgd"),
+    fe.MlpAeFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
+                             hidden_layer_sizes=(dg.nclusters,),  # int(data.shape[1]/2),),
+                             # training_max_iter=10000,
+                             use_reconstruction_for_lrp=False,
+                             activation="logistic"),  # , solver="sgd"),
     fe.RbmFeatureExtractor(data, cluster_indices,
                            n_splits=n_splits,
                            n_iterations=n_iterations,
@@ -57,13 +58,13 @@ feature_extractors = [
                            name='RBM_from_lrp',
                            variance_cutoff=variance_cutoff,
                            filter_by_distance_cutoff=filter_by_distance_cutoff),
-    #     fe.ElmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-    #                            activation="logistic",
-    #                            n_nodes=3*dg.nfeatures,
-    #                            alpha=1,
-    #                            filter_by_distance_cutoff=filter_by_distance_cutoff),
-    #      fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits,
-    #                             filter_by_distance_cutoff=filter_by_distance_cutoff),
+    fe.ElmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
+                           activation="logistic",
+                           n_nodes=3 * dg.nfeatures,
+                           alpha=1,
+                           filter_by_distance_cutoff=filter_by_distance_cutoff),
+    fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits,
+                          filter_by_distance_cutoff=filter_by_distance_cutoff),
     fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None,
                            variance_cutoff=100,
                            name='PCA_all',
@@ -76,8 +77,8 @@ feature_extractors = [
                            variance_cutoff='6_components',
                            name='PCA_6_comp',
                            filter_by_distance_cutoff=filter_by_distance_cutoff),
-    #     fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-    #                                                                filter_by_distance_cutoff=filter_by_distance_cutoff, one_vs_rest=True),
+    fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
+                                    filter_by_distance_cutoff=filter_by_distance_cutoff, one_vs_rest=True),
 ]
 logger.info("Done. using %s feature extractors", len(feature_extractors))
 

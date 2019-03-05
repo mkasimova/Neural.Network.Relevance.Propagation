@@ -20,28 +20,22 @@ logger = logging.getLogger("mlp")
 
 class MlpFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True,
-                 filter_by_distance_cutoff=False,
-                 contact_cutoff=0.5,
+    def __init__(self, samples, cluster_indices,
                  name="MLP",
                  hidden_layer_sizes=(100,),
                  solver='lbfgs',
                  activation=relprop.relu,
                  randomize=True,
+                 supervised=True,
                  training_max_iter=100000,
-                 remove_outliers=False):
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                                  scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                  contact_cutoff=contact_cutoff,
+                 **kwargs):
+        FeatureExtractor.__init__(self, samples, cluster_indices,
                                   name=name,
-                                  supervised=True,
-                                  remove_outliers=remove_outliers)
-
-        logger.debug("Initializing MLP with the following parameters: \
-                      n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      hidden_layer_sizes %s, solver %s, activation function %s, randomize %s, training_max_iter %s, remove_outliers %s", \
-                      n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      hidden_layer_sizes, solver, activation, randomize, training_max_iter, remove_outliers)
+                                  supervised=supervised,
+                                  **kwargs)
+        logger.debug("Initializing MLP with the following parameters:"
+                     " hidden_layer_sizes %s, solver %s, activation function %s, randomize %s, training_max_iter %s",
+                     hidden_layer_sizes, solver, activation, randomize, training_max_iter)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.solver = solver
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
@@ -113,7 +107,8 @@ class MlpFeatureExtractor(FeatureExtractor):
 
         self.layers = layers
 
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
+                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
 
         return PostProcessor(extractor=self, \
                              working_dir=working_dir, \
@@ -124,4 +119,3 @@ class MlpFeatureExtractor(FeatureExtractor):
                              predefined_relevant_residues=predefined_relevant_residues, \
                              use_GMM_estimator=use_GMM_estimator, \
                              supervised=True)
-

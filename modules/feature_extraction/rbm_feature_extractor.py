@@ -25,6 +25,7 @@ class RbmFeatureExtractor(FeatureExtractor):
                  relevance_method="from_lrp",
                  variance_cutoff='auto',
                  name="RBM",
+                 use_inverse_distances=True,
                  remove_outliers=False):
 
         FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
@@ -32,13 +33,14 @@ class RbmFeatureExtractor(FeatureExtractor):
                                   contact_cutoff=contact_cutoff,
                                   supervised=False,
                                   name=name,
+                                  use_inverse_distances=use_inverse_distances,
                                   remove_outliers=remove_outliers)
 
         logger.debug("Initializing RBM with the following parameters: \
                       n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      n_components %s, randomize %s, relevance_method %s, remove_outliers %s", \
+                      n_components %s, randomize %s, relevance_method %s, remove_outliers %s, use_inverse_distances %s", \
                      n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                     n_components, randomize, relevance_method, remove_outliers)
+                     n_components, randomize, relevance_method, remove_outliers, use_inverse_distances)
 
         self.n_components = n_components
         self.randomize = randomize

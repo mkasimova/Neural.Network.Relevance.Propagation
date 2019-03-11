@@ -20,7 +20,7 @@ logger = logging.getLogger("mlp")
 
 class MlpFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices,
+    def __init__(self,
                  name="MLP",
                  hidden_layer_sizes=(100,),
                  solver='lbfgs',
@@ -29,7 +29,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                  supervised=True,
                  training_max_iter=100000,
                  **kwargs):
-        FeatureExtractor.__init__(self, samples, cluster_indices,
+        FeatureExtractor.__init__(self,
                                   name=name,
                                   supervised=supervised,
                                   **kwargs)

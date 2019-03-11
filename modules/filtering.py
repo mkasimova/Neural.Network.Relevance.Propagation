@@ -9,10 +9,14 @@ logging.basicConfig(
 import numpy as np
 
 logger = logging.getLogger("filtering")
-contact_cutoff_default = 0.5
+lower_bound_distance_cutoff_default = 0.5
+upper_bound_distance_cutoff_default = 0.7
 
 
-def filter_by_distance_cutoff(data, indices_for_filtering, cutoff=contact_cutoff_default, inverse_distances=True):
+def filter_by_distance_cutoff(data, indices_for_filtering,
+                              lower_bound_cutoff=lower_bound_distance_cutoff_default,
+                              upper_bound_cutoff=upper_bound_distance_cutoff_default,
+                              inverse_distances=True):
     """
     Contact cutoff based filtering
     """
@@ -26,7 +30,8 @@ def filter_by_distance_cutoff(data, indices_for_filtering, cutoff=contact_cutoff
     data_filtered_ind = []
     for i in range(data.shape[1]):
         data_min = np.min(data[:, i])
-        if data_min <= cutoff:
+        data_max = np.max(data[:, i])
+        if data_min <= lower_bound_cutoff and data_max >= upper_bound_cutoff:
             data_filtered_ind.append(i)
 
     logger.info("Number of features after distance cutoff based filtering is %s", len(data_filtered_ind))

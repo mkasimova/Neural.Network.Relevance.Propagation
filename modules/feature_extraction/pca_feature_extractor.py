@@ -18,13 +18,13 @@ logger = logging.getLogger("PCA")
 
 class PCAFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices,
+    def __init__(self,
                  variance_cutoff='auto',
                  n_components=None,
                  name="PCA",
                  **kwargs):
-        FeatureExtractor.__init__(self, samples, cluster_indices,
-                                  n_iterations=1,
+        kwargs['n_iterations'] = 1
+        FeatureExtractor.__init__(self,
                                   name=name,
                                   supervised=False,
                                   **kwargs)

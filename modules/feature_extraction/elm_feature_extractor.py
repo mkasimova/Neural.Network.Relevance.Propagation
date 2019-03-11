@@ -16,12 +16,12 @@ logger = logging.getLogger("elm")
 
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
-    def __init__(self, samples, cluster_indices,
+    def __init__(self,
                  n_nodes=1000,
                  alpha=1,
                  name="ELM",
                  **kwargs):
-        MlpFeatureExtractor.__init__(self, samples, cluster_indices,
+        MlpFeatureExtractor.__init__(self,
                                      name=name,
                                      **kwargs)
         logger.debug("Initializing ELM with the following parameters: n_nodes %s, alpha %s",

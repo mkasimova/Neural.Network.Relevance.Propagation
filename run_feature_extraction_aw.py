@@ -24,7 +24,7 @@ def main(parser):
 
     labels = cluster_indices
 
-    contact_cutoff = 1.0
+    distance_cutoff = 1.0
     n_components = 2
 
     # Check if samples format is correct
@@ -34,22 +34,22 @@ def main(parser):
     feature_extractors = [
         fe.PCAFeatureExtractor(samples, labels,
                                n_splits=args.number_of_k_splits,
-                               scaling=False, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                               scaling=False, filter_by_distance_cutoff=True, distance_cutoff=distance_cutoff,
                                n_components=None),
         fe.RbmFeatureExtractor(samples, labels,n_components, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations, scaling=True,
-                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
+                               filter_by_distance_cutoff=True, distance_cutoff=distance_cutoff),
         fe.RandomForestFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations,
-                               scaling=True, filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
+                               scaling=True, filter_by_distance_cutoff=True, distance_cutoff=distance_cutoff),
         fe.KLFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,  scaling=True,
-                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff),
+                               filter_by_distance_cutoff=True, distance_cutoff=distance_cutoff),
         #fe.ElmFeatureExtractor(samples, labels,
        # 					   n_splits=args.number_of_k_splits, n_iterations=args.number_of_iterations,
-       # 					   scaling=True, filter_by_distance_cutoff=True,contact_cutoff=0.8),
+       # 					   scaling=True, filter_by_distance_cutoff=True,distance_cutoff=0.8),
         fe.MlpFeatureExtractor(samples, labels, n_splits=args.number_of_k_splits,
                                n_iterations=args.number_of_iterations, scaling=True,
-                               filter_by_distance_cutoff=True, contact_cutoff=contact_cutoff,
+                               filter_by_distance_cutoff=True, distance_cutoff=distance_cutoff,
                                hidden_layer_sizes=(100,)),
     ]
 

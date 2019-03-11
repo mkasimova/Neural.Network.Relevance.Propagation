@@ -18,7 +18,7 @@ logger = logging.getLogger("RF")
 
 class RandomForestFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices,
+    def __init__(self,
                  name="RF",
                  n_estimators=30,
                  njobs=-1,
@@ -26,7 +26,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
                  one_vs_rest=True,
                  **kwargs):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices,
+        FeatureExtractor.__init__(self,
                                   name=name,
                                   supervised=True,
                                   **kwargs)

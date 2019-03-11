@@ -17,11 +17,11 @@ logger = logging.getLogger("mlp_ae")
 
 class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
-    def __init__(self, samples, cluster_indices,
+    def __init__(self,
                  name="MLP_AE",
                  use_reconstruction_for_lrp=False,
                  **kwargs):
-        MlpFeatureExtractor.__init__(self, samples, cluster_indices, name=name, supervised=False, **kwargs)
+        MlpFeatureExtractor.__init__(self, name=name, supervised=False, **kwargs)
         self.use_reconstruction_for_lrp = use_reconstruction_for_lrp
         logger.debug("Initializing MLP AE with the following parameters:"
                      " use_reconstruction_for_lrp %s", use_reconstruction_for_lrp)

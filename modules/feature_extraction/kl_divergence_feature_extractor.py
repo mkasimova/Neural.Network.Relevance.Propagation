@@ -18,12 +18,12 @@ logger = logging.getLogger("KL divergence")
 
 class KLFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices,
+    def __init__(self,
                  name="KL",
                  cluster_split_method="one_vs_rest",
                  bin_width=None,
                  **kwargs):
-        FeatureExtractor.__init__(self, samples, cluster_indices,
+        FeatureExtractor.__init__(self,
                                   name=name,
                                   **kwargs)
 

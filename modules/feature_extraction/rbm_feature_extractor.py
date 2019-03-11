@@ -20,7 +20,7 @@ logger = logging.getLogger("rbm")
 
 class RbmFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices,
+    def __init__(self,
                  name="RBM",
                  n_components=1,
                  randomize=True,
@@ -28,7 +28,7 @@ class RbmFeatureExtractor(FeatureExtractor):
                  variance_cutoff='auto',
                  **kwargs):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices,
+        FeatureExtractor.__init__(self,
                                   supervised=False,
                                   name=name,
                                   **kwargs)

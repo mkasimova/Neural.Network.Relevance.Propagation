@@ -27,59 +27,61 @@ cluster_indices = labels.argmax(axis=1)
 feature_to_resids = dg.feature_to_resids()
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
 
-n_iterations, n_splits = 1, 1
+kwargs = {
+    'samples': data,
+    'cluster_indices': cluster_indices,
+    'filter_by_distance_cutoff': False,
+    'use_inverse_distances': True,
+    'n_splits': 1,
+    'n_iterations': 1,
+    # 'upper_bound_distance_cutoff': 1.,
+    # 'lower_bound_distance_cutoff': 1.
+}
 variance_cutoff = "auto"
-filter_by_distance_cutoff = False
-feature_extractors = [
-    fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                           # hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
-                           training_max_iter=10000,
-                           activation="logistic",
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),  # , solver="sgd"),
-    fe.MlpAeFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                             hidden_layer_sizes=(dg.nclusters,),  # int(data.shape[1]/2),),
-                             # training_max_iter=10000,
-                             use_reconstruction_for_lrp=False,
-                             activation="logistic"),  # , solver="sgd"),
-    fe.RbmFeatureExtractor(data, cluster_indices,
-                           n_splits=n_splits,
-                           n_iterations=n_iterations,
-                           n_components=10,  # dg.nclusters,
+supervised_feature_extractors = [
+    fe.MlpFeatureExtractor(  # hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
+        training_max_iter=10000,
+        activation="logistic",
+        **kwargs),
+    fe.ElmFeatureExtractor(
+        activation="relu",
+        n_nodes=3 * dg.nfeatures,
+        alpha=100,
+        **kwargs),
+    fe.KLFeatureExtractor(**kwargs),
+    fe.RandomForestFeatureExtractor(one_vs_rest=True, **kwargs),
+]
+unsupervised_feature_extractors = [
+    fe.MlpAeFeatureExtractor(
+        hidden_layer_sizes=(dg.nclusters,),  # int(data.shape[1]/2),),
+        # training_max_iter=10000,
+        use_reconstruction_for_lrp=True,
+        activation="logistic",
+        **kwargs),
+
+    fe.RbmFeatureExtractor(n_components=dg.nclusters,
                            relevance_method='from_components',
                            name='RBM_from_components',
                            variance_cutoff='auto',
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
-
-    fe.RbmFeatureExtractor(data, cluster_indices,
-                           n_splits=n_splits,
-                           n_iterations=n_iterations,
-                           n_components=dg.nclusters,
+                           **kwargs),
+    fe.RbmFeatureExtractor(n_components=dg.nclusters,
                            relevance_method='from_lrp',
-                           name='RBM_from_lrp',
-                           variance_cutoff=variance_cutoff,
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
-    fe.ElmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                           activation="logistic",
-                           n_nodes=3 * dg.nfeatures,
-                           alpha=1,
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
-    fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits,
-                          filter_by_distance_cutoff=filter_by_distance_cutoff),
-    fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None,
-                           variance_cutoff=100,
+                           name='RBM',
+                           **kwargs),
+    fe.PCAFeatureExtractor(n_components=None,
+                           variance_cutoff=101,
                            name='PCA_all',
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
-    fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None,
-                           variance_cutoff=variance_cutoff,
+                           **kwargs),
+    fe.PCAFeatureExtractor(n_components=None,
                            name="PCA_%s" % variance_cutoff,
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
-    fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None,
+                           variance_cutoff=variance_cutoff,
+                           **kwargs),
+    fe.PCAFeatureExtractor(n_components=None,
                            variance_cutoff='6_components',
                            name='PCA_6_comp',
-                           filter_by_distance_cutoff=filter_by_distance_cutoff),
-    fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                                    filter_by_distance_cutoff=filter_by_distance_cutoff, one_vs_rest=True),
+                           **kwargs),
 ]
+feature_extractors = supervised_feature_extractors
 logger.info("Done. using %s feature extractors", len(feature_extractors))
 
 results = []
@@ -113,9 +115,21 @@ logger.info(
     "Actual atoms moved: %s.\n(Cluster generation method %s. Noise level=%s, displacement=%s. frames/cluster=%s)",
     sorted(dg.moved_atoms),
     dg.test_model, dg.noise_level, dg.displacement, dg.nframes_per_cluster)
+
 visualization.visualize(postprocessors,
                         show_importance=True,
                         show_performance=False,
-                        show_projected_data=False)
-logger.info("Done. The settings were n_iterations, n_splits = %s, %s.\nFiltering (filter_by_distance_cutoff = %s)",
-            n_iterations, n_splits, filter_by_distance_cutoff)
+                        show_projected_data=False,
+                        outfile="output/test_importance_per_residue.svg")
+visualization.visualize(postprocessors,
+                        show_importance=False,
+                        show_performance=True,
+                        show_projected_data=False,
+                        outfile="output/test_performance.svg")
+visualization.visualize(postprocessors,
+                        show_importance=False,
+                        show_performance=False,
+                        show_projected_data=True,
+                        outfile="output/test_projection.svg")
+logger.info("Done. The settings were n_iterations = {n_iterations}, n_splits = {n_splits}."
+            "\nFiltering (filter_by_distance_cutoff={filter_by_distance_cutoff})".format(**kwargs))

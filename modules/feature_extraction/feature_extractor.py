@@ -17,11 +17,13 @@ logger = logging.getLogger("Extracting features")
 
 class FeatureExtractor(object):
 
-    def __init__(self, samples,
+    def __init__(self,
+                 samples=None,
                  cluster_indices=None,
                  scaling=True,
                  filter_by_distance_cutoff=True,
-                 contact_cutoff=filtering.contact_cutoff_default,
+                 lower_bound_distance_cutoff=filtering.lower_bound_distance_cutoff_default,
+                 upper_bound_distance_cutoff=filtering.upper_bound_distance_cutoff_default,
                  use_inverse_distances=True,
                  n_splits=10,
                  n_iterations=10,
@@ -29,7 +31,8 @@ class FeatureExtractor(object):
                  error_limit=5,
                  supervised=True,
                  remove_outliers=False):
-
+        if samples is None:
+            raise Exception("Samples cannot be None")
         self.samples = samples
         self.cluster_indices = cluster_indices
         self.n_clusters = len(list(set(self.cluster_indices)))
@@ -45,14 +48,15 @@ class FeatureExtractor(object):
         self.name = name
         self.error_limit = error_limit
         self.use_inverse_distances = use_inverse_distances
-        self.contact_cutoff = filtering.contact_cutoff_default if contact_cutoff is None else contact_cutoff
+        self.lower_bound_distance_cutoff = lower_bound_distance_cutoff
+        self.upper_bound_distance_cutoff = upper_bound_distance_cutoff
         self.remove_outliers = remove_outliers
         self.supervised = supervised
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
-                     " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, "
-                     " remove_outliers %s, use_inverse_distances %s",
-                     name, n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff,
-                     remove_outliers, use_inverse_distances)
+                     " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
+                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s",
+                     name, n_splits, n_iterations, scaling, filter_by_distance_cutoff, lower_bound_distance_cutoff,
+                     upper_bound_distance_cutoff, remove_outliers, use_inverse_distances)
 
     def split_train_test(self):
         """
@@ -107,7 +111,8 @@ class FeatureExtractor(object):
         if self.filter_by_distance_cutoff:
             self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
                                                                                       indices_for_filtering,
-                                                                                      cutoff=self.contact_cutoff,
+                                                                                      lower_bound_cutoff=self.lower_bound_distance_cutoff,
+                                                                                      upper_bound_cutoff=self.upper_bound_distance_cutoff,
                                                                                       inverse_distances=self.use_inverse_distances)
 
         if self.scaling:

@@ -13,16 +13,16 @@ from modules.data_generation import DataGenerator
 
 logger = logging.getLogger("dataGenNb")
 
-dg = DataGenerator(natoms=20, nclusters=2, natoms_per_cluster=[1, 1], nframes_per_cluster=200,
-                   noise_level=0.001,  # 1e-2, #1e-2,
+dg = DataGenerator(natoms=40, nclusters=4, natoms_per_cluster=[1, 1, 1, 1], nframes_per_cluster=200,
+                   noise_level=0.1,  # 1e-2, #1e-2,
                    displacement=0.1,
                    noise_natoms=None,
-                   feature_type='inv-dist',  # carteesian_rot_trans
-                   test_model='linear')
+                   feature_type='compact-dist',  # carteesian_rot_trans
+                   test_model='non-linear-random-displacement')
 # dg.generate_frames()
 # dg.generate_clusters()
 # dg.select_atoms_to_move()
-data, labels = dg.Generate_Data_ClustersLabels()
+data, labels = dg.generate_data()
 cluster_indices = labels.argmax(axis=1)
 feature_to_resids = dg.feature_to_resids()
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
@@ -39,7 +39,7 @@ kwargs = {
 }
 variance_cutoff = "auto"
 supervised_feature_extractors = [
-    fe.MlpFeatureExtractor(  # hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
+    fe.MlpFeatureExtractor(hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
         training_max_iter=10000,
         activation="logistic",
         **kwargs),

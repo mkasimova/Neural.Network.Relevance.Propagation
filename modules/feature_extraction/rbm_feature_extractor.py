@@ -20,36 +20,28 @@ logger = logging.getLogger("rbm")
 
 class RbmFeatureExtractor(FeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_components, n_splits=10, n_iterations=10, scaling=True, randomize=True,
-                 filter_by_distance_cutoff=False, contact_cutoff=0.5,
+    def __init__(self,
+                 name="RBM",
+                 n_components=1,
+                 randomize=True,
                  relevance_method="from_lrp",
                  variance_cutoff='auto',
-                 name="RBM",
-                 use_inverse_distances=True,
-                 remove_outliers=False):
+                 **kwargs):
 
-        FeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                                  scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                  contact_cutoff=contact_cutoff,
+        FeatureExtractor.__init__(self,
                                   supervised=False,
                                   name=name,
-                                  use_inverse_distances=use_inverse_distances,
-                                  remove_outliers=remove_outliers)
-
-        logger.debug("Initializing RBM with the following parameters: \
-                      n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      n_components %s, randomize %s, relevance_method %s, remove_outliers %s, use_inverse_distances %s", \
-                     n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                     n_components, randomize, relevance_method, remove_outliers, use_inverse_distances)
-
+                                  **kwargs)
         self.n_components = n_components
         self.randomize = randomize
         self.relevance_method = relevance_method
         self.variance_cutoff = variance_cutoff
+        logger.debug("Initializing RBM with the following parameters: "
+                     " n_components %s, randomize %s, relevance_method %s, relevance_method %s, variance_cutoff %s",
+                     n_components, randomize, relevance_method, relevance_method, variance_cutoff)
 
     def train(self, train_set, train_labels):
         logger.debug("Training RBM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-
         classifier = BernoulliRBM(
             random_state=(None if self.randomize else 89274),
             n_components=self.n_components)
@@ -116,11 +108,12 @@ class RbmFeatureExtractor(FeatureExtractor):
             raise Exception("Method {} not supported".format(self.relevance_method))
 
     def _create_layers(self, classifier):
-        return [ relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
-                 relprop.LogisticSigmoid()
-               ]
+        return [relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
+                relprop.LogisticSigmoid()
+                ]
 
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
+                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
 
         return PostProcessor(extractor=self, \
                              working_dir=working_dir, \
@@ -131,4 +124,3 @@ class RbmFeatureExtractor(FeatureExtractor):
                              predefined_relevant_residues=predefined_relevant_residues, \
                              use_GMM_estimator=use_GMM_estimator, \
                              supervised=False)
-

@@ -75,7 +75,7 @@ for i, i_model in enumerate(test_model):
                                noise_natoms=None, noise_level=j_noise,\
                                displacement=0.1)
 
-            data, labels = dg.Generate_Data_ClustersLabels()
+            data, labels = dg.generate_data()
             cluster_indices = labels.argmax(axis=1)
 
             projection_entropy[:,i,j,k], area_under_roc[:,i,j,k] = run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,dg.moved_atoms)

@@ -17,7 +17,14 @@ logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+    def __init__(self, extractor,
+                 working_dir=None,
+                 rescale_results=True,
+                 filter_results=False,
+                 feature_to_resids=None,
+                 pdb_file=None,
+                 predefined_relevant_residues=None,
+                 use_GMM_estimator=True):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -31,7 +38,7 @@ class PostProcessor(object):
         self.extractor = extractor
         self.feature_importances = extractor.feature_importance
         self.std_feature_importances = extractor.std_feature_importance
-        self.supervised = supervised
+        self.supervised = extractor.supervised
         self.cluster_indices = extractor.cluster_indices
         self.nclusters = len(list(set(self.cluster_indices)))
         self.working_dir = working_dir

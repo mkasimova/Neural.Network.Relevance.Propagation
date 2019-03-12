@@ -45,11 +45,14 @@ class DataGenerator(object):
             self.nfeatures = int(self.natoms * (self.natoms - 1) / 2)
         elif self.feature_type.startswith('cartesian'):
             self.nfeatures = 3 * self.natoms
-        elif self.feature_type.startswith("compact-dist"):
-            self.nfeatures = 3 * (self.natoms - 2)
+        elif self.feature_type.startswith("compact-dist") and self.natoms > 3:
+            self.nfeatures = 4 * (self.natoms - 4) + 6
         else:
             raise Exception("Unsupported feature type {}".format(self.feature_type))
         self.nsamples = self.nframes_per_cluster * self.nclusters
+        self._delta = 1e-9
+        self.moved_atoms = None
+        self.moved_atoms_noise = None
 
     def generate_data(self):
         """
@@ -221,7 +224,7 @@ class DataGenerator(object):
         for n1, coords1 in enumerate(conf):
             for n2 in range(n1 + 1, self.natoms):
                 coords2 = conf[n2]
-                feats[idx] = 1 / np.linalg.norm(coords1 - coords2 + 1e-9)
+                feats[idx] = 1 / np.linalg.norm(coords1 - coords2 + self._delta)
                 idx += 1
 
         return feats
@@ -230,17 +233,20 @@ class DataGenerator(object):
         if self.natoms < 4:
             return self._to_inv_dist(conf)
         feats = np.empty((self.nfeatures))
-        feats[0] = 1 / np.linalg.norm(conf[0] - conf[1] + 1e-9)
-        feats[1] = 1 / np.linalg.norm(conf[0] - conf[2] + 1e-9)
-        feats[2] = 1 / np.linalg.norm(conf[1] - conf[2] + 1e-9)
-        for n in range(3, len(conf)):
+        feats[0] = 1 / np.linalg.norm(conf[0] - conf[1] + self._delta)
+        feats[1] = 1 / np.linalg.norm(conf[0] - conf[2] + self._delta)
+        feats[2] = 1 / np.linalg.norm(conf[0] - conf[3] + self._delta)
+        feats[3] = 1 / np.linalg.norm(conf[1] - conf[2] + self._delta)
+        feats[4] = 1 / np.linalg.norm(conf[1] - conf[3] + self._delta)
+        feats[5] = 1 / np.linalg.norm(conf[2] - conf[3] + self._delta)
+        for n in range(4, len(conf)):
             # We need the distances to at least 3 other atoms
             # Here taking the previous 3 atoms in the sequence
-            idx = 3 * (n - 2)
-            feats[idx] = 1 / np.linalg.norm(conf[n] - conf[n - 3] + 1e-9)
-            feats[idx + 1] = 1 / np.linalg.norm(conf[n] - conf[n - 2] + 1e-9)
-            feats[idx + 2] = 1 / np.linalg.norm(conf[n] - conf[n - 1] + 1e-9)
-            idx += 3
+            idx = 4 * (n - 4) + 6
+            feats[idx] = 1 / np.linalg.norm(conf[n] - conf[n - 4] + self._delta)
+            feats[idx + 1] = 1 / np.linalg.norm(conf[n] - conf[n - 3] + self._delta)
+            feats[idx + 2] = 1 / np.linalg.norm(conf[n] - conf[n - 2] + self._delta)
+            feats[idx + 3] = 1 / np.linalg.norm(conf[n] - conf[n - 1] + self._delta)
         return feats
 
     def _to_cartesian(self, conf):
@@ -297,13 +303,17 @@ class DataGenerator(object):
                 mapping.append([a, a])  # y
                 mapping.append([a, a])  # z
             return np.array(mapping)
-        elif self.feature_type.startswith('compact-dist'):
+        elif self.feature_type.startswith('compact-dist') and self.natoms > 3:
             mapping = [
                 [0, 1],
                 [0, 2],
-                [1, 2]
+                [0, 3],
+                [1, 2],
+                [1, 3],
+                [2, 3]
             ]
-            for a in range(3, self.natoms):
+            for a in range(4, self.natoms):
+                mapping.append([a - 4, a])  # x
                 mapping.append([a - 3, a])  # x
                 mapping.append([a - 2, a])  # y
                 mapping.append([a - 1, a])  # z

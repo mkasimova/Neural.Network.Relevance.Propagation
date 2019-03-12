@@ -17,12 +17,15 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger("visualization")
 
 
-def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None):
+def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None):
     y_val, std_val = y_val.squeeze(), std_val.squeeze()  # Remove unnecessary unit dimensions for visualization
     ax.plot(x_val, y_val, color=color, label=extractor_name, linewidth=2)
     ax.fill_between(x_val, y_val - std_val, y_val + std_val, color=color, alpha=0.2)
     if average is not None:
         ax.plot(x_val, average, color='k', linestyle='--', label="Feature extractor average")
+    if highlighted_residues is not None:
+        for h in highlighted_residues:
+            ax.axvline(h, linestyle='--', color="gray")
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
     ax.legend()
@@ -194,7 +197,8 @@ def extract_metrics(postprocessors):
     return x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names
 
 
-def visualize(postprocessors, show_importance=True, show_performance=True, show_projected_data=False, outfile=None):
+def visualize(postprocessors, show_importance=True, show_performance=True, show_projected_data=False, outfile=None,
+              highlighted_residues=None):
     """
     Plots the feature per residue.
     TODO visualize features too with std etc
@@ -226,6 +230,7 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
             _vis_feature_importance(pp[i_run].index_to_resid, pp[i_run].importance_per_residue,
                                     pp[i_run].std_importance_per_residue,
                                     ax, pp[i_run].extractor.name, colors[counter % len(colors), :],
+                                    highlighted_residues=highlighted_residues,
                                     average=ave_feats)
             counter += 1
 

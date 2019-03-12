@@ -13,12 +13,12 @@ from modules.data_generation import DataGenerator
 
 logger = logging.getLogger("dataGenNb")
 
-dg = DataGenerator(natoms=40, nclusters=4, natoms_per_cluster=[1, 1, 1, 1], nframes_per_cluster=200,
-                   noise_level=0.1,  # 1e-2, #1e-2,
+dg = DataGenerator(natoms=40, nclusters=4, natoms_per_cluster=[1, 1, 1, 1], nframes_per_cluster=300,
+                   noise_level=0.05,  # 1e-2, #1e-2,
                    displacement=0.1,
-                   noise_natoms=None,
+                   noise_natoms=4,
                    feature_type='compact-dist',  # carteesian_rot_trans
-                   test_model='non-linear-random-displacement')
+                   test_model='non-linear-p-displacement')
 # dg.generate_frames()
 # dg.generate_clusters()
 # dg.select_atoms_to_move()
@@ -41,13 +41,13 @@ variance_cutoff = "auto"
 supervised_feature_extractors = [
     fe.MlpFeatureExtractor(hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
         training_max_iter=10000,
-        activation="logistic",
-        **kwargs),
-    fe.ElmFeatureExtractor(
         activation="relu",
-        n_nodes=3 * dg.nfeatures,
-        alpha=100,
         **kwargs),
+    # fe.ElmFeatureExtractor(
+    #     activation="relu",
+    #     n_nodes=dg.nfeatures,
+    #     alpha=0.1,
+    #     **kwargs),
     fe.KLFeatureExtractor(**kwargs),
     fe.RandomForestFeatureExtractor(one_vs_rest=True, **kwargs),
 ]
@@ -120,6 +120,7 @@ visualization.visualize(postprocessors,
                         show_importance=True,
                         show_performance=False,
                         show_projected_data=False,
+                        highlighted_residues=dg.moved_atoms,
                         outfile="output/test_importance_per_residue.svg")
 visualization.visualize(postprocessors,
                         show_importance=False,

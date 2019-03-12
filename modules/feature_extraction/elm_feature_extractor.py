@@ -57,6 +57,7 @@ class SingleLayerELMClassifier(object):
         self.intercepts_ = [b1, np.zeros((1, t.shape[1]))]
 
     def _random_matrix(self, x):
+        # return np.random.rand(x, self.n_nodes)
         return np.random.normal(0, 0.25, (x, self.n_nodes))
 
     def _g_ELM(self, x):

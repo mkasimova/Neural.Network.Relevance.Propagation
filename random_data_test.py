@@ -8,17 +8,22 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
+
 from modules import feature_extraction as fe, postprocessing as pp, visualization
 from modules.data_generation import DataGenerator
 
 logger = logging.getLogger("dataGenNb")
 
-dg = DataGenerator(natoms=40, nclusters=4, natoms_per_cluster=[1, 1, 1, 1], nframes_per_cluster=300,
-                   noise_level=0.05,  # 1e-2, #1e-2,
+dg = DataGenerator(natoms=200,
+                   nclusters=4,
+                   natoms_per_cluster=[1, 1, 1, 1],
+                   nframes_per_cluster=300,
+                   noise_level=0.01,  # 1e-2, #1e-2,
                    displacement=0.1,
-                   noise_natoms=4,
-                   feature_type='compact-dist',  # carteesian_rot_trans
-                   test_model='non-linear-p-displacement')
+                   noise_natoms=0,
+                   moved_atoms=[[10], [60], [110], [130]],
+                   feature_type='cartesian_rot',  # carteesian_rot_trans
+                   test_model='non-linear')
 # dg.generate_frames()
 # dg.generate_clusters()
 # dg.select_atoms_to_move()
@@ -33,14 +38,17 @@ kwargs = {
     'filter_by_distance_cutoff': False,
     'use_inverse_distances': True,
     'n_splits': 1,
-    'n_iterations': 1,
+    'n_iterations': 10,
     # 'upper_bound_distance_cutoff': 1.,
     # 'lower_bound_distance_cutoff': 1.
 }
 variance_cutoff = "auto"
 supervised_feature_extractors = [
-    fe.MlpFeatureExtractor(hidden_layer_sizes=(dg.natoms, dg.nclusters*2),
+    fe.MlpFeatureExtractor(
+        # hidden_layer_sizes=(dg.natoms, dg.nclusters * 2),
+        hidden_layer_sizes=[int(dg.nfeatures / 2) for _ in range(10)],
         training_max_iter=10000,
+        alpha=0.0001,
         activation="relu",
         **kwargs),
     # fe.ElmFeatureExtractor(
@@ -49,39 +57,42 @@ supervised_feature_extractors = [
     #     alpha=0.1,
     #     **kwargs),
     fe.KLFeatureExtractor(**kwargs),
-    fe.RandomForestFeatureExtractor(one_vs_rest=True, **kwargs),
+    fe.RandomForestFeatureExtractor(
+        one_vs_rest=False,
+        n_estimators=1000,
+        **kwargs),
 ]
 unsupervised_feature_extractors = [
     fe.MlpAeFeatureExtractor(
-        hidden_layer_sizes=(dg.nclusters,),  # int(data.shape[1]/2),),
+        hidden_layer_sizes=(200, 100, 50, 10, dg.nclusters, 10, 50, 100, 200,),  # int(data.shape[1]/2),),
         # training_max_iter=10000,
         use_reconstruction_for_lrp=True,
-        activation="logistic",
+        alpha=0.0001,
+        activation="relu",
         **kwargs),
-
-    fe.RbmFeatureExtractor(n_components=dg.nclusters,
-                           relevance_method='from_components',
-                           name='RBM_from_components',
-                           variance_cutoff='auto',
-                           **kwargs),
+    # fe.RbmFeatureExtractor(n_components=dg.nclusters,
+    #                        relevance_method='from_components',
+    #                        name='RBM_from_components',
+    #                        variance_cutoff='auto',
+    #                        **kwargs),
     fe.RbmFeatureExtractor(n_components=dg.nclusters,
                            relevance_method='from_lrp',
                            name='RBM',
                            **kwargs),
     fe.PCAFeatureExtractor(n_components=None,
                            variance_cutoff=101,
-                           name='PCA_all',
+                           name='PCA',
                            **kwargs),
-    fe.PCAFeatureExtractor(n_components=None,
-                           name="PCA_%s" % variance_cutoff,
-                           variance_cutoff=variance_cutoff,
-                           **kwargs),
-    fe.PCAFeatureExtractor(n_components=None,
-                           variance_cutoff='6_components',
-                           name='PCA_6_comp',
-                           **kwargs),
+    # fe.PCAFeatureExtractor(n_components=None,
+    #                        name="PCA_%s" % variance_cutoff,
+    #                        variance_cutoff=variance_cutoff,
+    #                        **kwargs),
+    # fe.PCAFeatureExtractor(n_components=None,
+    #                        variance_cutoff='6_components',
+    #                        name='PCA_6_comp',
+    #                        **kwargs),
 ]
-feature_extractors = supervised_feature_extractors
+feature_extractors = unsupervised_feature_extractors
 logger.info("Done. using %s feature extractors", len(feature_extractors))
 
 results = []

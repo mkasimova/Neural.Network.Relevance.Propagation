@@ -60,36 +60,56 @@ def run(nclusters, n_iterations=1, n_splits=1):
         # 'upper_bound_distance_cutoff': 1.,
         # 'lower_bound_distance_cutoff': 1.
     }
-    feature_extractors = [
-        # fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-        #                        hidden_layer_sizes=(100,),  # , 50, 25),
-        #                        activation="logistic",
-        #                        use_inverse_distances=use_inverse_distances,
-        #                        randomize=True,
-        #                        filter_by_distance_cutoff=filter_by_distance_cutoff),
-        # fe.MlpAeFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-        #                          hidden_layer_sizes=(200, 2, 200),
-        #                          training_max_iter=200,
-        #                          use_inverse_distances=use_inverse_distances,
-        #                          activation="logistic"),  # , solver="sgd"),
-        # fe.RbmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-        #                        n_components=nclusters,
-        #                        use_inverse_distances=use_inverse_distances,
-        #                        filter_by_distance_cutoff=filter_by_distance_cutoff),
-        # fe.ElmFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-        #                        filter_by_distance_cutoff=filter_by_distance_cutoff,
-        #                        n_nodes=1000,
-        #                        use_inverse_distances=use_inverse_distances,
-        #                        alpha=1000,
-        #                        activation="relu"),
+    supervised_feature_extractors = [
+        fe.MlpFeatureExtractor(
+            # hidden_layer_sizes=(dg.natoms, dg.nclusters * 2),
+            hidden_layer_sizes=[int(data.shape[1] / (i + 1)) + 1 for i in range(3)],
+            training_max_iter=10000,
+            alpha=0.0001,
+            activation="relu",
+            **kwargs),
+        # fe.ElmFeatureExtractor(
+        #     activation="relu",
+        #     n_nodes=dg.nfeatures,
+        #     alpha=0.1,
+        #     **kwargs),
         fe.KLFeatureExtractor(**kwargs),
-        # fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits,
-        #                        use_inverse_distances=use_inverse_distances,
-        #                        filter_by_distance_cutoff=filter_by_distance_cutoff),
-        # fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-        #                                 use_inverse_distances=use_inverse_distances,
-        #                                 filter_by_distance_cutoff=filter_by_distance_cutoff),
+        fe.RandomForestFeatureExtractor(
+            one_vs_rest=False,
+            n_estimators=1000,
+            **kwargs),
     ]
+    unsupervised_feature_extractors = [
+        fe.MlpAeFeatureExtractor(
+            hidden_layer_sizes=(200, 100, 50, 10, dg.nclusters, 10, 50, 100, 200,),  # int(data.shape[1]/2),),
+            # training_max_iter=10000,
+            use_reconstruction_for_lrp=True,
+            alpha=0.0001,
+            activation="relu",
+            **kwargs),
+        # fe.RbmFeatureExtractor(n_components=dg.nclusters,
+        #                        relevance_method='from_components',
+        #                        name='RBM_from_components',
+        #                        variance_cutoff='auto',
+        #                        **kwargs),
+        fe.RbmFeatureExtractor(n_components=dg.nclusters,
+                               relevance_method='from_lrp',
+                               name='RBM',
+                               **kwargs),
+        fe.PCAFeatureExtractor(n_components=None,
+                               variance_cutoff=101,
+                               name='PCA',
+                               **kwargs),
+        # fe.PCAFeatureExtractor(n_components=None,
+        #                        name="PCA_%s" % variance_cutoff,
+        #                        variance_cutoff=variance_cutoff,
+        #                        **kwargs),
+        # fe.PCAFeatureExtractor(n_components=None,
+        #                        variance_cutoff='6_components',
+        #                        name='PCA_6_comp',
+        #                        **kwargs),
+    ]
+    feature_extractors = supervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
 
     # # Run the relevance analysis
@@ -142,4 +162,4 @@ def run(nclusters, n_iterations=1, n_splits=1):
 
 
 for nclusters in range(2, 7):
-    run(nclusters, n_iterations=1, n_splits=1)
+    run(nclusters, n_iterations=10, n_splits=1)

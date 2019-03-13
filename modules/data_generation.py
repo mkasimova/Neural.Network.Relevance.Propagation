@@ -16,8 +16,13 @@ logger = logging.getLogger("DataGenerator")
 
 class DataGenerator(object):
 
-    def __init__(self, natoms, nclusters, natoms_per_cluster, nframes_per_cluster, test_model='linear',
-                 noise_level=1e-2, noise_natoms=None, displacement=0.1, feature_type='inv-dist'):
+    def __init__(self, natoms, nclusters, natoms_per_cluster, nframes_per_cluster,
+                 test_model='linear',
+                 noise_level=1e-2,
+                 noise_natoms=None,
+                 displacement=0.1,
+                 feature_type='inv-dist',
+                 moved_atoms=None):
         """
         Class which generates artificial atoms, puts them into artifical clusters and adds noise to them
         :param natoms: number of atoms
@@ -28,6 +33,7 @@ class DataGenerator(object):
         :param noise_natoms: number of atoms for constant noise
         :param displacement: length of displacement vector for cluster generation
         :param feature_type: 'inv-dist' to use inversed inter-atomic distances (natoms*(natoms-1)/2 features in total), compact-dist to use as few distances as possible, or anything that starts with 'cartesian' to use atom xyz coordiantes (3*natoms features). Use 'cartesian_rot', 'cartesian_trans' or 'cartesian_rot_trans' to add a random rotation and/or translation to xyz coordaintes
+        :param moved_atoms: define which atoms to displace instead of choosing them randomly
         """
 
         if natoms < nclusters:
@@ -51,7 +57,7 @@ class DataGenerator(object):
             raise Exception("Unsupported feature type {}".format(self.feature_type))
         self.nsamples = self.nframes_per_cluster * self.nclusters
         self._delta = 1e-9
-        self.moved_atoms = None
+        self.moved_atoms = moved_atoms
         self.moved_atoms_noise = None
 
     def generate_data(self):
@@ -60,18 +66,17 @@ class DataGenerator(object):
         """
         logger.debug("Selecting atoms for clusters ...")
 
-        moved_atoms = []
+        if self.moved_atoms is None:
+            self.moved_atoms = []
 
-        for c in range(self.nclusters):
-            # list of atoms to be moved in a selected cluster c
-            moved_atoms_c = self._pick_atoms(self.natoms_per_cluster[c], moved_atoms)
-            moved_atoms.append(moved_atoms_c)
-
-        self.moved_atoms = moved_atoms
+            for c in range(self.nclusters):
+                # list of atoms to be moved in a selected cluster c
+                moved_atoms_c = self._pick_atoms(self.natoms_per_cluster[c], self.moved_atoms)
+                self.moved_atoms.append(moved_atoms_c)
 
         if self.noise_natoms is not None:
             logger.debug("Selecting atoms for constant noise ...")
-            self.moved_atoms_noise = self._pick_atoms(self.noise_natoms, moved_atoms)
+            self.moved_atoms_noise = self._pick_atoms(self.noise_natoms, self.moved_atoms)
 
         logger.info("Generating frames ...")
         conf0 = self._generate_conformation0()

@@ -267,7 +267,7 @@ class PostProcessor(object):
             if importance is None:
                 missing_residues.append(resSeq)
                 importance = 0
-            atom.set_value(i, 'b_factor', importance)
+            atom.at[i, 'b_factor'] = importance
         if len(missing_residues) > 0:
             logger.warn("importance is None for residues %s", set(missing_residues))
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)

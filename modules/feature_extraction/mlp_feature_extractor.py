@@ -26,6 +26,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                  solver='lbfgs',
                  activation=relprop.relu,
                  randomize=True,
+                 alpha=0.0001,
                  supervised=True,
                  training_max_iter=100000,
                  **kwargs):
@@ -43,6 +44,7 @@ class MlpFeatureExtractor(FeatureExtractor):
         self.activation = activation
         self.randomize = randomize
         self.training_max_iter = training_max_iter
+        self.alpha = alpha
 
     def train(self, train_set, train_labels):
         logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
@@ -51,6 +53,7 @@ class MlpFeatureExtractor(FeatureExtractor):
             hidden_layer_sizes=self.hidden_layer_sizes,
             random_state=(None if self.randomize else 89274),
             activation=self.activation,
+            alpha=self.alpha,
             max_iter=self.training_max_iter)
 
         classifier.fit(train_set, train_labels)

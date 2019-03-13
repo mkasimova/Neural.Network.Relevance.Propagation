@@ -3,8 +3,10 @@ from __future__ import absolute_import, division, print_function
 import logging
 import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
 
+plt.style.use("seaborn-colorblind")
 from . import utils
 
 logging.basicConfig(
@@ -12,29 +14,36 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
-import matplotlib.pyplot as plt
 
 logger = logging.getLogger("visualization")
+plt.rcParams['figure.autolayout'] = True
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.size'] = 12
 
 
-def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None):
+def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None,
+                            show_title=True):
     y_val, std_val = y_val.squeeze(), std_val.squeeze()  # Remove unnecessary unit dimensions for visualization
     ax.plot(x_val, y_val, color=color, label=extractor_name, linewidth=2)
     ax.fill_between(x_val, y_val - std_val, y_val + std_val, color=color, alpha=0.2)
     if average is not None:
-        ax.plot(x_val, average, color='k', linestyle='--', label="Feature extractor average")
+        ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:
         for h in highlighted_residues:
             ax.axvline(h, linestyle='--', color="gray")
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
-    ax.legend()
+    if show_title:
+        ax.set_title(extractor_name)
+    else:
+        ax.legend()
 
 
 def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False, std_val=None):
     ax.plot(x_val, y_val, label=extractor_name, color=color, linewidth=2, marker='o', markersize=10)
     if std_val is not None:
-        ax.plot([x_val, x_val], [y_val - std_val, y_val + std_val], color='k', linewidth=1, linestyle='-', marker='s',
+        ax.plot([x_val, x_val], [y_val - std_val, y_val + std_val], color='black', alpha=0.3, linewidth=1,
+                linestyle='-', marker='s',
                 markersize=1)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -47,7 +56,8 @@ def _vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_
     ax.bar(x_val, y_val, width, color=col, edgecolor='', label=extractor_name)
     if std_val is not None:
         for i in range(x_val.shape[0]):
-            ax.plot([x_val[i], x_val[i]], [y_val[i] - std_val[i], y_val[i] + std_val[i]], color='k', linewidth=1,
+            ax.plot([x_val[i], x_val[i]], [y_val[i] - std_val[i], y_val[i] + std_val[i]], color='black', alpha=0.3,
+                    linewidth=1,
                     linestyle='-', marker='s', markersize=1)
 
     if ylim is not None:
@@ -197,8 +207,13 @@ def extract_metrics(postprocessors):
     return x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names
 
 
-def visualize(postprocessors, show_importance=True, show_performance=True, show_projected_data=False, outfile=None,
-              highlighted_residues=None):
+def visualize(postprocessors,
+              show_importance=True,
+              show_performance=True,
+              show_projected_data=False,
+              outfile=None,
+              highlighted_residues=None,
+              show_average=False):
     """
     Plots the feature per residue.
     TODO visualize features too with std etc
@@ -211,7 +226,8 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
     """
 
     n_feature_extractors = len(postprocessors)
-    colors = np.asarray([[0.5, 0.0, 0.08], [0.0, 0.8, 0.0], [0, 0, 0.5], [0.7, 0.3, 0.6], [1, 0.6, 0], [0.4, 0.9, 0.5]])
+    # colors = np.asarray([[0.5, 0.0, 0.08], [0.0, 0.8, 0.0], [0, 0, 0.5], [0.7, 0.3, 0.6], [1, 0.6, 0], [0.4, 0.9, 0.5]])
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     if show_performance:
         x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names = extract_metrics(
@@ -229,9 +245,9 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
         for pp, ax in zip(postprocessors, fig1.axes):
             _vis_feature_importance(pp[i_run].index_to_resid, pp[i_run].importance_per_residue,
                                     pp[i_run].std_importance_per_residue,
-                                    ax, pp[i_run].extractor.name, colors[counter % len(colors), :],
+                                    ax, pp[i_run].extractor.name, colors[counter % len(colors)],
                                     highlighted_residues=highlighted_residues,
-                                    average=ave_feats)
+                                    average=ave_feats if show_average else None)
             counter += 1
 
     if show_projected_data:

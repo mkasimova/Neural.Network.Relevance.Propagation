@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
+
 import logging
 import sys
+
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.DEBUG,
@@ -13,7 +15,7 @@ lower_bound_distance_cutoff_default = 0.5
 upper_bound_distance_cutoff_default = 0.7
 
 
-def filter_by_distance_cutoff(data, indices_for_filtering,
+def filter_by_distance_cutoff(data,
                               lower_bound_cutoff=lower_bound_distance_cutoff_default,
                               upper_bound_cutoff=upper_bound_distance_cutoff_default,
                               inverse_distances=True):
@@ -37,6 +39,7 @@ def filter_by_distance_cutoff(data, indices_for_filtering,
     logger.info("Number of features after distance cutoff based filtering is %s", len(data_filtered_ind))
 
     data_filtered = data[:, data_filtered_ind]
+    indices_for_filtering = np.arange(0, data.shape[1], 1)
     indices_for_filtering = indices_for_filtering[data_filtered_ind]
 
     if inverse_distances:
@@ -72,7 +75,7 @@ def filter_feature_importance(relevances, std_relevances):
     n_features = relevances.shape[0]
 
     # indices of residues pairs which were not filtered during features filtering
-    indices_not_filtered = np.where(relevances[:,0]>=0)[0]
+    indices_not_filtered = np.where(relevances[:, 0] >= 0)[0]
 
     for i in range(n_states):
         global_median = np.median(relevances[indices_not_filtered, i])
@@ -85,4 +88,3 @@ def filter_feature_importance(relevances, std_relevances):
         std_relevances[ind, i] = 0
 
     return relevances, std_relevances
-

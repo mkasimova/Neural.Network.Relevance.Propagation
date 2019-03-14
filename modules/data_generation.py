@@ -245,8 +245,8 @@ class DataGenerator(object):
         feats[4] = 1 / np.linalg.norm(conf[1] - conf[3] + self._delta)
         feats[5] = 1 / np.linalg.norm(conf[2] - conf[3] + self._delta)
         for n in range(4, len(conf)):
-            # We need the distances to at least 3 other atoms
-            # Here taking the previous 3 atoms in the sequence
+            # We need the distances to at least 4 other atoms
+            # Here taking the previous 4 atoms in the sequence
             idx = 4 * (n - 4) + 6
             feats[idx] = 1 / np.linalg.norm(conf[n] - conf[n - 4] + self._delta)
             feats[idx + 1] = 1 / np.linalg.norm(conf[n] - conf[n - 3] + self._delta)

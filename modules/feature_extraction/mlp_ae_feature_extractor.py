@@ -18,7 +18,7 @@ logger = logging.getLogger("mlp_ae")
 class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
     def __init__(self,
-                 name="MLP_AE",
+                 name="AE",
                  use_reconstruction_for_lrp=False,
                  **kwargs):
         MlpFeatureExtractor.__init__(self, name=name, supervised=False, **kwargs)

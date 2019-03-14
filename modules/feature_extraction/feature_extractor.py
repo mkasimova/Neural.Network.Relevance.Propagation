@@ -105,12 +105,10 @@ class FeatureExtractor(object):
         # Create a list of feature indices
         # This is needed when filtering is applied and re-mapping is further used
         n_features = self.samples.shape[1]
-        indices_for_filtering = np.arange(0, n_features, 1)
         original_samples = np.copy(self.samples)
 
         if self.filter_by_distance_cutoff:
             self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
-                                                                                      indices_for_filtering,
                                                                                       lower_bound_cutoff=self.lower_bound_distance_cutoff,
                                                                                       upper_bound_cutoff=self.upper_bound_distance_cutoff,
                                                                                       inverse_distances=self.use_inverse_distances)

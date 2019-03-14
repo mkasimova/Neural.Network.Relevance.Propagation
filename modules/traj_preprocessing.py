@@ -45,9 +45,19 @@ def to_distances(traj,
             [a1.residue.resSeq, a2.residue.resSeq] for a1, a2 in pairs
         ], dtype=int)
     else:
-        samples, pairs = md.compute_contacts(traj, contacts=pairs, scheme=scheme,
-                                             ignore_nonprotein=ignore_nonprotein,
-                                             periodic=periodic)
+        chunk_size = 1000  # To use less memory, don't process entire traj at once
+        start = 0
+        samples = None
+        while start < len(traj):
+            end = start + chunk_size
+            s, pairs = md.compute_contacts(traj[start:end], contacts=pairs, scheme=scheme,
+                                           ignore_nonprotein=ignore_nonprotein,
+                                           periodic=periodic)
+            if samples is None:
+                samples = s
+            else:
+                samples = np.append(samples, s, axis=0)
+            start = end
         pairs = np.array([[top.residue(r1), top.residue(r2)] for [r1, r2] in pairs])
         feature_to_resids = np.array([
             [r1.resSeq, r2.resSeq] for r1, r2 in pairs
@@ -156,5 +166,5 @@ if __name__ == "__main__":
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     np.savez_compressed(out_dir + "samples_dt%s" % dt, array=samples)
-    np.save(out_dir + "feature_to_resids_dt%s" % dt, feature_to_resids)
+    np.save(out_dir + "feature_to_resids", feature_to_resids)
     logger.info("Finished. Saved results in %s", out_dir)

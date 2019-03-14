@@ -53,7 +53,7 @@ def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, vari
     ]
     unsupervised_feature_extractors = [
         fe.MlpAeFeatureExtractor(
-            hidden_layer_sizes=(100, 50, 10, dg.nclusters, 10, 50, 100,),  # int(data.shape[1]/2),),
+            hidden_layer_sizes=(100, 30, dg.nclusters, 30, 100,),  # int(data.shape[1]/2),),
             # training_max_iter=10000,
             use_reconstruction_for_lrp=False,
             alpha=0.0001,
@@ -142,12 +142,12 @@ def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, vari
 dg = DataGenerator(natoms=200,
                    nclusters=4,
                    natoms_per_cluster=[1, 1, 1, 1],
-                   nframes_per_cluster=500,
+                   nframes_per_cluster=200,
                    noise_level=0.01,  # 1e-2, #1e-2,
                    displacement=0.1,
                    noise_natoms=0,
                    moved_atoms=[[10], [60], [110], [130]],
-                   feature_type='compact-dist',  # carteesian_rot_trans
+                   feature_type='inv-dist',  # carteesian_rot_trans
                    test_model='linear')
 data, labels = dg.generate_data()
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])

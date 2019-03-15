@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+import os
 import sys
 
 import numpy as np
@@ -38,6 +39,10 @@ class DataGenerator(object):
 
         if natoms < nclusters:
             raise Exception("Cannot have more clusters than atoms")
+        if natoms_per_cluster is None or len(natoms_per_cluster) != nclusters:
+            raise Exception("parameter natoms_per_cluster should be an array of length {}".format(nclusters))
+        if moved_atoms is not None and len(moved_atoms) != nclusters:
+            raise Exception("parameter moved_atoms should be None or an array of length {}".format(nclusters))
         self.natoms = natoms
         self.nclusters = nclusters
         self.natoms_per_cluster = natoms_per_cluster
@@ -60,7 +65,7 @@ class DataGenerator(object):
         self.moved_atoms = moved_atoms
         self.moved_atoms_noise = None
 
-    def generate_data(self):
+    def generate_data(self, xyz_output_dir=None):
         """
         Generate data [ nsamples x nfeatures ] and clusters labels [ nsamples ]
         """
@@ -77,14 +82,13 @@ class DataGenerator(object):
         if self.noise_natoms is not None:
             logger.debug("Selecting atoms for constant noise ...")
             self.moved_atoms_noise = self._pick_atoms(self.noise_natoms, self.moved_atoms)
-
         logger.info("Generating frames ...")
         conf0 = self._generate_conformation0()
         labels = np.zeros((self.nsamples, self.nclusters))
         data = np.zeros((self.nsamples, self.nfeatures))
 
         frame_idx = 0
-
+        self._save_xyz(xyz_output_dir, "conf", conf0, moved_atoms=[y for x in self.moved_atoms for y in x])
         for c in range(self.nclusters):
 
             for f in range(self.nframes_per_cluster):
@@ -116,7 +120,8 @@ class DataGenerator(object):
                     features = self._to_compact_dist(conf)
                 else:
                     raise Exception("Invalid feature type {}".format(self.feature_type))
-
+                self._save_xyz(xyz_output_dir, "cluster{}_frame{}".format(c, "0" + str(f) if f < 10 else f), conf,
+                               self.moved_atoms[c])
                 data[frame_idx, :] = features
                 frame_idx += 1
 
@@ -325,3 +330,31 @@ class DataGenerator(object):
             return np.array(mapping)
         else:
             raise Exception("Unknown feature type {}".format(self.feature_type))
+
+    def _save_xyz(self, xyz_output_dir, filename, conf, moved_atoms=None, scale=10):
+        """
+
+        :param xyz_output_dir:
+        :param filename:
+        :param conf:
+        :param moved_atoms:
+        :param scale: multiply atom coordinates with this number - useful for better rendering in e.g. VMD
+        :return:
+        """
+        if xyz_output_dir is None:
+            return
+        if not os.path.exists(xyz_output_dir):
+            os.makedirs(xyz_output_dir)
+        filename = "{dir}/{name}.xyz".format(dir=xyz_output_dir, name=filename)
+        conf = conf * scale
+        with open(filename, 'w') as f:
+            f.write("{natoms}\n\n".format(natoms=conf.shape[0]))
+            for atom_idx, [x, y, z] in enumerate(conf):
+                # The element declares the importance of this atom
+                if moved_atoms is not None and atom_idx in moved_atoms:
+                    element = "C"
+                elif self.moved_atoms_noise is not None and atom_idx in self.moved_atoms_noise:
+                    element = "O"
+                else:
+                    element = "H"
+                f.write("{element}\t{x}\t{y}\t{z}\n".format(element=element, x=x, y=y, z=z))

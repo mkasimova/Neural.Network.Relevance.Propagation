@@ -139,16 +139,20 @@ def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, vari
                 "\nFiltering (filter_by_distance_cutoff={filter_by_distance_cutoff})".format(**kwargs))
 
 
-dg = DataGenerator(natoms=200,
+dg = DataGenerator(natoms=300,
                    nclusters=4,
                    natoms_per_cluster=[1, 1, 1, 1],
-                   nframes_per_cluster=200,
-                   noise_level=0.01,  # 1e-2, #1e-2,
+                   # natoms_per_cluster=[1, 1],
+                   nframes_per_cluster=400,
+                   noise_level=0.05,  # 1e-2, #1e-2,
                    displacement=0.1,
                    noise_natoms=0,
                    moved_atoms=[[10], [60], [110], [130]],
-                   feature_type='inv-dist',  # carteesian_rot_trans
+                   # moved_atoms=[[10], [70]],
+                   feature_type='compact-dist',
                    test_model='linear')
-data, labels = dg.generate_data()
+data, labels = dg.generate_data(
+    xyz_output_dir=None)
+# "output/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
 run(dg, data, labels, supervised=False, n_iterations=10)

@@ -15,7 +15,7 @@ from modules.data_generation import DataGenerator
 logger = logging.getLogger("dataGenNb")
 
 
-def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, variance_cutoff="auto"):
+def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, variance_cutoff="4_components"):
     cluster_indices = labels.argmax(axis=1)
     feature_to_resids = dg.feature_to_resids()
     suffix = dg.test_model + "_" + dg.feature_type \
@@ -53,33 +53,26 @@ def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, vari
     ]
     unsupervised_feature_extractors = [
         fe.MlpAeFeatureExtractor(
-            hidden_layer_sizes=(100, 30, dg.nclusters, 30, 100,),  # int(data.shape[1]/2),),
+            # hidden_layer_sizes=(int(data.shape[1]/2),),
+            hidden_layer_sizes=(dg.nclusters,),
             # training_max_iter=10000,
-            use_reconstruction_for_lrp=False,
+            use_reconstruction_for_lrp=True,
             alpha=0.0001,
-            activation="relu",
+            activation="logistic",
             **kwargs),
         # fe.RbmFeatureExtractor(n_components=dg.nclusters,
         #                        relevance_method='from_components',
         #                        name='RBM_from_components',
         #                        variance_cutoff='auto',
         #                        **kwargs),
-        fe.RbmFeatureExtractor(n_components=dg.nclusters,
-                               relevance_method='from_lrp',
-                               name='RBM',
-                               **kwargs),
         fe.PCAFeatureExtractor(n_components=None,
                                variance_cutoff=variance_cutoff,
                                name='PCA',
                                **kwargs),
-        # fe.PCAFeatureExtractor(n_components=None,
-        #                        name="PCA_%s" % variance_cutoff,
-        #                        variance_cutoff=variance_cutoff,
-        #                        **kwargs),
-        # fe.PCAFeatureExtractor(n_components=None,
-        #                        variance_cutoff='6_components',
-        #                        name='PCA_6_comp',
-        #                        **kwargs),
+        fe.RbmFeatureExtractor(n_components=dg.nclusters,
+                               relevance_method='from_lrp',
+                               name='RBM',
+                               **kwargs),
     ]
     feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
@@ -121,38 +114,41 @@ def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, vari
                             show_performance=False,
                             show_projected_data=False,
                             highlighted_residues=dg.moved_atoms,
+                            color_offset=0 if supervised else 3,
                             outfile="output/test_importance_per_residue_{suffix}.{filetype}".format(suffix=suffix,
                                                                                                     filetype=filetype))
-    visualization.visualize(postprocessors,
-                            show_importance=False,
-                            show_performance=True,
-                            show_projected_data=False,
-                            outfile="output/test_performance_{suffix}.{filetype}".format(suffix=suffix,
-                                                                                         filetype=filetype))
-    visualization.visualize(postprocessors,
-                            show_importance=False,
-                            show_performance=False,
-                            show_projected_data=True,
-                            outfile="output/test_projection_{suffix}.{filetype}".format(suffix=suffix,
-                                                                                        filetype=filetype))
+    # visualization.visualize(postprocessors,
+    #                         show_importance=False,
+    #                         show_performance=True,
+    #                         show_projected_data=False,
+    #                         outfile="output/test_performance_{suffix}.{filetype}".format(suffix=suffix,
+    #                                                                                      filetype=filetype))
+    # visualization.visualize(postprocessors,
+    #                         show_importance=False,
+    #                         show_performance=False,
+    #                         show_projected_data=True,
+    #                         outfile="output/test_projection_{suffix}.{filetype}".format(suffix=suffix,
+    #                                                                                     filetype=filetype))
     logger.info("Done. The settings were n_iterations = {n_iterations}, n_splits = {n_splits}."
                 "\nFiltering (filter_by_distance_cutoff={filter_by_distance_cutoff})".format(**kwargs))
 
 
-dg = DataGenerator(natoms=300,
-                   nclusters=4,
-                   natoms_per_cluster=[1, 1, 1, 1],
-                   # natoms_per_cluster=[1, 1],
+dg = DataGenerator(natoms=200,
+                   nclusters=2,
+                   # natoms_per_cluster=[1, 1, 1, 1],
+                   natoms_per_cluster=[1, 1],
                    nframes_per_cluster=400,
-                   noise_level=0.05,  # 1e-2, #1e-2,
-                   displacement=0.1,
+                   noise_level=0.01,  # 1e-2, #1e-2,
+                   displacement=0.5,
                    noise_natoms=0,
-                   moved_atoms=[[10], [60], [110], [130]],
-                   # moved_atoms=[[10], [70]],
-                   feature_type='compact-dist',
-                   test_model='linear')
+                   # moved_atoms=[[10], [60], [110], [130]],
+                   moved_atoms=[[10], [12]],
+                   feature_type='inv-dist',
+                   #test_model='non-linear-p-displacement'
+                   test_model='linear'
+                   )
 data, labels = dg.generate_data(
     xyz_output_dir=None)
-# "output/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
+# "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-run(dg, data, labels, supervised=False, n_iterations=10)
+run(dg, data, labels, supervised=False, n_iterations=1)

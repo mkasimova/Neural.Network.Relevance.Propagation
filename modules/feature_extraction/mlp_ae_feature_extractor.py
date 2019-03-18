@@ -11,6 +11,7 @@ logging.basicConfig(
 import sklearn.neural_network
 
 from .mlp_feature_extractor import MlpFeatureExtractor
+from .. import relevance_propagation as relprop
 
 logger = logging.getLogger("mlp_ae")
 
@@ -19,9 +20,10 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
     def __init__(self,
                  name="AE",
+                 activation=relprop.logistic_sigmoid,
                  use_reconstruction_for_lrp=False,
                  **kwargs):
-        MlpFeatureExtractor.__init__(self, name=name, supervised=False, **kwargs)
+        MlpFeatureExtractor.__init__(self, name=name, supervised=False, activation=activation, **kwargs)
         self.use_reconstruction_for_lrp = use_reconstruction_for_lrp
         logger.debug("Initializing MLP AE with the following parameters:"
                      " use_reconstruction_for_lrp %s", use_reconstruction_for_lrp)

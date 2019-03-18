@@ -213,6 +213,7 @@ def visualize(postprocessors,
               show_projected_data=False,
               outfile=None,
               highlighted_residues=None,
+              color_offset=0,
               show_average=False):
     """
     Plots the feature per residue.
@@ -227,7 +228,11 @@ def visualize(postprocessors,
 
     n_feature_extractors = len(postprocessors)
     # colors = np.asarray([[0.5, 0.0, 0.08], [0.0, 0.8, 0.0], [0, 0, 0.5], [0.7, 0.3, 0.6], [1, 0.6, 0], [0.4, 0.9, 0.5]])
-    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    colors = np.array(plt.rcParams["axes.prop_cycle"].by_key()["color"])
+    if color_offset > 0:
+        colors2 = colors.copy()
+        colors[:len(colors) - color_offset] = colors2[color_offset:]
+        colors[len(colors) - color_offset:] = colors2[:color_offset]
 
     if show_performance:
         x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names = extract_metrics(

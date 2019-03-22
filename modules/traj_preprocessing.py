@@ -11,7 +11,7 @@ import mdtraj as md
 import os
 import numpy as np
 import argparse
-from modules import filtering
+from . import filtering
 
 logger = logging.getLogger("trajPreprocessing")
 
@@ -67,7 +67,7 @@ def to_distances(traj,
         samples, indices_for_filtering = filtering.filter_by_distance_cutoff(samples,
                                                                              lower_bound_distance_cutoff,
                                                                              upper_bound_distance_cutoff,
-                                                                             use_inverse_distances=False)
+                                                                             inverse_distances=False)
     if use_inverse_distances:
         samples = 1 / samples
     return samples, feature_to_resids, pairs

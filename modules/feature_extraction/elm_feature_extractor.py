@@ -17,31 +17,28 @@ logger = logging.getLogger("elm")
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
     def __init__(self,
-                 n_nodes=1000,
-                 alpha=1,
                  name="ELM",
                  **kwargs):
         MlpFeatureExtractor.__init__(self,
                                      name=name,
                                      **kwargs)
-        logger.debug("Initializing ELM with the following parameters: n_nodes %s, alpha %s",
-                     n_nodes, alpha)
-        self.n_nodes = n_nodes
-        self.alpha = alpha
+        logger.debug("Initializing ELM with the following parameters: %s")
 
     def train(self, train_set, train_labels):
         logger.debug("Training ELM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        elm = SingleLayerELMClassifier(n_nodes=self.n_nodes,
-                                       activation_func=self.activation,
-                                       alpha=self.alpha)
-
+        classifier_kwargs = self.get_classifier_kwargs()
+        elm = SingleLayerELMClassifier(**classifier_kwargs)
         elm.fit(train_set, train_labels)
         return elm
 
 
 class SingleLayerELMClassifier(object):
-    def __init__(self, n_nodes, activation_func=relprop.relu, alpha=1):
-        self.n_nodes = n_nodes
+    def __init__(self, hidden_layer_sizes=(1000), activation_func=relprop.relu, alpha=1):
+        if isinstance(hidden_layer_sizes, int):
+            hidden_layer_sizes = (hidden_layer_sizes)
+        if len(hidden_layer_sizes) != 1:
+            raise Exception("ELM currently only support one layer")
+        self.hidden_layer_sizes = hidden_layer_sizes
         self.activation_func = activation_func
         self.coefs_ = None
         self.intercepts_ = None
@@ -57,8 +54,8 @@ class SingleLayerELMClassifier(object):
         self.intercepts_ = [b1, np.zeros((1, t.shape[1]))]
 
     def _random_matrix(self, x):
-        # return np.random.rand(x, self.n_nodes)
-        return np.random.normal(0, 0.25, (x, self.n_nodes))
+        # return np.random.rand(x, self.hidden_layer_sizes[0])
+        return np.random.normal(0, 0.25, (x, self.hidden_layer_sizes[0]))
 
     def _g_ELM(self, x):
         if self.activation_func == relprop.relu:  # good if you use regularization

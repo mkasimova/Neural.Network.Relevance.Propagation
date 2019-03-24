@@ -23,39 +23,28 @@ class MlpFeatureExtractor(FeatureExtractor):
     def __init__(self,
                  name="MLP",
                  hidden_layer_sizes=(100,),
-                 solver='adam',  # previously 'lbfgs', but adam much better for AE
                  activation=relprop.relu,
                  randomize=True,
-                 alpha=0.0001,
                  supervised=True,
-                 training_max_iter=100000,
+                 classifier_kwargs={},
                  **kwargs):
         FeatureExtractor.__init__(self,
                                   name=name,
                                   supervised=supervised,
                                   **kwargs)
         logger.debug("Initializing MLP with the following parameters:"
-                     " hidden_layer_sizes %s, solver %s, activation function %s, randomize %s, training_max_iter %s",
-                     hidden_layer_sizes, solver, activation, randomize, training_max_iter)
+                     " hidden_layer_sizes %s, activation function %s, randomize %s, classifier_kwargs %s",
+                     hidden_layer_sizes, activation, randomize, classifier_kwargs)
         self.hidden_layer_sizes = hidden_layer_sizes
-        self.solver = solver
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
         self.randomize = randomize
-        self.training_max_iter = training_max_iter
-        self.alpha = alpha
+        self._classifier_kwargs = classifier_kwargs
 
     def train(self, train_set, train_labels):
         logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier = sklearn.neural_network.MLPClassifier(
-            solver=self.solver,
-            hidden_layer_sizes=self.hidden_layer_sizes,
-            random_state=(None if self.randomize else 89274),
-            activation=self.activation,
-            alpha=self.alpha,
-            max_iter=self.training_max_iter)
-
+        classifier = sklearn.neural_network.MLPClassifier(**self.get_classifier_kwargs())
         classifier.fit(train_set, train_labels)
         return classifier
 
@@ -122,3 +111,12 @@ class MlpFeatureExtractor(FeatureExtractor):
                              predefined_relevant_residues=predefined_relevant_residues, \
                              use_GMM_estimator=use_GMM_estimator, \
                              supervised=True)
+
+    def get_classifier_kwargs(self):
+        classifier_kwargs = self._classifier_kwargs.copy()
+        classifier_kwargs['activation'] = self.activation
+        classifier_kwargs['hidden_layer_sizes'] = self.hidden_layer_sizes
+        if not self.randomize:
+            classifier_kwargs['random_state'] = 89274
+        return classifier_kwargs
+

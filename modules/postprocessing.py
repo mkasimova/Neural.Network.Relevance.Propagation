@@ -17,7 +17,8 @@ logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor,
+    def __init__(self,
+                 extractor=None,
                  working_dir=None,
                  rescale_results=True,
                  filter_results=False,
@@ -273,3 +274,45 @@ class PostProcessor(object):
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
         return self
+
+
+class PerFrameImportancePostProcessor(object):
+
+    def __init__(self,
+                 per_frame_importance_outfile=None,
+                 frame_importances=None,
+                 **kwargs):
+        PostProcessor.__init__(self, **kwargs)
+        self.per_frame_importance_outfile = per_frame_importance_outfile
+        self.frame_importances = frame_importances
+
+    def persist(self):
+        PostProcessor.persist(self)
+        if self.extractor.per_frame_importance_outfile is not None:
+            # writing VMD script, see https://www.ks.uiuc.edu/Research/vmd/mailing_list/vmd-l/5001.html
+            with open(self.extractor.per_frame_importance_outfile, 'w') as of:
+                vmd_script = self.to_vmd_script()
+                of.write(vmd_script)
+
+    def to_vmd_script(self):
+        vmd_script = """
+        set numframes {nframes} 
+        set numatoms [molinfo top get numatoms] 
+        mol modcolor 0 top User 
+        mol colupdate 0 top 1 
+        mol scaleminmax top 0 0.0 20.0 
+        for {set i 0} {$i<$numframes} {incr i} { 
+          animate goto $i 
+          puts "Setting User data for frame $i ..." 
+          for {set j 0} {$j<($numatoms)} {incr j} { 
+            set ke [gets $ke_file] 
+            set atomsel [atomselect top "index $j" frame $i] 
+             $atomsel set user $ke 
+             $atomsel delete 
+          } 
+        } 
+        """
+        for frame_idx, importance in enumerate(self.per_frame_importance_outfile):
+            inner_loop += vmd_user_field_command.format(frame_idx=frame_idx, importance=importance, beta_vals=beta_vals)
+
+        return vmd_script

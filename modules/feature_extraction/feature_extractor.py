@@ -52,6 +52,9 @@ class FeatureExtractor(object):
         self.upper_bound_distance_cutoff = upper_bound_distance_cutoff
         self.remove_outliers = remove_outliers
         self.supervised = supervised
+        self.feature_importance = None
+        self.std_feature_importance = None
+        self.test_set_errors = None
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
                      " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
                      " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s",
@@ -152,7 +155,12 @@ class FeatureExtractor(object):
                                 i_split * self.n_iterations + i_iter + 1, self.n_splits * self.n_iterations, error)
 
         feats = np.asarray(feats)
+        self._on_all_features_extracted(feats, errors)
+        self.samples = np.copy(original_samples)  # TODO why do we do this?
+        logger.debug("Done with feature extractio for %s", self.name)
+        return self
 
+    def _on_all_features_extracted(self, feats, errors):
         std_feats = np.std(feats, axis=0)
         feats = np.mean(feats, axis=0)
 
@@ -165,12 +173,6 @@ class FeatureExtractor(object):
             # If no filtering was applied, return feats and std_feats
             feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
 
-        logger.info("Done with %s", self.name)
-        logger.info("------------------------------")
-        self.samples = np.copy(original_samples)
-
         self.feature_importance = feats
         self.std_feature_importance = std_feats
         self.test_set_errors = errors
-
-        return self

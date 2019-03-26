@@ -13,7 +13,7 @@ import sklearn.neural_network
 
 from .. import relevance_propagation as relprop
 from .feature_extractor import FeatureExtractor
-from ..postprocessing import PostProcessor
+from ..postprocessing import PerFrameImportancePostProcessor
 
 logger = logging.getLogger("mlp")
 
@@ -26,6 +26,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                  activation=relprop.relu,
                  randomize=True,
                  supervised=True,
+                 per_frame_importance_outfile=None,
                  classifier_kwargs={},
                  **kwargs):
         FeatureExtractor.__init__(self,
@@ -33,13 +34,22 @@ class MlpFeatureExtractor(FeatureExtractor):
                                   supervised=supervised,
                                   **kwargs)
         logger.debug("Initializing MLP with the following parameters:"
-                     " hidden_layer_sizes %s, activation function %s, randomize %s, classifier_kwargs %s",
-                     hidden_layer_sizes, activation, randomize, classifier_kwargs)
+                     " hidden_layer_sizes %s, activation function %s, randomize %s, classifier_kwargs %s,"
+                     " per_frame_importance_outfile %s",
+                     hidden_layer_sizes, activation, randomize, classifier_kwargs, per_frame_importance_outfile)
         self.hidden_layer_sizes = hidden_layer_sizes
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
         self.randomize = randomize
+        self.per_frame_importance_outfile = per_frame_importance_outfile
+        if self.frame_importances is None:
+            if self.n_splits != 1:
+                raise Exception("Cannot write frame importance to outfile if n_splits is not 1 ")
+            # for every feature in every frame...
+            self.frame_importances = np.zeros((self.samples.shape[0], self.samples.shape[1]))
+        else:
+            self.frame_importances = None
         self._classifier_kwargs = classifier_kwargs
 
     def train(self, train_set, train_labels):
@@ -75,6 +85,9 @@ class MlpFeatureExtractor(FeatureExtractor):
         for frame_idx, rel in enumerate(relevance):
             cluster_idx = labels[frame_idx].argmax()
             result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
+            if self.frame_importances is not None:
+                # Note
+                self.frame_importances[frame_idx] += rel / self.n_iterations
         return result
 
     def _create_layers(self, classifier):
@@ -102,7 +115,7 @@ class MlpFeatureExtractor(FeatureExtractor):
     def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
                        pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
 
-        return PostProcessor(extractor=self, \
+        return PerFrameImportancePostProcessor(extractor=self, \
                              working_dir=working_dir, \
                              rescale_results=rescale_results, \
                              filter_results=filter_results, \
@@ -110,7 +123,9 @@ class MlpFeatureExtractor(FeatureExtractor):
                              pdb_file=pdb_file, \
                              predefined_relevant_residues=predefined_relevant_residues, \
                              use_GMM_estimator=use_GMM_estimator, \
-                             supervised=True)
+                             supervised=True,
+                             per_frame_importance_outfile=self.per_frame_importance_outfile,
+                             frame_importances=self.frame_importances)
 
     def get_classifier_kwargs(self):
         classifier_kwargs = self._classifier_kwargs.copy()

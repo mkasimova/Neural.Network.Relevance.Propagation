@@ -15,7 +15,7 @@ from modules.data_generation import DataGenerator
 logger = logging.getLogger("dataGenNb")
 
 
-def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, variance_cutoff="4_components"):
+def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, variance_cutoff="1_components"):
     cluster_indices = labels.argmax(axis=1)
     feature_to_resids = dg.feature_to_resids()
     suffix = dg.test_model + "_" + dg.feature_type \
@@ -54,11 +54,14 @@ def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, vari
     unsupervised_feature_extractors = [
         fe.MlpAeFeatureExtractor(
             # hidden_layer_sizes=(int(data.shape[1]/2),),
+            # hidden_layer_sizes=(200, 100, 30, dg.nclusters, 30, 100, 200,),
+            # hidden_layer_sizes=(100, 1, 100,),
             hidden_layer_sizes=(dg.nclusters,),
-            # training_max_iter=10000,
+            training_max_iter=100000,
             use_reconstruction_for_lrp=True,
             alpha=0.0001,
-            activation="logistic",
+            solver="adam",
+            activation="relu",
             **kwargs),
         # fe.RbmFeatureExtractor(n_components=dg.nclusters,
         #                        relevance_method='from_components',
@@ -134,21 +137,23 @@ def run(dg, data, labels, supervised=True, filetype="pdf", n_iterations=10, vari
 
 
 dg = DataGenerator(natoms=200,
-                   nclusters=2,
-                   # natoms_per_cluster=[1, 1, 1, 1],
-                   natoms_per_cluster=[1, 1],
+                   # nclusters=2,
+                   # natoms_per_cluster=[1, 1],
+                   # moved_atoms=[[10], [12]],
+                   nclusters=4,
+                   natoms_per_cluster=[1, 1, 1, 1],
+                   moved_atoms=[[10], [60], [110], [130]],
                    nframes_per_cluster=400,
-                   noise_level=0.01,  # 1e-2, #1e-2,
+                   noise_level=0.005,  # 1e-2, #1e-2,
                    displacement=0.5,
                    noise_natoms=0,
-                   # moved_atoms=[[10], [60], [110], [130]],
-                   moved_atoms=[[10], [12]],
-                   feature_type='inv-dist',
-                   #test_model='non-linear-p-displacement'
-                   test_model='linear'
+                   feature_type='compact-dist',
+                   # test_model='linear'
+                   test_model='non-linear'
+                   # test_model='non-linear-random-displacement'
                    )
 data, labels = dg.generate_data(
     xyz_output_dir=None)
 # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-run(dg, data, labels, supervised=False, n_iterations=1)
+run(dg, data, labels, supervised=False, n_iterations=10)

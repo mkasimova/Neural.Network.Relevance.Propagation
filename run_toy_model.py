@@ -56,7 +56,7 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
             # hidden_layer_sizes=(int(data.shape[1]/2),),
             hidden_layer_sizes=(200, 100, 30, dg.nclusters, 30, 100, 200,),
             # hidden_layer_sizes=(100, 1, 100,),
-            # hidden_layer_sizes=(dg.nclusters,),
+            # hidden_layer_sizes=(200, 50, 10, 1, 10, 50, 200, ),
             training_max_iter=100000,
             use_reconstruction_for_lrp=True,
             alpha=0.0001,

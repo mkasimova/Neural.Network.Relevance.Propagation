@@ -1,10 +1,17 @@
 from __future__ import absolute_import, division, print_function
+import os
 
-from modules.feature_extraction.elm_feature_extractor import ElmFeatureExtractor
-from modules.feature_extraction.feature_extractor import FeatureExtractor
-from modules.feature_extraction.kl_divergence_feature_extractor import KLFeatureExtractor
-from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
-from modules.feature_extraction.mlp_ae_feature_extractor import MlpAeFeatureExtractor
-from modules.feature_extraction.pca_feature_extractor import PCAFeatureExtractor
-from modules.feature_extraction.random_forest_feature_extractor import RandomForestFeatureExtractor
-from modules.feature_extraction.rbm_feature_extractor import RbmFeatureExtractor
+from .elm_feature_extractor import ElmFeatureExtractor
+from .feature_extractor import FeatureExtractor
+from .kl_divergence_feature_extractor import KLFeatureExtractor
+from .mlp_feature_extractor import MlpFeatureExtractor
+from .mlp_ae_feature_extractor import MlpAeFeatureExtractor
+from .pca_feature_extractor import PCAFeatureExtractor
+from .random_forest_feature_extractor import RandomForestFeatureExtractor
+from .rbm_feature_extractor import RbmFeatureExtractor
+
+__all__ = []
+
+for module in os.listdir(os.path.dirname(__file__)):
+    if module != '__init__.py' and module[-3:] == '.py':
+        __all__.append(module[:-3])

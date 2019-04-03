@@ -9,15 +9,22 @@ logging.basicConfig(
 import os
 import numpy as np
 from biopandas.pdb import PandasPdb
-import modules.utils as utils
-import modules.filtering as filtering
-import modules.data_projection as dp
+from . import utils
+from . import filtering
+from . import data_projection as dp
 
 logger = logging.getLogger("postprocessing")
 
 class PostProcessor(object):
 
-    def __init__(self, extractor, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None, pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+    def __init__(self, extractor,
+                 working_dir=None,
+                 rescale_results=True,
+                 filter_results=False,
+                 feature_to_resids=None,
+                 pdb_file=None,
+                 predefined_relevant_residues=None,
+                 use_GMM_estimator=True):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -31,7 +38,7 @@ class PostProcessor(object):
         self.extractor = extractor
         self.feature_importances = extractor.feature_importance
         self.std_feature_importances = extractor.std_feature_importance
-        self.supervised = supervised
+        self.supervised = extractor.supervised
         self.cluster_indices = extractor.cluster_indices
         self.nclusters = len(list(set(self.cluster_indices)))
         self.working_dir = working_dir
@@ -196,7 +203,7 @@ class PostProcessor(object):
         """
         Computes separation of clusters in the projected space given by the feature importances
         """
-        self.data_projector = dp.DataProjector(self.extractor.samples,self.cluster_indices)
+        self.data_projector = dp.DataProjector(self.extractor.samples, self.cluster_indices)
         self.data_projector.project(self.feature_importances).score_projection(use_GMM=self.use_GMM_estimator)
 
         return self
@@ -260,7 +267,7 @@ class PostProcessor(object):
             if importance is None:
                 missing_residues.append(resSeq)
                 importance = 0
-            atom.set_value(i, 'b_factor', importance)
+            atom.at[i, 'b_factor'] = importance
         if len(missing_residues) > 0:
             logger.warn("importance is None for residues %s", set(missing_residues))
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)

@@ -9,7 +9,7 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-from modules import utils as utils, filtering
+from .. import utils as utils, filtering
 from sklearn.model_selection import KFold
 
 logger = logging.getLogger("Extracting features")
@@ -17,11 +17,22 @@ logger = logging.getLogger("Extracting features")
 
 class FeatureExtractor(object):
 
-    def __init__(self, samples, cluster_indices=None, scaling=True, filter_by_distance_cutoff=True, contact_cutoff=filtering.contact_cutoff_default,
-                 use_inverse_distances=True, n_splits=10, n_iterations=10, name='', error_limit=5, supervised=True,
+    def __init__(self,
+                 samples=None,
+                 cluster_indices=None,
+                 scaling=True,
+                 filter_by_distance_cutoff=True,
+                 lower_bound_distance_cutoff=filtering.lower_bound_distance_cutoff_default,
+                 upper_bound_distance_cutoff=filtering.upper_bound_distance_cutoff_default,
+                 use_inverse_distances=True,
+                 n_splits=10,
+                 n_iterations=10,
+                 name='FeatureExtractor',
+                 error_limit=5,
+                 supervised=True,
                  remove_outliers=False):
-
-        # Setting parameters
+        if samples is None:
+            raise Exception("Samples cannot be None")
         self.samples = samples
         self.cluster_indices = cluster_indices
         self.n_clusters = len(list(set(self.cluster_indices)))
@@ -37,9 +48,15 @@ class FeatureExtractor(object):
         self.name = name
         self.error_limit = error_limit
         self.use_inverse_distances = use_inverse_distances
-        self.contact_cutoff = filtering.contact_cutoff_default if contact_cutoff is None else contact_cutoff
+        self.lower_bound_distance_cutoff = lower_bound_distance_cutoff
+        self.upper_bound_distance_cutoff = upper_bound_distance_cutoff
         self.remove_outliers = remove_outliers
         self.supervised = supervised
+        logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
+                     " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
+                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s",
+                     name, n_splits, n_iterations, scaling, filter_by_distance_cutoff, lower_bound_distance_cutoff,
+                     upper_bound_distance_cutoff, remove_outliers, use_inverse_distances)
 
     def split_train_test(self):
         """
@@ -88,12 +105,12 @@ class FeatureExtractor(object):
         # Create a list of feature indices
         # This is needed when filtering is applied and re-mapping is further used
         n_features = self.samples.shape[1]
-        indices_for_filtering = np.arange(0, n_features, 1)
         original_samples = np.copy(self.samples)
 
         if self.filter_by_distance_cutoff:
             self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
-                                                                                      indices_for_filtering, cutoff=self.contact_cutoff,
+                                                                                      lower_bound_cutoff=self.lower_bound_distance_cutoff,
+                                                                                      upper_bound_cutoff=self.upper_bound_distance_cutoff,
                                                                                       inverse_distances=self.use_inverse_distances)
 
         if self.scaling:
@@ -143,9 +160,10 @@ class FeatureExtractor(object):
             feats = feats.reshape((feats.shape[0], 1))
             std_feats = std_feats.reshape((std_feats.shape[0], 1))
 
-        # Remapping features if filtering was applied
-        # If no filtering was applied, return feats and std_feats
-        feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
+        if self.filter_by_distance_cutoff:
+            # Remapping features if filtering was applied
+            # If no filtering was applied, return feats and std_feats
+            feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
 
         logger.info("Done with %s", self.name)
         logger.info("------------------------------")

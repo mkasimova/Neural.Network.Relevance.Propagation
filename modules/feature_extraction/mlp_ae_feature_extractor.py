@@ -10,38 +10,23 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import sklearn.neural_network
 
-import modules.relevance_propagation as relprop
-from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
+from .mlp_feature_extractor import MlpFeatureExtractor
+from .. import relevance_propagation as relprop
 
 logger = logging.getLogger("mlp_ae")
 
 
 class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_splits=10, n_iterations=10, scaling=True,
-                 filter_by_distance_cutoff=False,
-                 contact_cutoff=0.5,
-                 name="MLP_AE",
-                 hidden_layer_sizes=(100,),
-                 solver='lbfgs',
-                 activation=relprop.relu,
-                 randomize=True,
-                 training_max_iter=100000,
+    def __init__(self,
+                 name="AE",
+                 activation=relprop.logistic_sigmoid,
                  use_reconstruction_for_lrp=False,
-                 remove_outliers=False):
-        MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                                     scaling=scaling,
-                                     filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                     contact_cutoff=contact_cutoff,
-                                     name=name,
-                                     hidden_layer_sizes=hidden_layer_sizes,
-                                     solver=solver,
-                                     activation=activation,
-                                     randomize=randomize,
-                                     training_max_iter=training_max_iter,
-                                     remove_outliers=remove_outliers)
-        self.is_unsupervised = True
+                 **kwargs):
+        MlpFeatureExtractor.__init__(self, name=name, supervised=False, activation=activation, **kwargs)
         self.use_reconstruction_for_lrp = use_reconstruction_for_lrp
+        logger.debug("Initializing MLP AE with the following parameters:"
+                     " use_reconstruction_for_lrp %s", use_reconstruction_for_lrp)
 
     def train(self, train_set, train_labels):
         logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])

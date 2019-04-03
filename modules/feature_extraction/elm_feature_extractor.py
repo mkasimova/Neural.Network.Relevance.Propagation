@@ -7,8 +7,8 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-import modules.relevance_propagation as relprop
-from modules.feature_extraction.mlp_feature_extractor import MlpFeatureExtractor
+from .. import relevance_propagation as relprop
+from .mlp_feature_extractor import MlpFeatureExtractor
 import scipy.special
 
 logger = logging.getLogger("elm")
@@ -16,21 +16,16 @@ logger = logging.getLogger("elm")
 
 class ElmFeatureExtractor(MlpFeatureExtractor):
 
-    def __init__(self, samples, cluster_indices, n_nodes, n_splits=10, n_iterations=10, scaling=True,
-                 filter_by_distance_cutoff=False, contact_cutoff=0.5,
-                 activation=relprop.relu,
-                 alpha=1, remove_outliers=False):
-        MlpFeatureExtractor.__init__(self, samples, cluster_indices, n_splits=n_splits, n_iterations=n_iterations,
-                                     scaling=scaling, filter_by_distance_cutoff=filter_by_distance_cutoff,
-                                     contact_cutoff=contact_cutoff,
-                                     activation=activation,
-                                     name="ELM",
-                                     remove_outliers=remove_outliers)
-        logger.debug("Initializing ELM with the following parameters: \
-                      n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, contact_cutoff %s, \
-                      n_nodes %s, activation function %s, alpha %s, remove_outliers %s", \
-                      n_splits, n_iterations, scaling, filter_by_distance_cutoff, contact_cutoff, \
-                      n_nodes, activation, alpha, remove_outliers)
+    def __init__(self,
+                 n_nodes=1000,
+                 alpha=1,
+                 name="ELM",
+                 **kwargs):
+        MlpFeatureExtractor.__init__(self,
+                                     name=name,
+                                     **kwargs)
+        logger.debug("Initializing ELM with the following parameters: n_nodes %s, alpha %s",
+                     n_nodes, alpha)
         self.n_nodes = n_nodes
         self.alpha = alpha
 
@@ -50,7 +45,7 @@ class SingleLayerELMClassifier(object):
         self.activation_func = activation_func
         self.coefs_ = None
         self.intercepts_ = None
-        self.alpha = alpha # regularization constant
+        self.alpha = alpha  # regularization constant
 
     def fit(self, x, t):
         (N, n) = x.shape
@@ -62,10 +57,11 @@ class SingleLayerELMClassifier(object):
         self.intercepts_ = [b1, np.zeros((1, t.shape[1]))]
 
     def _random_matrix(self, x):
+        # return np.random.rand(x, self.n_nodes)
         return np.random.normal(0, 0.25, (x, self.n_nodes))
 
     def _g_ELM(self, x):
-        if self.activation_func == relprop.relu: # good if you use regularization
+        if self.activation_func == relprop.relu:  # good if you use regularization
             Z = x > 0
             return x * Z
         elif self.activation_func == relprop.logistic_sigmoid:
@@ -74,7 +70,7 @@ class SingleLayerELMClassifier(object):
             raise Exception("Currently supported activation functions are only relu and logistic")
 
     def _pseudo_inverse(self, x):
-    # see eq 3.17 in bishop
+        # see eq 3.17 in bishop
         try:
             inner = np.matmul(x.T, x)
             if self.alpha is not None:

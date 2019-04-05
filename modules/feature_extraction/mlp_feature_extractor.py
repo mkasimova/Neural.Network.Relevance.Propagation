@@ -23,7 +23,7 @@ class MlpFeatureExtractor(FeatureExtractor):
     def __init__(self,
                  name="MLP",
                  hidden_layer_sizes=(100,),
-                 solver='adam',  # previously 'lbfgs', but adam much better for AE
+                 solver='adam',
                  activation=relprop.relu,
                  randomize=True,
                  alpha=0.0001,

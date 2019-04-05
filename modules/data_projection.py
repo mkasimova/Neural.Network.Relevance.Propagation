@@ -68,29 +68,38 @@ class DataProjector():
 
         priors = self._set_class_prior()
 
-        if use_GMM:
-            GMMs = self._fit_GM(proj)
-        else:
-            means, covs = self._fit_Gaussians(proj)
-
-        n_points = proj.shape[0]
-        new_classes = np.zeros(n_points)
-        class_entropies = np.zeros(n_points)
-        for i_point in range(n_points):
+        try:
             if use_GMM:
-                posteriors = self._compute_GM_posterior(proj[i_point, :], priors, GMMs)
+                GMMs = self._fit_GM(proj)
             else:
-                posteriors = self._compute_gaussian_posterior(proj[i_point,:], priors, means, covs)
-            class_entropies[i_point] = entropy(posteriors)
-            new_classes[i_point] = np.argmax(posteriors)
+                means, covs = self._fit_Gaussians(proj)
 
-        # Compute separation score
-        correct_separation = new_classes==self.labels
-        if projection is None:
-            self.separation_score = correct_separation.sum()/n_points
-            self.projection_class_entropy = class_entropies.mean()
-        else:
-            return correct_separation.sum()/n_points, class_entropies.mean()
+            n_points = proj.shape[0]
+            new_classes = np.zeros(n_points)
+            class_entropies = np.zeros(n_points)
+            for i_point in range(n_points):
+                if use_GMM:
+                    posteriors = self._compute_GM_posterior(proj[i_point, :], priors, GMMs)
+                else:
+                    posteriors = self._compute_gaussian_posterior(proj[i_point,:], priors, means, covs)
+                class_entropies[i_point] = entropy(posteriors)
+                new_classes[i_point] = np.argmax(posteriors)
+
+            # Compute separation score
+            correct_separation = new_classes==self.labels
+            if projection is None:
+                self.separation_score = correct_separation.sum()/n_points
+                self.projection_class_entropy = class_entropies.mean()
+            else:
+                return correct_separation.sum()/n_points, class_entropies.mean()
+        except:
+            logger.warning('Could not calculate projection prediction score and entropy.')
+            class_entropies = np.nan*np.ones(class_entropies.shape)
+            if projection is None:
+                self.separation_score = np.nan
+                self.projection_class_entropy = np.nan
+            else:
+                return np.nan, np.nan
 
         # Compute per-cluster projection entropy
         self.cluster_projection_class_entropy = np.zeros(self.n_clusters)

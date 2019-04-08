@@ -26,7 +26,6 @@ logger.info("Done with init")
 
 
 ### LOAD SAMPLES FROM FILE ###
-
 samples = np.load(save_dir+"sample.npy")
 labels = np.load(save_dir+"labels.npy")
 feature_to_resids = np.load(save_dir+"feature_to_resids.npy")
@@ -39,8 +38,9 @@ use_inverse_distances = True #Usually it is a good idea to take the inverse of t
 
 feature_extractors = [
      fe.MlpFeatureExtractor(samples, labels, n_splits=n_splits, n_iterations=n_iterations,
-                             hidden_layer_sizes=(100,), # Number of neurons in each layer, e.g. (100,10) would be a bilayer perceptron with 100 neurons in the first layer and 10 in the second
+                             hidden_layer_sizes=(100,100,100), # Number of neurons in each layer, e.g. (100,10) would be a bilayer perceptron with 100 neurons in the first layer and 10 in the second
                              activation="relu", #use "relu" or logistic(sigmoid), determines neuron output
+                             solver="adam",
                              randomize=True, # set to false for reproducability
                              filter_by_distance_cutoff=filter_by_distance_cutoff),
 

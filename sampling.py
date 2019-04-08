@@ -33,18 +33,25 @@ apo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
 holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
                         top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
+## Neutral / Deprotonated
+# apo_asp_traj = md.load(traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.pdb", stride=stride)
+
+# holo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
+
 logger.info("Loaded trajectories with properties %s, %s", holo_asp_traj, apo_asp_traj)
 
 
 ### Compute the interatomic distances for mdtrajectories ###
 holo_asp_distances, holo_asp_residue_pairs = md.compute_contacts(holo_asp_traj,
                                    contacts="all",
-                                   scheme="ca", #You may want to use 'ca'
+                                   scheme="closest-heavy", #You may want to use 'ca'
                                    ignore_nonprotein=True)
 
 apo_asp_distances, apo_asp_residue_pairs = md.compute_contacts(apo_asp_traj,
                                    contacts="all",
-                                   scheme="ca", #You may want to use 'ca'
+                                   scheme="closest-heavy", #You may want to use 'ca'
                                    ignore_nonprotein=True)
 
 if holo_asp_distances.shape[1] != apo_asp_distances.shape[1]:
@@ -61,7 +68,6 @@ labels[0:len(holo_asp_distances)] = 1 # We label holo with '1'
 labels[len(holo_asp_distances):] = 2 # and apo with '2'
 
 # Map the indices of the samples to the right residue number
-
 
 # Feature is defined as the contact between two residues
 feature_to_resids = np.empty((samples.shape[1], 2)) #This array tells us which residues the index of a certain feature correspond to.

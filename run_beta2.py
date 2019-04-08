@@ -20,6 +20,7 @@ def run(nclusters=2,
         simu_type="clustering",
         n_iterations=1,
         n_splits=1,
+        shuffle_datasets=True,
         dt=10,
         feature_type="ca_inv",  # "contacts_5_cutoff", "closest-heavy_inv" or "CA_inv", "cartesian_ca", "cartesian_noh"
         filetype="pdf",
@@ -52,9 +53,6 @@ def run(nclusters=2,
     # ## Define the different methods to use
     #
     # Every method is encapsulated in a so called FeatureExtractor class which all follow the same interface
-
-    # rbm_data = np.copy(data)
-    # np.random.shuffle(rbm_data)
     kwargs = {
         'samples': data,
         'cluster_indices': cluster_indices,
@@ -62,6 +60,7 @@ def run(nclusters=2,
         'use_inverse_distances': True,
         'n_splits': n_splits,
         'n_iterations': n_iterations,
+        shuffle_datasets: shuffle_datasets
         # 'upper_bound_distance_cutoff': 1.,
         # 'lower_bound_distance_cutoff': 1.
     }
@@ -105,13 +104,13 @@ def run(nclusters=2,
         #                        variance_cutoff='6_components',
         #                        name='PCA_6_comp',
         #                        **kwargs),
-        fe.MlpAeFeatureExtractor(
-            hidden_layer_sizes=(100, 50, 10, 2, 10, 50, 100,),  # int(data.shape[1]/2),),
-            # training_max_iter=10000,
-            use_reconstruction_for_lrp=True,
-            alpha=0.0001,
-            activation="relu",
-            **kwargs),
+        # fe.MlpAeFeatureExtractor(
+        #     hidden_layer_sizes=(100, 50, 10, 2, 10, 50, 100,),  # int(data.shape[1]/2),),
+        #     # training_max_iter=10000,
+        #     use_reconstruction_for_lrp=True,
+        #     alpha=0.0001,
+        #     activation="relu",
+        #     **kwargs),
     ]
     feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
@@ -162,9 +161,10 @@ for nclusters in range(2, 7):
     run(nclusters=nclusters,
         feature_type="closest-heavy_inv",
         simu_type=simu_type,
-        n_iterations=10,
-        n_splits=1,
+        n_iterations=30,
+        n_splits=4,
         supervised=False,
+        shuffle_datasets=True,
         filter_by_distance_cutoff=True)
     if simu_type != "clustering":
         break

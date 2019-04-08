@@ -58,6 +58,8 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
             # hidden_layer_sizes=(100, 1, 100,),
             # hidden_layer_sizes=(200, 50, 10, 1, 10, 50, 200, ),
             training_max_iter=100000,
+            # hidden_layer_sizes=(300, 200, 50, 10, 1, 10, 50, 200, 300,),
+            # training_max_iter=10000,
             use_reconstruction_for_lrp=True,
             alpha=0.0001,
             solver="adam",

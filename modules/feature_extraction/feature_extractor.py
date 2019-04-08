@@ -30,7 +30,8 @@ class FeatureExtractor(object):
                  name='FeatureExtractor',
                  error_limit=5,
                  supervised=True,
-                 remove_outliers=False):
+                 remove_outliers=False,
+                 shuffle_datasets=False):
         if samples is None:
             raise Exception("Samples cannot be None")
         self.samples = samples
@@ -52,11 +53,12 @@ class FeatureExtractor(object):
         self.upper_bound_distance_cutoff = upper_bound_distance_cutoff
         self.remove_outliers = remove_outliers
         self.supervised = supervised
+        self.shuffle_datasets = shuffle_datasets
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
                      " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
-                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s",
+                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s", shuffle_datasets,
                      name, n_splits, n_iterations, scaling, filter_by_distance_cutoff, lower_bound_distance_cutoff,
-                     upper_bound_distance_cutoff, remove_outliers, use_inverse_distances)
+                     upper_bound_distance_cutoff, remove_outliers, use_inverse_distances, shuffle_datasets)
 
     def split_train_test(self):
         """
@@ -70,7 +72,7 @@ class FeatureExtractor(object):
             all_indices = all_indices.astype(int)
             return all_indices, all_indices
 
-        kf = KFold(n_splits=self.n_splits, shuffle=False)
+        kf = KFold(n_splits=self.n_splits, shuffle=self.shuffle_datasets)
 
         train_inds = []
         test_inds = []

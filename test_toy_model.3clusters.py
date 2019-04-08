@@ -22,12 +22,22 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
     projection_entropy = []
     area_under_roc = []
 
+    kwargs = {
+        'samples': data,
+        'cluster_indices': cluster_indices,
+        'filter_by_distance_cutoff': False,
+        'use_inverse_distances': True,
+        'n_splits': n_splits,
+        'n_iterations': n_iterations,
+        'scaling': True
+    }
+
     feature_extractors = [
-    fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None, scaling=True, filter_by_distance_cutoff=False),
-    fe.RbmFeatureExtractor(data, cluster_indices, n_components=100, n_splits=n_splits, n_iterations=n_iterations, scaling=True, filter_by_distance_cutoff=False),
-    fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=True, filter_by_distance_cutoff=False),
-    fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits, scaling=True, filter_by_distance_cutoff=False),
-    fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, hidden_layer_sizes=(100,), scaling=True, filter_by_distance_cutoff=False)
+    fe.PCAFeatureExtractor(**kwargs),
+    fe.RbmFeatureExtractor(n_components=100, **kwargs),
+    fe.RandomForestFeatureExtractor(**kwargs),
+    fe.KLFeatureExtractor(**kwargs),
+    fe.MlpFeatureExtractor(hidden_layer_sizes=(100,), **kwargs)
     ]
 
     for extractor in feature_extractors:
@@ -36,6 +46,7 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
         pp.average().evaluate_performance()
         projection_entropy.append(pp.data_projector.projection_class_entropy)
         if pp.auc is not None:
+            print("POS_ratio and NEG_ratio: ", pp.auc)
             area_under_roc.append(pp.auc)
 
     return projection_entropy, area_under_roc
@@ -52,7 +63,7 @@ test_noise = [1e-2,1e-2,2e-1,2e-1]
 n_feature_extractors = 5
 n_supervised_feature_extractors = 3
 projection_entropy = np.zeros((n_feature_extractors,len(test_model),len(test_noise),n_iter_per_example))
-area_under_roc = np.zeros((n_supervised_feature_extractors,len(test_model),len(test_noise),n_iter_per_example))
+area_under_roc = np.zeros((n_supervised_feature_extractors,len(test_model),len(test_noise),n_iter_per_example,2))
 
 for i, i_model in enumerate(test_model):
 
@@ -78,10 +89,10 @@ for i, i_model in enumerate(test_model):
             data, labels = dg.generate_data()
             cluster_indices = labels.argmax(axis=1)
 
-            projection_entropy[:,i,j,k], area_under_roc[:,i,j,k] = run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,dg.moved_atoms)
+            projection_entropy[:,i,j,k], area_under_roc[:,i,j,k,:] = run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,dg.moved_atoms)
 
 work_dir = '/media/mkasimova/Data2/NN_VSD/toy_model/testing.different.toy.models/Febr.12.updated.code/'
 
-np.save(work_dir+'projection_entropy.npy',projection_entropy)
-np.save(work_dir+'area_under_roc.npy',area_under_roc)
+np.save(work_dir+'projection_entropy.diff_class_estimate.npy',projection_entropy)
+np.save(work_dir+'area_under_roc.diff_class_estimate.npy',area_under_roc)
 

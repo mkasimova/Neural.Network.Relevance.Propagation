@@ -56,7 +56,7 @@ class FeatureExtractor(object):
         self.shuffle_datasets = shuffle_datasets
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
                      " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
-                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s", shuffle_datasets,
+                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s, shuffle_datasets %s",
                      name, n_splits, n_iterations, scaling, filter_by_distance_cutoff, lower_bound_distance_cutoff,
                      upper_bound_distance_cutoff, remove_outliers, use_inverse_distances, shuffle_datasets)
 

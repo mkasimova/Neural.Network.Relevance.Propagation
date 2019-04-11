@@ -25,7 +25,8 @@ class PostProcessor(object):
                  feature_to_resids=None,
                  pdb_file=None,
                  predefined_relevant_residues=None,
-                 use_GMM_estimator=True):
+                 use_GMM_estimator=True,
+                 supervised=False):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here
@@ -208,7 +209,7 @@ class PostProcessor(object):
         self.data_projector.project(self.feature_importances).score_projection(use_GMM=self.use_GMM_estimator)
 
         return self
-
+    '''
     def _compute_area_under_ROC(self):
         """
         Computes ROC curve and area under it
@@ -244,6 +245,41 @@ class PostProcessor(object):
                 auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
 
         self.auc = auc/self.nclusters
+    '''
+    def _compute_area_under_ROC(self):
+        """
+        Compute ( TP - FP )/( TP + FP ) and ( TN - FN ) / ( TN + FN )
+        """
+
+        POS_RATIO = 0
+        NEG_RATIO = 0
+
+        for i in range(self.nclusters):
+
+            importance_per_residue_and_cluster_SORTED = -np.sort(-self.importance_per_residue_and_cluster[:,i])
+            importance_per_residue_and_cluster_SORTED_IND = np.argsort(-self.importance_per_residue_and_cluster[:,i])
+
+            difference = []
+            for j in range(self.nresidues-1):
+                difference.append(importance_per_residue_and_cluster_SORTED[j]-importance_per_residue_and_cluster_SORTED[j+1])
+            difference_max = max(difference)
+            difference_max_index = difference.index(difference_max)
+
+            POSITIVE = importance_per_residue_and_cluster_SORTED_IND[0:difference_max_index+1]
+            NEGATIVE = importance_per_residue_and_cluster_SORTED_IND[difference_max_index+1:]
+
+            ind_actives = self.predefined_relevant_residues[i]
+            TP = len( list(set(POSITIVE) & set(ind_actives)) )
+            FP = len(POSITIVE) - TP
+
+            ind_decoys = [j for j in np.arange(0,self.nresidues,1) if j not in ind_actives]
+            TN = len( list(set(NEGATIVE) & set(ind_decoys)) )
+            FN = len(NEGATIVE) - TN
+
+            POS_RATIO += (TP-FP)/(TP+FP)
+            NEG_RATIO += (TN-FN)/(TN+FN)
+
+        self.auc = [POS_RATIO/self.nclusters, NEG_RATIO/self.nclusters]
 
     def _map_to_correct_residues(self, importance_per_residue):
         """

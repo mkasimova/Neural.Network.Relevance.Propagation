@@ -50,7 +50,7 @@ def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, c
             ax.set_ylim(ylim)
 
     if std_val is not None:
-        ax.plot([x_val, x_val], [y_val - std_val, y_val + std_val], color='black', alpha=0.3, linewidth=1,
+        ax.plot([x_val, x_val], [y_val - std_val, y_val + std_val], color='black', alpha=1.0, linewidth=2,
                 linestyle='-', marker='s',
                 markersize=1)
     ax.set_xlabel(xlabel)
@@ -124,7 +124,7 @@ def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels
 
     x_val_clusters = np.arange(ave_per_cluster_projection_entropies.shape[1]) - width * n_estimators / 2.0
 
-    fig1, _ = plt.subplots(1, n_metrics, figsize=(38, 5))
+    fig1, _ = plt.subplots(1, n_metrics, figsize=(7, 5))
     fig2, _ = plt.subplots(1, 1, figsize=(20, 5))
 
     for i_metric in range(n_metrics):
@@ -268,7 +268,7 @@ def visualize(postprocessors,
     i_run = 0
     if show_importance:
         ave_feats, std_feats = get_average_feature_importance(postprocessors, i_run)
-        fig1, axes1 = plt.subplots(1,n_feature_extractors, figsize=(45, 4))
+        fig1, axes1 = plt.subplots(1,n_feature_extractors, figsize=(65, 4))
         counter = 0
         for pp, ax in zip(postprocessors, fig1.axes):
             _vis_feature_importance(pp[i_run].index_to_resid, pp[i_run].importance_per_residue,

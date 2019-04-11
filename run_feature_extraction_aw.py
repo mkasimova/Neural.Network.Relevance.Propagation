@@ -14,6 +14,9 @@ from modules import relevance_propagation as relprop
 
 def main(parser):
 
+	# Known important residues
+	common_peaks = [109,144,145,128,105,112,136,108,141,92]
+
 	shuffle_data = True
 
 	args = parser.parse_args()
@@ -47,7 +50,7 @@ def main(parser):
 	labels = cluster_indices
 
 	lower_distance_cutoff = 1.0
-	upper_distance_cutoff = 0.8
+	upper_distance_cutoff = 1.0
 	n_components = 20
 
 	# Check if samples format is correct
@@ -63,9 +66,10 @@ def main(parser):
 	feature_extractors = [
 		fe.PCAFeatureExtractor(n_components=None,variance_cutoff=0.75, **kwargs),
 		fe.RbmFeatureExtractor(relevance_method="from_components", **kwargs),
-		fe.RandomForestFeatureExtractor(n_estimators=200,one_vs_rest=True, **kwargs),
+		fe.MlpAeFeatureExtractor(activation=relprop.relu, solver='adam', hidden_layer_sizes=(20,3,20), **kwargs),
+		fe.RandomForestFeatureExtractor(n_estimators=500,one_vs_rest=True, **kwargs),
 		fe.KLFeatureExtractor(**kwargs),
-		fe.MlpFeatureExtractor(hidden_layer_sizes=(100),solver='lbfgs',learning_rate='constant',
+		fe.MlpFeatureExtractor(hidden_layer_sizes=(120,),solver='adam',
 							   activation=relprop.relu,training_max_iter=1000000,**kwargs),
 	]
 
@@ -81,11 +85,12 @@ def main(parser):
 			p.average().evaluate_performance()
 			p.persist()
 
+			# Add common peaks
 			tmp_pp.append(p)
 
 		postprocessors.append(tmp_pp)
 
-	visualization.visualize(postprocessors, show_projected_data=False)
+	visualization.visualize(postprocessors, show_projected_data=False, highlighted_residues=common_peaks)
 
 parser = argparse.ArgumentParser(epilog='Feature importance extraction.')
 parser.add_argument('-od', '--out_directory', help='Folder where files are written.', default='')

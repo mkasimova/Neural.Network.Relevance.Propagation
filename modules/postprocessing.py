@@ -205,7 +205,12 @@ class PostProcessor(object):
         Computes separation of clusters in the projected space given by the feature importances
         """
         self.data_projector = dp.DataProjector(self.extractor.samples, self.cluster_indices)
-        self.data_projector.project(self.feature_importances).score_projection(use_GMM=self.use_GMM_estimator)
+
+        if self.supervised:
+            self.data_projector.project(self.feature_importances).score_projection(use_GMM=self.use_GMM_estimator)
+        else:
+            self.data_projector.project(self.feature_importances)
+            self.data_projector.separation_score = np.nan
 
         return self
     '''

@@ -30,11 +30,11 @@ def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, av
         ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:
         for h in highlighted_residues:
-            ax.axvline(h, linestyle='--', color="gray")
+            ax.axvline(h, linestyle='--', color=[50.0/256.0,117.0/256.0,220.0/256.0], linewidth=2)
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
     if set_ylim:
-        ax.set_ylim([0, 1])
+        ax.set_ylim([0, 1.05])
 
     if show_title:
         ax.set_title(extractor_name)
@@ -42,8 +42,13 @@ def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, av
         ax.legend()
 
 
-def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False, std_val=None):
-    ax.plot(x_val, y_val, label=extractor_name, color=color, linewidth=2, marker='o', markersize=10)
+def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, marker, show_legends=False, std_val=None,ylim=None):
+
+    if not(np.isnan(y_val)):
+        ax.scatter(x_val, y_val, label=extractor_name, c='w', linewidth=2, marker=marker, s=300,edgecolor='k')
+        if ylim is not None:
+            ax.set_ylim(ylim)
+
     if std_val is not None:
         ax.plot([x_val, x_val], [y_val - std_val, y_val + std_val], color='black', alpha=0.3, linewidth=1,
                 linestyle='-', marker='s',
@@ -78,7 +83,7 @@ def _vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_
                     linewidth=1,
                     linestyle='-', marker='s', markersize=1)
 
-    if ylim is not None:
+    if ylim is not None and not(np.any(np.isnan(ylim))):
         ax.set_ylim(ylim)
 
     ax.set_xlabel(xlabel)
@@ -88,7 +93,7 @@ def _vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_
 
 
 def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
-                                          extractor_names, colors):
+                                          extractor_names, colors, markers):
     """
     Visualize (average + stddev) performance metrics of multiple runs.
     :param x_vals:
@@ -123,7 +128,7 @@ def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels
     fig2, _ = plt.subplots(1, 1, figsize=(20, 5))
 
     for i_metric in range(n_metrics):
-        fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric], color=[0.77, 0.77, 0.82], linewidth=4)
+        fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric], color=[0.77, 0.77, 0.82], linewidth=4, zorder=-1)
 
     for i_estimator in range(n_estimators):
         # Visualize each performance metric for current estimator with average+-std, in each axis
@@ -134,68 +139,9 @@ def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels
             _vis_performance_metrics(x_vals[i_estimator], ave_metrics[i_metric][i_estimator], fig1.axes[i_metric],
                                      'Estimator',
                                      metric_labels[i_metric], extractor_names[i_estimator],
-                                     colors[i_estimator % len(colors)], std_val=std_metrics[i_metric][i_estimator],
-                                     show_legends=show_legends)
+                                     colors[i_estimator % len(colors)], markers[i_estimator], std_val=std_metrics[i_metric][i_estimator],
+                                     show_legends=show_legends, ylim=[0, 1.05])
         if not (np.any(np.isnan(ave_per_cluster_projection_entropies[i_estimator, :]))):
-            _vis_per_cluster_projection_entropy(x_val_clusters + width * i_estimator,
-                                                ave_per_cluster_projection_entropies[i_estimator, :], width, fig2.axes[0],
-                                                colors[i_estimator % len(colors)],
-                                                extractor_names[i_estimator],
-                                                std_val=std_per_cluster_projection_entropies[i_estimator, :],
-                                                xlabel='Cluster', ylabel='Projection entropy',
-                                                ylim=cluster_proj_entroy_ylim)
-    return
-
-def _vis_multiple_run_performance_metrics_boxes(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
-                                          extractor_names, colors):
-    """
-    Visualize (box-plots) performance metrics of multiple runs.
-    :param x_vals:
-    :param metrics:
-    :param metric_labels:
-    :param per_cluster_projection_entropies:
-    :param extractor_names:
-    :param colors:
-    :return:
-    """
-    n_estimators = metrics[0].shape[0]
-    n_metrics = len(metrics)
-
-    width = 1.0 / n_estimators - 0.05
-
-    ave_metrics = []
-
-    for i in range(n_metrics):
-        ave_metrics.append(metrics[i].mean(axis=1))
-
-    ave_per_cluster_projection_entropies = per_cluster_projection_entropies.mean(axis=1)
-    std_per_cluster_projection_entropies = per_cluster_projection_entropies.std(axis=1)
-
-    cluster_proj_entroy_ylim = [0, np.max(
-        ave_per_cluster_projection_entropies + std_per_cluster_projection_entropies + 0.1)]
-
-    x_val_clusters = np.arange(ave_per_cluster_projection_entropies.shape[1]) - width * n_estimators / 2.0
-
-    fig1, _ = plt.subplots(1, n_metrics, figsize=(38, 4))
-    fig2, _ = plt.subplots(1, 1, figsize=(20, 4))
-
-    # Plot line between estimator values
-    for i_metric in range(n_metrics):
-        fig1.axes[i_metric].plot(x_vals+1, ave_metrics[i_metric], color=[0.77, 0.77, 0.82], linewidth=4)
-
-    # Visualize performance metrics for all estimators
-    for i_metric in range(n_metrics):
-        _vis_performance_metrics_box_plot(metrics[i_metric], fig1.axes[i_metric], '', metric_labels[i_metric], extractor_names, colors,
-                                      show_legends=False, ylim=[0,1])
-
-    for i_estimator in range(n_estimators):
-        # Visualize each performance metric for current estimator with average+-std, in each axis
-        show_legends = False
-        for i_metric in range(n_metrics):
-            if i_metric == n_metrics - 1:
-                show_legends = True
-
-        if not(np.any(np.isnan(ave_per_cluster_projection_entropies[i_estimator, :]))):
             _vis_per_cluster_projection_entropy(x_val_clusters + width * i_estimator,
                                                 ave_per_cluster_projection_entropies[i_estimator, :], width, fig2.axes[0],
                                                 colors[i_estimator % len(colors)],
@@ -277,7 +223,8 @@ def extract_metrics(postprocessors):
 
     metric_labels = ['Average standard deviation', 'Separation score', 'Projection entropy']
 
-    metrics = [standard_devs, separation_scores, projection_entropies]
+    #metrics = [standard_devs, separation_scores, projection_entropies] # Only plot separation scores
+    metrics = [separation_scores]
 
     return x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names
 
@@ -302,8 +249,9 @@ def visualize(postprocessors,
     """
 
     n_feature_extractors = len(postprocessors)
-    # colors = np.asarray([[0.5, 0.0, 0.08], [0.0, 0.8, 0.0], [0, 0, 0.5], [0.7, 0.3, 0.6], [1, 0.6, 0], [0.4, 0.9, 0.5]])
-    colors = np.array(plt.rcParams["axes.prop_cycle"].by_key()["color"])
+    #colors = np.array(plt.rcParams["axes.prop_cycle"].by_key()["color"])
+    colors = [[33.0/256.0,36.0/256.0,50.0/256.0]]*n_feature_extractors
+    markers = ['o','s','>','^','d','v','<']
     if color_offset > 0:
         colors2 = colors.copy()
         colors[:len(colors) - color_offset] = colors2[color_offset:]
@@ -314,7 +262,7 @@ def visualize(postprocessors,
             postprocessors)
 
         _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
-                                              extractor_names, colors)
+                                              extractor_names, colors, markers)
 
     # Visualize the first run
     i_run = 0

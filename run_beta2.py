@@ -23,7 +23,7 @@ def run(nclusters=2,
         shuffle_datasets=True,
         dt=10,
         feature_type="ca_inv",  # "contacts_5_cutoff", "closest-heavy_inv" or "CA_inv", "cartesian_ca", "cartesian_noh"
-        filetype="pdf",
+        filetype="svg",
         supervised=True,
         filter_by_distance_cutoff=True):
     if simu_type == "clustering":
@@ -41,10 +41,12 @@ def run(nclusters=2,
         cluster_indices = np.loadtxt("{wd}/cluster_indices/cluster_indices_dt{dt}.txt".format(wd=working_dir, dt=dt))
     else:
         raise Exception("Unsupported simulation type {simu_type}".format(simu_type=simu_type))
-
+    supervised_suffix = ""
+    if supervised is not None:
+        supervised_suffix = "_supervised" if supervised else "_unsupervised"
     suffix = str(nclusters) + "clusters_" + str(n_iterations) + "iterations_" \
              + ("distance-cutoff_" if filter_by_distance_cutoff else "") \
-             + (feature_type + "_supervised" if supervised else "_unsupervised")
+             + (feature_type + supervised_suffix)
     cluster_indices -= 1  # start at 0 instead of 1
     if len(data) != len(cluster_indices) or data.shape[1] != len(feature_to_resids):
         raise Exception("Inconsistent input data. The number of features or the number of frames to no match")
@@ -60,41 +62,23 @@ def run(nclusters=2,
         'use_inverse_distances': True,
         'n_splits': n_splits,
         'n_iterations': n_iterations,
-        shuffle_datasets: shuffle_datasets
+        'shuffle_datasets': shuffle_datasets
         # 'upper_bound_distance_cutoff': 1.,
         # 'lower_bound_distance_cutoff': 1.
     }
-    supervised_feature_extractors = [
-        fe.MlpFeatureExtractor(
-            hidden_layer_sizes=[int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-            training_max_iter=10000,
-            alpha=0.0001,
-            activation="relu",
-            **kwargs),
-        # fe.ElmFeatureExtractor(
-        #     activation="relu",
-        #     n_nodes=data.shape[1]*2,
-        #     alpha=0.1,
-        #     **kwargs),
-        fe.KLFeatureExtractor(**kwargs),
-        fe.RandomForestFeatureExtractor(
-            one_vs_rest=False,
-            n_estimators=1000,
-            **kwargs),
-    ]
     unsupervised_feature_extractors = [
         # fe.RbmFeatureExtractor(n_components=8,
         #                        relevance_method='from_components',
         #                        name='RBM_from_components',
         #                        variance_cutoff='auto',
         #                        **kwargs),
+        fe.PCAFeatureExtractor(n_components=None,
+                               variance_cutoff=75,
+                               name='PCA',
+                               **kwargs),
         fe.RbmFeatureExtractor(n_components=2,
                                relevance_method='from_lrp',
                                name='RBM',
-                               **kwargs),
-        fe.PCAFeatureExtractor(n_components=None,
-                               variance_cutoff=101,
-                               name='PCA',
                                **kwargs),
         # fe.PCAFeatureExtractor(n_components=None,
         #                        name="PCA_%s" % variance_cutoff,
@@ -112,7 +96,30 @@ def run(nclusters=2,
         #     activation="relu",
         #     **kwargs),
     ]
-    feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
+    supervised_feature_extractors = [
+        # fe.ElmFeatureExtractor(
+        #     activation="relu",
+        #     n_nodes=data.shape[1]*2,
+        #     alpha=0.1,
+        #     **kwargs),
+        fe.RandomForestFeatureExtractor(
+            one_vs_rest=False,
+            n_estimators=1000,
+            **kwargs),
+        fe.KLFeatureExtractor(**kwargs),
+        fe.MlpFeatureExtractor(
+            hidden_layer_sizes=[int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+            training_max_iter=10000,
+            alpha=0.0001,
+            activation="relu",
+            **kwargs),
+
+    ]
+
+    if supervised is None:
+        feature_extractors = unsupervised_feature_extractors + supervised_feature_extractors
+    else:
+        feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
 
     # # Run the relevance analysis
@@ -159,11 +166,11 @@ def run(nclusters=2,
 simu_type = "clustering"
 for nclusters in range(2, 7):
     run(nclusters=nclusters,
-        feature_type="closest-heavy_inv",
+        feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=30,
+        n_iterations=50,
         n_splits=4,
-        supervised=False,
+        supervised=None,
         shuffle_datasets=True,
         filter_by_distance_cutoff=True)
     if simu_type != "clustering":

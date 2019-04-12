@@ -130,17 +130,23 @@ def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels
     for i_metric in range(n_metrics):
         fig1.axes[i_metric].plot(x_vals, ave_metrics[i_metric], color=[0.77, 0.77, 0.82], linewidth=4, zorder=-1)
 
+    x_tick_labels = []
+
     for i_estimator in range(n_estimators):
         # Visualize each performance metric for current estimator with average+-std, in each axis
-        show_legends = False
         for i_metric in range(n_metrics):
             if i_metric == n_metrics - 1:
-                show_legends = True
+                x_tick_labels.append(extractor_names[i_estimator])
             _vis_performance_metrics(x_vals[i_estimator], ave_metrics[i_metric][i_estimator], fig1.axes[i_metric],
                                      'Estimator',
                                      metric_labels[i_metric], extractor_names[i_estimator],
                                      colors[i_estimator % len(colors)], markers[i_estimator], std_val=std_metrics[i_metric][i_estimator],
-                                     show_legends=show_legends, ylim=[0, 1.05])
+                                     show_legends=False, ylim=[0, 1.05])
+            if i_estimator == n_estimators - 1:
+                fig1.axes[i_metric].xaxis.set_ticks(x_vals)
+                fig1.axes[i_metric].set_xticklabels(x_tick_labels)
+                fig1.axes[i_metric].set_xlim([x_vals.min()-0.5,x_vals.max()+0.5])
+
         if not (np.any(np.isnan(ave_per_cluster_projection_entropies[i_estimator, :]))):
             _vis_per_cluster_projection_entropy(x_val_clusters + width * i_estimator,
                                                 ave_per_cluster_projection_entropies[i_estimator, :], width, fig2.axes[0],
@@ -149,6 +155,8 @@ def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels
                                                 std_val=std_per_cluster_projection_entropies[i_estimator, :],
                                                 xlabel='Cluster', ylabel='Projection entropy',
                                                 ylim=cluster_proj_entroy_ylim)
+
+
     return
 
 def _vis_projected_data(proj_data, cluster_indices, fig, title):
@@ -221,7 +229,8 @@ def extract_metrics(postprocessors):
             if i_run == 0:
                 extractor_names.append(pp.extractor.name)
 
-    metric_labels = ['Average standard deviation', 'Separation score', 'Projection entropy']
+    #metric_labels = ['Average standard deviation', 'Separation score', 'Projection entropy']
+    metric_labels = ['Separation score']
 
     #metrics = [standard_devs, separation_scores, projection_entropies] # Only plot separation scores
     metrics = [separation_scores]

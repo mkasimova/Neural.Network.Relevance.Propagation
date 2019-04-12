@@ -66,7 +66,7 @@ def main(parser):
 		fe.RandomForestFeatureExtractor(n_estimators=200,one_vs_rest=True, **kwargs),
 		fe.KLFeatureExtractor(**kwargs),
 		fe.MlpFeatureExtractor(hidden_layer_sizes=(100),solver='lbfgs',learning_rate='constant',
-							   activation=relprop.relu,training_max_iter=1000000,**kwargs),
+							   activation=relprop.relu,max_iter=1000000,**kwargs),
 	]
 
 	postprocessors = []

@@ -11,7 +11,6 @@ logging.basicConfig(
 import numpy as np
 from scipy.stats import entropy
 from .feature_extractor import FeatureExtractor
-from ..postprocessing import PostProcessor
 
 logger = logging.getLogger("KL divergence")
 
@@ -91,16 +90,3 @@ class KLFeatureExtractor(FeatureExtractor):
             data_rest = data[labels[:, i_cluster] == 0, :]
             self.feature_importances[:, i_cluster] = self._KL_divergence(data_cluster, data_rest)
         return self
-
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
-                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
-
-        return PostProcessor(extractor=self, \
-                             working_dir=working_dir, \
-                             rescale_results=rescale_results, \
-                             filter_results=filter_results, \
-                             feature_to_resids=feature_to_resids, \
-                             pdb_file=pdb_file, \
-                             predefined_relevant_residues=predefined_relevant_residues, \
-                             use_GMM_estimator=use_GMM_estimator, \
-                             supervised=True)

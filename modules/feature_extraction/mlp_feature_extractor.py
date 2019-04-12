@@ -14,6 +14,7 @@ import sklearn.neural_network
 from .. import relevance_propagation as relprop
 from .feature_extractor import FeatureExtractor
 from ..postprocessing import PerFrameImportancePostProcessor
+from .. import filtering
 
 logger = logging.getLogger("mlp")
 
@@ -22,7 +23,6 @@ class MlpFeatureExtractor(FeatureExtractor):
 
     def __init__(self,
                  name="MLP",
-                 hidden_layer_sizes=(100,),
                  activation=relprop.relu,
                  randomize=True,
                  supervised=True,
@@ -34,27 +34,28 @@ class MlpFeatureExtractor(FeatureExtractor):
                                   supervised=supervised,
                                   **kwargs)
         logger.debug("Initializing MLP with the following parameters:"
-                     " hidden_layer_sizes %s, activation function %s, randomize %s, classifier_kwargs %s,"
+                     " activation function %s, randomize %s, classifier_kwargs %s,"
                      " per_frame_importance_outfile %s",
-                     hidden_layer_sizes, activation, randomize, classifier_kwargs, per_frame_importance_outfile)
-        self.hidden_layer_sizes = hidden_layer_sizes
+                     activation, randomize, classifier_kwargs, per_frame_importance_outfile)
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
         self.randomize = randomize
+        self._classifier_kwargs = classifier_kwargs.copy()
+        if classifier_kwargs.get('activation', None) is not None and \
+                classifier_kwargs.get('activation') != self.activation:
+            logger.warn("Conflicting activation properiies. '%s' will be overwritten with '%s'",
+                        classifier_kwargs.get('activation'),
+                        self.activation)
+        classifier_kwargs['activation'] = self.activation
+        if not self.randomize:
+            self._classifier_kwargs['random_state'] = 89274
         self.per_frame_importance_outfile = per_frame_importance_outfile
-        if self.frame_importances is None:
-            if self.n_splits != 1:
-                raise Exception("Cannot write frame importance to outfile if n_splits is not 1 ")
-            # for every feature in every frame...
-            self.frame_importances = np.zeros((self.samples.shape[0], self.samples.shape[1]))
-        else:
-            self.frame_importances = None
-        self._classifier_kwargs = classifier_kwargs
+        self.frame_importances = None
 
     def train(self, train_set, train_labels):
         logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier = sklearn.neural_network.MLPClassifier(**self.get_classifier_kwargs())
+        classifier = sklearn.neural_network.MLPClassifier(**self._classifier_kwargs)
         classifier.fit(train_set, train_labels)
         return classifier
 
@@ -82,11 +83,20 @@ class MlpFeatureExtractor(FeatureExtractor):
             cluster_idx = labels[frame_idx].argmax()
             frames_per_cluster[cluster_idx] += 1
 
+        if self.per_frame_importance_outfile is not None:
+            if self.n_splits != 1:
+                logger.error("Cannot average frame importance to outfile if n_splits != 1. n_splits is now set to %s",
+                             self.n_splits)
+            if self.shuffle_datasets:
+                logger.error("Data set has been shuffled, per frame importance will not be properly mapped")
+            else:
+                # for every feature in every frame...
+                self.frame_importances = np.zeros(relevance.shape)
+
         for frame_idx, rel in enumerate(relevance):
             cluster_idx = labels[frame_idx].argmax()
             result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
             if self.frame_importances is not None:
-                # Note
                 self.frame_importances[frame_idx] += rel / self.n_iterations
         return result
 
@@ -112,26 +122,20 @@ class MlpFeatureExtractor(FeatureExtractor):
 
         self.layers = layers
 
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
-                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
+    def _on_all_features_extracted(self, feats, errors, n_features):
+        FeatureExtractor._on_all_features_extracted(self, feats, errors, n_features)
 
-        return PerFrameImportancePostProcessor(extractor=self, \
-                             working_dir=working_dir, \
-                             rescale_results=rescale_results, \
-                             filter_results=filter_results, \
-                             feature_to_resids=feature_to_resids, \
-                             pdb_file=pdb_file, \
-                             predefined_relevant_residues=predefined_relevant_residues, \
-                             use_GMM_estimator=use_GMM_estimator, \
-                             supervised=True,
-                             per_frame_importance_outfile=self.per_frame_importance_outfile,
-                             frame_importances=self.frame_importances)
+        if self.filter_by_distance_cutoff and self.frame_importances is not None:
+            # Note Transpose so we pretend that one frame is one cluster
+            imps, _ = filtering.remap_after_filtering(self.frame_importances.T,
+                                                      None,
+                                                      n_features,
+                                                      self.indices_for_filtering)
+            self.frame_importances = imps.T
 
-    def get_classifier_kwargs(self):
-        classifier_kwargs = self._classifier_kwargs.copy()
-        classifier_kwargs['activation'] = self.activation
-        classifier_kwargs['hidden_layer_sizes'] = self.hidden_layer_sizes
-        if not self.randomize:
-            classifier_kwargs['random_state'] = 89274
-        return classifier_kwargs
-
+    def postprocessing(self, **kwargs):
+        return PerFrameImportancePostProcessor(extractor=self,
+                                               supervised=self.supervised,
+                                               per_frame_importance_outfile=self.per_frame_importance_outfile,
+                                               frame_importances=self.frame_importances,
+                                               **kwargs)

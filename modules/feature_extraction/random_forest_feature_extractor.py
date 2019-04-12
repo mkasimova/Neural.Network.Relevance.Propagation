@@ -5,7 +5,6 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 from .feature_extractor import FeatureExtractor
-from ..postprocessing import PostProcessor
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -32,9 +31,11 @@ class RandomForestFeatureExtractor(FeatureExtractor):
                                   name=name,
                                   supervised=True,
                                   **kwargs)
-        self.randomize = randomize
         self.one_vs_rest = one_vs_rest
-        self._classifier_kwargs = classifier_kwargs
+        self.randomize = randomize
+        self._classifier_kwargs = classifier_kwargs.copy()
+        if not self.randomize:
+            self._classifier_kwargs['random_state'] = 89274
         logger.debug("Initializing RF with the following parameters: "
                      " randomize %s, one_vs_rest %s, classifier_kwargs %s",
                      randomize, one_vs_rest, classifier_kwargs)
@@ -75,22 +76,3 @@ class RandomForestFeatureExtractor(FeatureExtractor):
             return feature_importances
         else:
             return classifier.feature_importances_
-
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
-                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
-
-        return PostProcessor(extractor=self, \
-                             working_dir=working_dir, \
-                             rescale_results=rescale_results, \
-                             filter_results=filter_results, \
-                             feature_to_resids=feature_to_resids, \
-                             pdb_file=pdb_file, \
-                             predefined_relevant_residues=predefined_relevant_residues, \
-                             use_GMM_estimator=use_GMM_estimator, \
-                             supervised=True)
-
-    def get_classifier_kwargs(self):
-        classifier_kwargs = self._classifier_kwargs.copy()
-        if not self.randomize:
-            classifier_kwargs['random_state'] = 89274
-        return classifier_kwargs

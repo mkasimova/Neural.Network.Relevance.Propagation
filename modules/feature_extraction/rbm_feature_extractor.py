@@ -10,7 +10,6 @@ import numpy as np
 
 from .. import relevance_propagation as relprop
 from .feature_extractor import FeatureExtractor
-from ..postprocessing import PostProcessor
 from sklearn.neural_network import BernoulliRBM
 from .. import utils
 import scipy
@@ -25,8 +24,8 @@ class RbmFeatureExtractor(FeatureExtractor):
                  randomize=True,
                  relevance_method="from_lrp",
                  variance_cutoff='auto',
-                 classifier_kwargs = {
-                     'n_components' : 1,
+                 classifier_kwargs={
+                     'n_components': 1,
                  },
                  **kwargs):
 
@@ -34,10 +33,12 @@ class RbmFeatureExtractor(FeatureExtractor):
                                   supervised=False,
                                   name=name,
                                   **kwargs)
-        self.randomize = randomize
         self.relevance_method = relevance_method
         self.variance_cutoff = variance_cutoff
-        self._classifier_kwargs = classifier_kwargs
+        self.randomize = randomize
+        self._classifier_kwargs = classifier_kwargs.copy()
+        if not self.randomize:
+            self._classifier_kwargs['random_state'] = 89274
         logger.debug("Initializing RBM with the following parameters: "
                      " randomize %s, relevance_method %s, relevance_method %s, variance_cutoff %s,"
                      " classifier_kwargs %s",
@@ -112,22 +113,3 @@ class RbmFeatureExtractor(FeatureExtractor):
         return [relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
                 relprop.LogisticSigmoid()
                 ]
-
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
-                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
-
-        return PostProcessor(extractor=self, \
-                             working_dir=working_dir, \
-                             rescale_results=rescale_results, \
-                             filter_results=filter_results, \
-                             feature_to_resids=feature_to_resids, \
-                             pdb_file=pdb_file, \
-                             predefined_relevant_residues=predefined_relevant_residues, \
-                             use_GMM_estimator=use_GMM_estimator, \
-                             supervised=False)
-
-    def get_classifier_kwargs(self):
-        classifier_kwargs = self._classifier_kwargs.copy()
-        if not self.randomize:
-            classifier_kwargs['random_state'] = 89274
-        return classifier_kwargs

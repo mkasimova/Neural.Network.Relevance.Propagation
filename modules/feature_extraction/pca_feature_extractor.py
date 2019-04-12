@@ -5,7 +5,6 @@ from sklearn.decomposition import PCA
 
 from .feature_extractor import FeatureExtractor
 from .. import utils
-from ..postprocessing import PostProcessor
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -47,14 +46,4 @@ class PCAFeatureExtractor(FeatureExtractor):
                                                                       self.variance_cutoff)
         return importance
 
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
-                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
-        return PostProcessor(extractor=self, \
-                             working_dir=working_dir, \
-                             rescale_results=rescale_results, \
-                             filter_results=filter_results, \
-                             feature_to_resids=feature_to_resids, \
-                             pdb_file=pdb_file, \
-                             predefined_relevant_residues=predefined_relevant_residues, \
-                             use_GMM_estimator=use_GMM_estimator, \
-                             supervised=False)
+

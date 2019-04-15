@@ -368,6 +368,8 @@ class PerFrameImportancePostProcessor(PostProcessor):
             feature_to_atoms.append(np.append(atoms1, atoms2))
         ##write to file in minibatches
         for frame_idx, importance in enumerate(self.frame_importances):
+            # First normalize importance over features (not same as below)
+            importance = (importance - importance.min()) / (importance.max() - importance.min() + 1e-6)
             # map importance to atom idx
             atom_to_importance = np.zeros((top.n_atoms))
             for feature_idx, atoms in enumerate(feature_to_atoms):

@@ -34,10 +34,10 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
 
     feature_extractors = [
     fe.PCAFeatureExtractor(**kwargs),
-    fe.RbmFeatureExtractor(n_components=100, **kwargs),
+    fe.RbmFeatureExtractor(classifier_kwargs={'n_components':100}, **kwargs),
     fe.RandomForestFeatureExtractor(**kwargs),
     fe.KLFeatureExtractor(**kwargs),
-    fe.MlpFeatureExtractor(hidden_layer_sizes=(100,), **kwargs)
+    fe.MlpFeatureExtractor(classifier_kwargs={'hidden_layer_sizes':(100,)}, **kwargs)
     ]
 
     for extractor in feature_extractors:

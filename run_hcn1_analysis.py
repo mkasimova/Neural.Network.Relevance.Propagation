@@ -68,7 +68,7 @@ n_iterations = 10
 feature_extractors = [
 fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=True, filter_by_distance_cutoff=True),
 fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits, scaling=True, filter_by_distance_cutoff=True, bin_width=0.01),
-fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, hidden_layer_sizes=(100,), scaling=True, filter_by_distance_cutoff=True)
+fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, classifier_kwargs={'hidden_layer_sizes':(100,)}, scaling=True, filter_by_distance_cutoff=True)
 ]
 
 for extractor in feature_extractors:

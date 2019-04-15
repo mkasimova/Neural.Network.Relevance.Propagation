@@ -31,8 +31,8 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
 
     def train(self, train_set, train_labels):
         logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier_kwargs = self.get_classifier_kwargs()
-        classifier_kwargs['hidden_layer_sizes'] = list(self.hidden_layer_sizes) + [train_set.shape[1]]
+        classifier_kwargs = self._classifier_kwargs
+        classifier_kwargs['hidden_layer_sizes'] = list(classifier_kwargs['hidden_layer_sizes']) + [train_set.shape[1]]
         classifier = sklearn.neural_network.MLPRegressor(**classifier_kwargs)
         classifier.fit(train_set, train_set)  # note same output as input
         self.classifier = classifier

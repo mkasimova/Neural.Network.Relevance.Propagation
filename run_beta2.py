@@ -173,10 +173,10 @@ for nclusters in range(6, 7):
     run(nclusters=nclusters,
         feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=20,
+        n_iterations=10,
         n_splits=1,
         supervised=True,
         shuffle_datasets=False,
-        filter_by_distance_cutoff=True)
+        filter_by_distance_cutoff=False)
     if simu_type != "clustering":
         break

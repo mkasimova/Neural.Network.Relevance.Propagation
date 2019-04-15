@@ -46,7 +46,7 @@ class RbmFeatureExtractor(FeatureExtractor):
 
     def train(self, train_set, train_labels):
         logger.debug("Training RBM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier = BernoulliRBM(**self.get_classifier_kwargs())
+        classifier = BernoulliRBM(**self._classifier_kwargs)
         classifier.fit(train_set)
         return classifier
 

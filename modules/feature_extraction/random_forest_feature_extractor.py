@@ -47,7 +47,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
         classifiers = []
 
         for i_cluster in range(n_clusters):
-            classifiers.append(RandomForestClassifier(**self.get_classifier_kwargs()))
+            classifiers.append(RandomForestClassifier(**self._classifier_kwargs))
             tmp_labels = np.zeros(n_points)
             tmp_labels[labels[:, i_cluster] == 1] = 1
 
@@ -61,7 +61,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
         if self.one_vs_rest:
             return self._train_one_vs_rest(train_set, train_labels)
         else:
-            classifier = RandomForestClassifier(**self.get_classifier_kwargs())
+            classifier = RandomForestClassifier(**self._classifier_kwargs)
             classifier.fit(train_set, train_labels)
         return classifier
 

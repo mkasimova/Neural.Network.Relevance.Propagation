@@ -24,10 +24,10 @@ def run_all_feature_extractors(data,cluster_indices,n_splits,n_iterations,moved_
 
     feature_extractors = [
     fe.PCAFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_components=None, scaling=True, filter_by_distance_cutoff=False),
-    fe.RbmFeatureExtractor(data, cluster_indices, n_components=100, n_splits=n_splits, n_iterations=n_iterations, scaling=True, filter_by_distance_cutoff=False),
+    fe.RbmFeatureExtractor(data, cluster_indices, classifier_kwargs={'n_components':100}, n_splits=n_splits, n_iterations=n_iterations, scaling=True, filter_by_distance_cutoff=False),
     fe.RandomForestFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, scaling=True, filter_by_distance_cutoff=False),
     fe.KLFeatureExtractor(data, cluster_indices, n_splits=n_splits, scaling=True, filter_by_distance_cutoff=False),
-    fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, hidden_layer_sizes=(100,), scaling=True, filter_by_distance_cutoff=False)
+    fe.MlpFeatureExtractor(data, cluster_indices, n_splits=n_splits, n_iterations=n_iterations, classifier_kwargs={'hidden_layer_sizes':(100,)}, scaling=True, filter_by_distance_cutoff=False)
     ]
 
     for extractor in feature_extractors:

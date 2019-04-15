@@ -47,7 +47,7 @@ class MlpFeatureExtractor(FeatureExtractor):
             logger.warn("Conflicting activation properiies. '%s' will be overwritten with '%s'",
                         classifier_kwargs.get('activation'),
                         self.activation)
-        classifier_kwargs['activation'] = self.activation
+        self._classifier_kwargs['activation'] = self.activation
         if not self.randomize:
             self._classifier_kwargs['random_state'] = 89274
         self.per_frame_importance_outfile = per_frame_importance_outfile

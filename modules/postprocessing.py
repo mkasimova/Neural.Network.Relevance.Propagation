@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
+
 import logging
 import sys
+
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.DEBUG,
@@ -9,15 +11,18 @@ logging.basicConfig(
 import os
 import numpy as np
 from biopandas.pdb import PandasPdb
+import mdtraj as md
 from . import utils
 from . import filtering
 from . import data_projection as dp
 
 logger = logging.getLogger("postprocessing")
 
+
 class PostProcessor(object):
 
-    def __init__(self, extractor,
+    def __init__(self,
+                 extractor=None,
                  working_dir=None,
                  rescale_results=True,
                  filter_results=False,
@@ -52,21 +57,23 @@ class PostProcessor(object):
         # Rescale and filter results if needed
         self.rescale_results = rescale_results
         if rescale_results:
-            self.feature_importances, self.std_feature_importances = utils.rescale_feature_importance(self.feature_importances, self.std_feature_importances)
+            self.feature_importances, self.std_feature_importances = utils.rescale_feature_importance(
+                self.feature_importances, self.std_feature_importances)
         if filter_results:
-            self.feature_importances, self.std_feature_importances = filtering.filter_feature_importance(self.feature_importances, self.std_feature_importances)
+            self.feature_importances, self.std_feature_importances = filtering.filter_feature_importance(
+                self.feature_importances, self.std_feature_importances)
 
         # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importances and self.std_feature_importances)
-        self.indices_filtered = np.where(self.feature_importances[:,0]==-1)[0]
-        self.feature_importances[self.indices_filtered,:] = 0
-        self.std_feature_importances[self.indices_filtered,:] = 0
+        self.indices_filtered = np.where(self.feature_importances[:, 0] == -1)[0]
+        self.feature_importances[self.indices_filtered, :] = 0
+        self.std_feature_importances[self.indices_filtered, :] = 0
 
         # Set mapping from features to residues
         self.nfeatures = self.feature_importances.shape[0]
         if feature_to_resids is None and self.pdb_file is None:
             feature_to_resids = utils.get_default_feature_to_resids(self.nfeatures)
         elif feature_to_resids is None and self.pdb_file is not None:
-            feature_to_resids = utils.get_feature_to_resids_from_pdb(self.nfeatures,self.pdb_file)
+            feature_to_resids = utils.get_feature_to_resids_from_pdb(self.nfeatures, self.pdb_file)
         self.feature_to_resids = feature_to_resids
 
         # Set average feature importances to None
@@ -136,21 +143,24 @@ class PostProcessor(object):
         if self.pdb_file is not None:
             pdb = PandasPdb()
             pdb.read_pdb(self.pdb_file)
-            self._save_to_pdb(pdb, directory + "importance.pdb", self._map_to_correct_residues(self.importance_per_residue))
+            self._save_to_pdb(pdb, directory + "importance.pdb",
+                              self._map_to_correct_residues(self.importance_per_residue))
 
             if self.importance_per_residue_and_cluster is not None:
                 for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
-                    self._save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx), self._map_to_correct_residues(importance))
+                    self._save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
+                                      self._map_to_correct_residues(importance))
 
         return self
 
     def _map_feature_to_resids(self):
 
-        self.index_to_resid = np.unique(np.asarray(self.feature_to_resids.flatten())) # at index X we have residue number
+        self.index_to_resid = np.unique(
+            np.asarray(self.feature_to_resids.flatten()))  # at index X we have residue number
         self.index_to_resid = [r for r in self.index_to_resid]
         self.nresidues = len(self.index_to_resid)
 
-        res_id_to_index = {} # a map pointing back to the index in the array index_to_resid
+        res_id_to_index = {}  # a map pointing back to the index in the array index_to_resid
         for idx, resid in enumerate(self.index_to_resid):
             res_id_to_index[resid] = idx
         importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
@@ -161,8 +171,8 @@ class PostProcessor(object):
             res2 = res_id_to_index[res2]
             importance_mapped_to_resids[res1, :] += rel
             importance_mapped_to_resids[res2, :] += rel
-            std_importance_mapped_to_resids[res1,:] += self.std_feature_importances[feature_idx,:]**2
-            std_importance_mapped_to_resids[res2,:] += self.std_feature_importances[feature_idx,:]**2
+            std_importance_mapped_to_resids[res1, :] += self.std_feature_importances[feature_idx, :] ** 2
+            std_importance_mapped_to_resids[res2, :] += self.std_feature_importances[feature_idx, :] ** 2
         std_importance_mapped_to_resids = np.sqrt(std_importance_mapped_to_resids)
 
         self.importance_mapped_to_resids = importance_mapped_to_resids
@@ -171,15 +181,16 @@ class PostProcessor(object):
     def _compute_importance_per_residue(self):
 
         importance_per_residue = self.importance_mapped_to_resids.mean(axis=1)
-        std_importance_per_residue = np.sqrt(np.mean(self.std_importance_mapped_to_resids**2,axis=1))
+        std_importance_per_residue = np.sqrt(np.mean(self.std_importance_mapped_to_resids ** 2, axis=1))
 
         if self.rescale_results:
             # Adds a second axis to feed to utils.rescale_feature_importance
-            importance_per_residue = importance_per_residue.reshape((importance_per_residue.shape[0],1))
-            std_importance_per_residue = std_importance_per_residue.reshape((std_importance_per_residue.shape[0],1))
-            importance_per_residue, std_importance_per_residue = utils.rescale_feature_importance(importance_per_residue, std_importance_per_residue)
-            importance_per_residue = importance_per_residue[:,0]
-            std_importance_per_residue = std_importance_per_residue[:,0]
+            importance_per_residue = importance_per_residue.reshape((importance_per_residue.shape[0], 1))
+            std_importance_per_residue = std_importance_per_residue.reshape((std_importance_per_residue.shape[0], 1))
+            importance_per_residue, std_importance_per_residue = utils.rescale_feature_importance(
+                importance_per_residue, std_importance_per_residue)
+            importance_per_residue = importance_per_residue[:, 0]
+            std_importance_per_residue = std_importance_per_residue[:, 0]
 
         self.importance_per_residue = importance_per_residue
         self.std_importance_per_residue = std_importance_per_residue
@@ -187,7 +198,8 @@ class PostProcessor(object):
     def _compute_importance_per_residue_and_cluster(self):
 
         if self.rescale_results:
-            self.importance_mapped_to_resids, self.std_importance_mapped_to_resids = utils.rescale_feature_importance(self.importance_mapped_to_resids, self.std_importance_mapped_to_resids)
+            self.importance_mapped_to_resids, self.std_importance_mapped_to_resids = utils.rescale_feature_importance(
+                self.importance_mapped_to_resids, self.std_importance_mapped_to_resids)
 
         self.importance_per_residue_and_cluster = self.importance_mapped_to_resids
         self.std_importance_per_residue_and_cluster = self.std_importance_mapped_to_resids
@@ -213,6 +225,7 @@ class PostProcessor(object):
             self.data_projector.separation_score = np.nan
 
         return self
+
     '''
     def _compute_area_under_ROC(self):
         """
@@ -250,6 +263,7 @@ class PostProcessor(object):
 
         self.auc = auc/self.nclusters
     '''
+
     def _compute_area_under_ROC(self):
         """
         Compute ( TP - FP )/( TP + FP ) and ( TN - FN ) / ( TN + FN )
@@ -260,30 +274,31 @@ class PostProcessor(object):
 
         for i in range(self.nclusters):
 
-            importance_per_residue_and_cluster_SORTED = -np.sort(-self.importance_per_residue_and_cluster[:,i])
-            importance_per_residue_and_cluster_SORTED_IND = np.argsort(-self.importance_per_residue_and_cluster[:,i])
+            importance_per_residue_and_cluster_SORTED = -np.sort(-self.importance_per_residue_and_cluster[:, i])
+            importance_per_residue_and_cluster_SORTED_IND = np.argsort(-self.importance_per_residue_and_cluster[:, i])
 
             difference = []
-            for j in range(self.nresidues-1):
-                difference.append(importance_per_residue_and_cluster_SORTED[j]-importance_per_residue_and_cluster_SORTED[j+1])
+            for j in range(self.nresidues - 1):
+                difference.append(
+                    importance_per_residue_and_cluster_SORTED[j] - importance_per_residue_and_cluster_SORTED[j + 1])
             difference_max = max(difference)
             difference_max_index = difference.index(difference_max)
 
-            POSITIVE = importance_per_residue_and_cluster_SORTED_IND[0:difference_max_index+1]
-            NEGATIVE = importance_per_residue_and_cluster_SORTED_IND[difference_max_index+1:]
+            POSITIVE = importance_per_residue_and_cluster_SORTED_IND[0:difference_max_index + 1]
+            NEGATIVE = importance_per_residue_and_cluster_SORTED_IND[difference_max_index + 1:]
 
             ind_actives = self.predefined_relevant_residues[i]
-            TP = len( list(set(POSITIVE) & set(ind_actives)) )
+            TP = len(list(set(POSITIVE) & set(ind_actives)))
             FP = len(POSITIVE) - TP
 
-            ind_decoys = [j for j in np.arange(0,self.nresidues,1) if j not in ind_actives]
-            TN = len( list(set(NEGATIVE) & set(ind_decoys)) )
+            ind_decoys = [j for j in np.arange(0, self.nresidues, 1) if j not in ind_actives]
+            TN = len(list(set(NEGATIVE) & set(ind_decoys)))
             FN = len(NEGATIVE) - TN
 
-            POS_RATIO += (TP-FP)/(TP+FP)
-            NEG_RATIO += (TN-FN)/(TN+FN)
+            POS_RATIO += (TP - FP) / (TP + FP)
+            NEG_RATIO += (TN - FN) / (TN + FN)
 
-        self.auc = [POS_RATIO/self.nclusters, NEG_RATIO/self.nclusters]
+        self.auc = [POS_RATIO / self.nclusters, NEG_RATIO / self.nclusters]
 
     def _map_to_correct_residues(self, importance_per_residue):
         """
@@ -314,3 +329,61 @@ class PostProcessor(object):
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
         return self
+
+
+class PerFrameImportancePostProcessor(PostProcessor):
+
+    def __init__(self,
+                 per_frame_importance_outfile=None,
+                 frame_importances=None,
+                 **kwargs):
+        PostProcessor.__init__(self, **kwargs)
+        self.per_frame_importance_outfile = per_frame_importance_outfile
+        self.frame_importances = frame_importances
+
+    def persist(self):
+        PostProcessor.persist(self)
+        if self.per_frame_importance_outfile is not None and \
+                self.frame_importances is not None:
+            with open(self.per_frame_importance_outfile, 'w') as of:
+                logger.info("Writing per frame importance to file %s", self.per_frame_importance_outfile)
+                self.to_vmd_file(of)
+
+    def to_vmd_file(self, of):
+        """
+        writing VMD script, see https://www.ks.uiuc.edu/Research/vmd/mailing_list/vmd-l/5001.html
+        :return:
+        """
+        if self.pdb_file is None:
+            raise Exception("PDB file required to write per frame importance")
+
+        # Map the feature to atoms for better performance
+        top = md.load(self.pdb_file).top
+        feature_to_atoms = []
+        residue_to_atoms = {}
+        for feature_idx, [res1, res2] in enumerate(self.feature_to_resids):
+            atoms1 = residue_to_atoms.get(res1, None)
+            if atoms1 is None:
+                atoms1 = top.select("protein and resSeq {}".format(res1))
+                residue_to_atoms[res1] = atoms1
+            atoms2 = residue_to_atoms.get(res2, None)
+            if atoms2 is None:
+                atoms2 = top.select("protein and resSeq {}".format(res2))
+                residue_to_atoms[res2] = atoms2
+            feature_to_atoms.append(np.append(atoms1, atoms2))
+        ##write to file in minibatches
+        for frame_idx, importance in enumerate(self.frame_importances):
+            # First normalize importance over features (not same as below)
+            importance = (importance - importance.min()) / (importance.max() - importance.min() + 1e-6)
+            # map importance to atom idx
+            atom_to_importance = np.zeros((top.n_atoms))
+            for feature_idx, atoms in enumerate(feature_to_atoms):
+                fi = importance[feature_idx]
+                for a in atoms:
+                    atom_to_importance[a] += fi
+            # Normalize to values between 0 and 1
+            atom_to_importance = (atom_to_importance - atom_to_importance.min()) / \
+                                 (atom_to_importance.max() - atom_to_importance.min() + 1e-6)
+            # Go through atoms in sequential order
+            lines = ["#Frame {}\n".format(frame_idx)] + ["{}\n".format(ai) for ai in atom_to_importance]
+            of.writelines(lines)

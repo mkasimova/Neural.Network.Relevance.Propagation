@@ -27,16 +27,13 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
         self.use_reconstruction_for_lrp = use_reconstruction_for_lrp
         logger.debug("Initializing MLP AE with the following parameters:"
                      " use_reconstruction_for_lrp %s", use_reconstruction_for_lrp)
+        self.classifier = None
 
     def train(self, train_set, train_labels):
         logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier = sklearn.neural_network.MLPRegressor(
-            solver=self.solver,
-            hidden_layer_sizes=list(self.hidden_layer_sizes) + [train_set.shape[1]],
-            random_state=(None if self.randomize else 89274),
-            activation=self.activation,
-            max_iter=self.training_max_iter)
-
+        classifier_kwargs = self._classifier_kwargs
+        classifier_kwargs['hidden_layer_sizes'] = list(classifier_kwargs['hidden_layer_sizes']) + [train_set.shape[1]]
+        classifier = sklearn.neural_network.MLPRegressor(**classifier_kwargs)
         classifier.fit(train_set, train_set)  # note same output as input
         self.classifier = classifier
 

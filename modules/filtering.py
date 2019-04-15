@@ -58,8 +58,11 @@ def remap_after_filtering(feats, std_feats, n_features, res_indices_for_filterin
     feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
     feats_remapped[res_indices_for_filtering, :] = feats
 
-    std_feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
-    std_feats_remapped[res_indices_for_filtering, :] = std_feats
+    if std_feats is None:
+        std_feats_remapped = None
+    else:
+        std_feats_remapped = (-1) * np.ones((n_features, n_clusters_for_output))
+        std_feats_remapped[res_indices_for_filtering, :] = std_feats
 
     return feats_remapped, std_feats_remapped
 
@@ -72,7 +75,6 @@ def filter_feature_importance(relevances, std_relevances):
     logger.info("Filtering feature importances by median ...")
 
     n_states = relevances.shape[1]
-    n_features = relevances.shape[0]
 
     # indices of residues pairs which were not filtered during features filtering
     indices_not_filtered = np.where(relevances[:, 0] >= 0)[0]

@@ -64,13 +64,18 @@ def main(parser):
 
 
 	feature_extractors = [
-		fe.PCAFeatureExtractor(n_components=None,variance_cutoff=0.75, **kwargs),
+		fe.PCAFeatureExtractor(classifier_kwargs={'n_components':None},variance_cutoff=0.75, **kwargs),
 		fe.RbmFeatureExtractor(relevance_method="from_components", **kwargs),
-		fe.MlpAeFeatureExtractor(activation=relprop.relu, solver='adam', hidden_layer_sizes=(20,3,20), **kwargs),
-		fe.RandomForestFeatureExtractor(n_estimators=500,one_vs_rest=True, **kwargs),
+		fe.MlpAeFeatureExtractor(activation=relprop.relu, classifier_kwargs={
+			'solver':'adam',
+			'hidden_layer_sizes':(20,3,20)
+		}, **kwargs),
+		fe.RandomForestFeatureExtractor(classifier_kwargs={'n_estimators':500},one_vs_rest=True, **kwargs),
 		fe.KLFeatureExtractor(**kwargs),
-		fe.MlpFeatureExtractor(hidden_layer_sizes=(120,),solver='adam',
-							   activation=relprop.relu,training_max_iter=1000000,**kwargs),
+		fe.MlpFeatureExtractor(classifier_kwargs={'hidden_layer_sizes':(120,),
+												  'solver':'adam',
+												  'max_iter':1000000
+												  }, activation=relprop.relu, **kwargs),
 	]
 
 	postprocessors = []

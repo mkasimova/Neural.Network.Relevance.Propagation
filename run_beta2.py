@@ -10,7 +10,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
-from modules import utils, feature_extraction as fe, postprocessing, visualization
+from modules import utils, feature_extraction as fe, visualization
 
 logger = logging.getLogger("beta2")
 utils.remove_outliers = False
@@ -72,11 +72,11 @@ def run(nclusters=2,
         #                        name='RBM_from_components',
         #                        variance_cutoff='auto',
         #                        **kwargs),
-        fe.PCAFeatureExtractor(n_components=None,
+        fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
                                variance_cutoff=75,
                                name='PCA',
                                **kwargs),
-        fe.RbmFeatureExtractor(n_components=2,
+        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 1},
                                relevance_method='from_lrp',
                                name='RBM',
                                **kwargs),
@@ -88,32 +88,37 @@ def run(nclusters=2,
         #                        variance_cutoff='6_components',
         #                        name='PCA_6_comp',
         #                        **kwargs),
-        # fe.MlpAeFeatureExtractor(
-        #     hidden_layer_sizes=(100, 50, 10, 2, 10, 50, 100,),  # int(data.shape[1]/2),),
-        #     # training_max_iter=10000,
-        #     use_reconstruction_for_lrp=True,
-        #     alpha=0.0001,
-        #     activation="relu",
-        #     **kwargs),
+        fe.MlpAeFeatureExtractor(
+            classifier_kwargs={
+                'hidden_layer_sizes': (100, 50, 10, 2, 10, 50, 100,),  # int(data.shape[1]/2),),
+                # max_iter=10000,
+                'alpha': 0.0001,
+                'activation': "logistic"
+            },
+            use_reconstruction_for_lrp=True,
+            **kwargs),
     ]
     supervised_feature_extractors = [
         # fe.ElmFeatureExtractor(
         #     activation="relu",
-        #     n_nodes=data.shape[1]*2,
+        #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        fe.RandomForestFeatureExtractor(
-            one_vs_rest=False,
-            n_estimators=1000,
-            **kwargs),
-        fe.KLFeatureExtractor(**kwargs),
+        # fe.RandomForestFeatureExtractor(
+        #     one_vs_rest=False,
+        #     classifier_kwargs={'n_estimators': 1000},
+        #     **kwargs),
+        # fe.KLFeatureExtractor(**kwargs),
         fe.MlpFeatureExtractor(
-            hidden_layer_sizes=[int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-            training_max_iter=10000,
-            alpha=0.0001,
-            activation="relu",
+            classifier_kwargs={
+                'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+                'max_iter': 10000,
+                'alpha': 0.0001,
+                'activation': "relu"
+            },
+            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories"
+                                         "/mlp_perframeimportance_{}clusters.txt".format(nclusters),
             **kwargs),
-
     ]
 
     if supervised is None:
@@ -127,11 +132,11 @@ def run(nclusters=2,
     for extractor in feature_extractors:
         logger.info("Computing relevance for extractors %s", extractor.name)
         extractor.extract_features()
-        p = postprocessing.PostProcessor(extractor,
-                                         working_dir=results_dir,
-                                         pdb_file=working_dir + "/trajectories/protein_noh.pdb",
-                                         feature_to_resids=feature_to_resids,
-                                         filter_results=True)
+        p = extractor.postprocessing(working_dir=results_dir,
+                                     pdb_file=working_dir + "/trajectories/all.pdb",
+                                     #pdb_file=working_dir + "/trajectories/protein_noh.pdb",
+                                     feature_to_resids=feature_to_resids,
+                                     filter_results=False)
         p.average()
         p.evaluate_performance()
         p.persist()
@@ -164,14 +169,14 @@ def run(nclusters=2,
 
 
 simu_type = "clustering"
-for nclusters in range(2, 7):
+for nclusters in range(6, 7):
     run(nclusters=nclusters,
         feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=50,
-        n_splits=4,
-        supervised=None,
-        shuffle_datasets=True,
-        filter_by_distance_cutoff=True)
+        n_iterations=10,
+        n_splits=1,
+        supervised=True,
+        shuffle_datasets=False,
+        filter_by_distance_cutoff=False)
     if simu_type != "clustering":
         break

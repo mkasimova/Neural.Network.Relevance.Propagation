@@ -11,6 +11,7 @@ logging.basicConfig(
 import numpy as np
 from .. import utils as utils, filtering
 from sklearn.model_selection import KFold
+from ..postprocessing import PostProcessor
 
 logger = logging.getLogger("Extracting features")
 
@@ -54,6 +55,10 @@ class FeatureExtractor(object):
         self.remove_outliers = remove_outliers
         self.supervised = supervised
         self.shuffle_datasets = shuffle_datasets
+        self.feature_importance = None
+        self.std_feature_importance = None
+        self.test_set_errors = None
+        self.indices_for_filtering = None
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
                      " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
                      " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s, shuffle_datasets %s",
@@ -106,14 +111,12 @@ class FeatureExtractor(object):
 
         # Create a list of feature indices
         # This is needed when filtering is applied and re-mapping is further used
-        n_features = self.samples.shape[1]
         original_samples = np.copy(self.samples)
-
         if self.filter_by_distance_cutoff:
-            self.samples, indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
-                                                                                      lower_bound_cutoff=self.lower_bound_distance_cutoff,
-                                                                                      upper_bound_cutoff=self.upper_bound_distance_cutoff,
-                                                                                      inverse_distances=self.use_inverse_distances)
+            self.samples, self.indices_for_filtering = filtering.filter_by_distance_cutoff(self.samples,
+                                                                                           lower_bound_cutoff=self.lower_bound_distance_cutoff,
+                                                                                           upper_bound_cutoff=self.upper_bound_distance_cutoff,
+                                                                                           inverse_distances=self.use_inverse_distances)
 
         if self.scaling:
             # Note that we must use the same scalers for all data
@@ -154,7 +157,12 @@ class FeatureExtractor(object):
                                 i_split * self.n_iterations + i_iter + 1, self.n_splits * self.n_iterations, error)
 
         feats = np.asarray(feats)
+        self._on_all_features_extracted(feats, errors, original_samples.shape[1])
+        self.samples = np.copy(original_samples)  # TODO why do we do this?
+        logger.debug("Done with feature extractio for %s", self.name)
+        return self
 
+    def _on_all_features_extracted(self, feats, errors, n_features):
         std_feats = np.std(feats, axis=0)
         feats = np.mean(feats, axis=0)
 
@@ -165,14 +173,12 @@ class FeatureExtractor(object):
         if self.filter_by_distance_cutoff:
             # Remapping features if filtering was applied
             # If no filtering was applied, return feats and std_feats
-            feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features, indices_for_filtering)
-
-        logger.info("Done with %s", self.name)
-        logger.info("------------------------------")
-        self.samples = np.copy(original_samples)
+            feats, std_feats = filtering.remap_after_filtering(feats, std_feats, n_features,
+                                                               self.indices_for_filtering)
 
         self.feature_importance = feats
         self.std_feature_importance = std_feats
         self.test_set_errors = errors
 
-        return self
+    def postprocessing(self, **kwargs):
+        return PostProcessor(extractor=self, supervised=self.supervised, **kwargs)

@@ -133,7 +133,8 @@ def run(nclusters=2,
         logger.info("Computing relevance for extractors %s", extractor.name)
         extractor.extract_features()
         p = extractor.postprocessing(working_dir=results_dir,
-                                     pdb_file=working_dir + "/trajectories/protein_noh.pdb",
+                                     pdb_file=working_dir + "/trajectories/all.pdb",
+                                     #pdb_file=working_dir + "/trajectories/protein_noh.pdb",
                                      feature_to_resids=feature_to_resids,
                                      filter_results=False)
         p.average()
@@ -172,7 +173,7 @@ for nclusters in range(6, 7):
     run(nclusters=nclusters,
         feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=1,
+        n_iterations=20,
         n_splits=1,
         supervised=True,
         shuffle_datasets=False,

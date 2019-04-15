@@ -376,7 +376,7 @@ class PerFrameImportancePostProcessor(PostProcessor):
                     atom_to_importance[a] += fi
             # Normalize to values between 0 and 1
             atom_to_importance = (atom_to_importance - atom_to_importance.min()) / \
-                                 (atom_to_importance.max() - atom_to_importance.min())
+                                 (atom_to_importance.max() - atom_to_importance.min() + 1e-6)
             # Go through atoms in sequential order
             lines = ["#Frame {}\n".format(frame_idx)] + ["{}\n".format(ai) for ai in atom_to_importance]
             of.writelines(lines)

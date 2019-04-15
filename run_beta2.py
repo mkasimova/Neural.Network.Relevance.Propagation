@@ -116,7 +116,8 @@ def run(nclusters=2,
                 'alpha': 0.0001,
                 'activation': "relu"
             },
-            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories/mlp_perframeimportance.txt",
+            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories"
+                                         "/mlp_perframeimportance_{}clusters.txt".format(nclusters),
             **kwargs),
     ]
 

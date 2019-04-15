@@ -27,18 +27,18 @@ logger.info("Done with init")
 # Load the MD trajectories
 stride = 50
 
-apo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
-                        top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
+# apo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
-holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
-                        top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
+# holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
 ## Neutral / Deprotonated
-# apo_asp_traj = md.load(traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.xtc",
-#                         top=traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.pdb", stride=stride)
+apo_asp_traj = md.load(traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.xtc",
+                        top=traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
-# holo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
-#                         top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
+holo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
+                        top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
 logger.info("Loaded trajectories with properties %s, %s", holo_asp_traj, apo_asp_traj)
 

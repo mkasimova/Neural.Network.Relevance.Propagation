@@ -23,7 +23,7 @@ def vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, ave
         ax.plot(x_val,average,color='k',linestyle='--',label="Feature extractor average")
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
-    ax.legend()
+    ax.legend(loc=2)
 
 
 def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, show_legends=False,std_val=None):
@@ -33,7 +33,7 @@ def vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, co
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if show_legends:
-        ax.legend()
+        ax.legend(loc=2)
 
 def vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_name, std_val=None, xlabel='',ylabel='',ylim=None):
     ax.bar(x_val,y_val,width, color=col,edgecolor='',label=extractor_name)
@@ -46,7 +46,7 @@ def vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_n
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.legend()
+    ax.legend(loc=2)
     return
 
 def vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
@@ -211,5 +211,4 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
             if dp.raw_projection is not None:
                 vis_projected_data(dp.raw_projection, dp.labels, plt.figure(fig_counter), "Raw projection "+pp[i_run].extractor.name)
                 fig_counter += 1
-
     plt.show()

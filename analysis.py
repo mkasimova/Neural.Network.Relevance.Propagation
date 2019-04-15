@@ -20,7 +20,7 @@ import seaborn as sns
 logger = logging.getLogger("terminal")
 
 working_dir  = os.path.expanduser("~/kex/bachelor_thesis2019_gpcr/")  # Path to directory containing the data to be analysed
-topology = md.load(working_dir + "/swarm_trajectories/asp79-apo-swarms-nowater-nolipid.pdb").topology # Load topology in order to map important features to residues
+topology = md.load(working_dir + "/swarm_trajectories/asp79_Na-apo-swarms-nowater-nolipid.pdb").topology # Load topology in order to map important features to residues
 samples = np.load(working_dir + "analysis/data/sample.npy") # (Frames, features)
 labels = np.load(working_dir + "analysis/data/labels.npy") # Labels: HOLO = 1, APO = 2
 feature_to_resids = np.load(working_dir + "analysis/data/feature_to_resids.npy") # This array tells us which residues the index of a certain feature correspond to.
@@ -40,12 +40,8 @@ def scatterplot():
     fig.suptitle('Contact pairs with highest importance')
     for i in range(len(methods)):
         feature_importance = np.load(working_dir + "analysis/" + methods[i] + "/feature_importance.npy") # feature_importance from training
-        # print(feature_to_resids.shape, feature_importance[:,0].shape,"\n")
-
         # Find the feature_idx of the two most important features (contact pairs)
         feature_idx = feature_importance[:,0].argsort(axis=0)[[-1, -2]] # Get the feature_idx of the 2 most important features (inputs)
-
-        print(feature_importance)
 
         resids1 = feature_to_resids[feature_idx[0]].astype(int)# Get the residue ids from top 1 contact pair
         resids2 = feature_to_resids[feature_idx[1]].astype(int)# Get the residue ids from top 2 contact pair

@@ -84,6 +84,8 @@ class PostProcessor(object):
         self.tp_rate = None
         self.fp_rate = None
         self.auc = None
+        self.pos_ratio = None
+        self.neg_ratio = None
 
     def average(self):
         """
@@ -103,14 +105,14 @@ class PostProcessor(object):
         """
         Computes -average of standard deviation (per residue)
                  -projection classification entropy
-                 -area under ROC (for toy model only)
+                 -classification score (for toy model only)
         """
 
         self._compute_average_std()
         self._compute_projection_classification_entropy()
 
         if self.supervised and self.predefined_relevant_residues is not None:
-            self._compute_area_under_ROC()
+            self._compute_class_score()
 
         return self
 
@@ -208,14 +210,19 @@ class PostProcessor(object):
         self.data_projector.project(self.feature_importances).score_projection(use_GMM=self.use_GMM_estimator)
 
         return self
-    '''
-    def _compute_area_under_ROC(self):
+
+    def _compute_class_score(self):
         """
-        Computes ROC curve and area under it
+        Computes ROC curve and area under it; Computes ( TP - FP )/( TP + FP ) and ( TN - FN ) / ( TN + FN )
         """
 
         auc = 0
+        POS_RATIO = 0 
+        NEG_RATIO = 0 
+
         for i in range(self.nclusters):
+
+            # Computes ROC curve and area under it
 
             actives = np.chararray(self.nresidues)
             actives[:] = 'd'
@@ -243,20 +250,9 @@ class PostProcessor(object):
             for j in range(len(fp_rate)-1):
                 auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
 
-        self.auc = auc/self.nclusters
-    '''
-    def _compute_area_under_ROC(self):
-        """
-        Compute ( TP - FP )/( TP + FP ) and ( TN - FN ) / ( TN + FN )
-        """
-
-        POS_RATIO = 0
-        NEG_RATIO = 0
-
-        for i in range(self.nclusters):
+            # Computes ( TP - FP )/( TP + FP ) and ( TN - FN ) / ( TN + FN )
 
             importance_per_residue_and_cluster_SORTED = -np.sort(-self.importance_per_residue_and_cluster[:,i])
-            importance_per_residue_and_cluster_SORTED_IND = np.argsort(-self.importance_per_residue_and_cluster[:,i])
 
             difference = []
             for j in range(self.nresidues-1):
@@ -264,21 +260,22 @@ class PostProcessor(object):
             difference_max = max(difference)
             difference_max_index = difference.index(difference_max)
 
-            POSITIVE = importance_per_residue_and_cluster_SORTED_IND[0:difference_max_index+1]
-            NEGATIVE = importance_per_residue_and_cluster_SORTED_IND[difference_max_index+1:]
+            POSITIVE = ind_scores_sorted[0:difference_max_index+1]
+            NEGATIVE = ind_scores_sorted[difference_max_index+1:]
 
-            ind_actives = self.predefined_relevant_residues[i]
-            TP = len( list(set(POSITIVE) & set(ind_actives)) )
-            FP = len(POSITIVE) - TP
+            nTP = len( list(set(POSITIVE) & set(ind_a)) )
+            nFP = len(POSITIVE) - nTP
 
-            ind_decoys = [j for j in np.arange(0,self.nresidues,1) if j not in ind_actives]
-            TN = len( list(set(NEGATIVE) & set(ind_decoys)) )
-            FN = len(NEGATIVE) - TN
+            ind_d = [j for j in np.arange(0,self.nresidues,1) if j not in ind_a]
+            nTN = len( list(set(NEGATIVE) & set(ind_d)) )
+            nFN = len(NEGATIVE) - nTN
 
-            POS_RATIO += (TP-FP)/(TP+FP)
-            NEG_RATIO += (TN-FN)/(TN+FN)
+            POS_RATIO += (nTP-nFP)/(nTP+nFP)
+            NEG_RATIO += (nTN-nFN)/(nTN+nFN)
 
-        self.auc = [POS_RATIO/self.nclusters, NEG_RATIO/self.nclusters]
+        self.auc = auc/self.nclusters
+        self.pos_ratio = POS_RATIO/self.nclusters
+        self.neg_ratio = NEG_RATIO/self.nclusters
 
     def _map_to_correct_residues(self, importance_per_residue):
         """

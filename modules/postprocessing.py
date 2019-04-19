@@ -88,11 +88,10 @@ class PostProcessor(object):
         self.average_std = None
         self.test_set_errors = extractor.test_set_errors.mean()
         self.data_projector = None
-        self.tp_rate = None
-        self.fp_rate = None
-        self.auc = None
-        self.pos_ratio = None
-        self.neg_ratio = None
+        self.auc_all_clusters = None
+        self.auc_per_cluster = None
+        self.accuracy_all_clusters = None
+        self.accuracy_per_cluster = None
 
     def average(self):
         """
@@ -118,7 +117,7 @@ class PostProcessor(object):
         self._compute_average_std()
         self._compute_projection_classification_entropy()
 
-        if self.supervised and self.predefined_relevant_residues is not None:
+        if self.predefined_relevant_residues is not None:
             self._compute_class_score()
 
         return self
@@ -230,69 +229,86 @@ class PostProcessor(object):
 
     def _compute_class_score(self):
         """
-        Computes ROC curve and area under it; Computes ( TP - FP )/( TP + FP ) and ( TN - FN ) / ( TN + FN )
+        Computes AUC and accuracy
+        """
+
+        relevant_residues_all_clusters = [y for x in self.predefined_relevant_residues for y in x]
+        self.auc_all_clusters = self._compute_AUC(relevant_residues_all_clusters,self.importance_per_residue)
+        self.accuracy_all_clusters = self._compute_accuracy(relevant_residues_all_clusters,self.importance_per_residue)
+
+        if self.supervised:
+            self.auc_per_cluster = 0
+            self.accuracy_per_cluster = 0
+            for i in range(self.nclusters):
+                self.auc_per_cluster += self._compute_AUC(self.predefined_relevant_residues[i],self.importance_per_residue_and_cluster[:,i])
+                self.accuracy_per_cluster += self._compute_accuracy(self.predefined_relevant_residues[i],self.importance_per_residue_and_cluster[:,i])
+            self.auc_per_cluster /= self.nclusters
+            self.accuracy_per_cluster /= self.nclusters
+
+    def _compute_AUC(self,relevant_residues,importance):
+        """
+        Computes area under ROC
         """
 
         auc = 0
-        POS_RATIO = 0
-        NEG_RATIO = 0
 
-        for i in range(self.nclusters):
+        actives = np.chararray(self.nresidues)
+        actives[:] = 'd'
+        ind_a = relevant_residues
+        actives[ind_a] = 'a'
 
-            # Computes ROC curve and area under it
+        actives_len = len(ind_a)
+        decoys_len = self.nresidues - actives_len
 
-            actives = np.chararray(self.nresidues)
-            actives[:] = 'd'
-            ind_a = self.predefined_relevant_residues[i]
-            actives[ind_a] = 'a'
+        ind_scores_sorted = np.argsort(-importance)
+        actives_sorted = actives[ind_scores_sorted]
 
-            actives_len = len(ind_a)
-            decoys_len = self.nresidues - actives_len
+        tp=0
+        fp=0
+        tp_rate = []
+        fp_rate = []
+        for j in actives_sorted:
+            if j=='a':
+                tp+=1
+            else:
+                fp+=1
+            tp_rate.append(float(tp)/float(actives_len))
+            fp_rate.append(float(fp)/float(decoys_len))
 
-            ind_scores_sorted = np.argsort(-self.importance_per_residue_and_cluster[:,i])
-            actives_sorted = actives[ind_scores_sorted]
+        for j in range(len(fp_rate)-1):
+            auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
 
-            tp=0
-            fp=0
-            tp_rate = []
-            fp_rate = []
-            for j in actives_sorted:
-                if j=='a':
-                    tp+=1
-                else:
-                    fp+=1
-                tp_rate.append(float(tp)/float(actives_len))
-                fp_rate.append(float(fp)/float(decoys_len))
+        return auc
 
-            for j in range(len(fp_rate)-1):
-                auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
+    def _compute_accuracy(self,relevant_residues,importance):
+        """
+        Computes ( TP + TN )/( P + N )
+        """
 
-            # Computes ( TP - FP )/( TP + FP ) and ( TN - FN ) / ( TN + FN )
+        importance_SORTED = -np.sort(-importance)
+        importance_SORTED_ind = np.argsort(-importance)
 
-            importance_per_residue_and_cluster_SORTED = -np.sort(-self.importance_per_residue_and_cluster[:, i])
+        difference = []
+        for j in range(self.nresidues - 1):
+            difference.append(importance_SORTED[j] - importance_SORTED[j + 1])
+        difference_max = max(difference)
+        difference_max_index = difference.index(difference_max)
 
-            difference = []
-            for j in range(self.nresidues - 1):
-                difference.append(importance_per_residue_and_cluster_SORTED[j] - importance_per_residue_and_cluster_SORTED[j + 1])
-            difference_max = max(difference)
-            difference_max_index = difference.index(difference_max)
+        POSITIVE = importance_SORTED_ind[0:difference_max_index+1]
+        NEGATIVE = importance_SORTED_ind[difference_max_index+1:]
 
-            POSITIVE = ind_scores_sorted[0:difference_max_index+1]
-            NEGATIVE = ind_scores_sorted[difference_max_index+1:]
+        ind_a = relevant_residues
 
-            nTP = len( list(set(POSITIVE) & set(ind_a)) )
-            nFP = len(POSITIVE) - nTP
+        TP = len( list(set(POSITIVE) & set(ind_a)) )
+        #FP = len(POSITIVE) - TP
 
-            ind_d = [j for j in np.arange(0,self.nresidues,1) if j not in ind_a]
-            nTN = len( list(set(NEGATIVE) & set(ind_d)) )
-            nFN = len(NEGATIVE) - nTN
+        ind_d = [j for j in np.arange(0,self.nresidues,1) if j not in ind_a]
+        TN = len( list(set(NEGATIVE) & set(ind_d)) )
+        #FN = len(NEGATIVE) - TN
 
-            POS_RATIO += (nTP-nFP)/(nTP+nFP)
-            NEG_RATIO += (nTN-nFN)/(nTN+nFN)
+        accuracy = (TP+TN)/self.nresidues
 
-        self.auc = auc/self.nclusters
-        self.pos_ratio = POS_RATIO/self.nclusters
-        self.neg_ratio = NEG_RATIO/self.nclusters
+        return accuracy
 
     def _map_to_correct_residues(self, importance_per_residue):
         """

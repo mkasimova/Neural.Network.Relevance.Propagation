@@ -34,10 +34,12 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
 
     supervised_feature_extractors = [
         fe.MlpFeatureExtractor(
-            # hidden_layer_sizes=(dg.natoms, dg.nclusters * 2),
-            hidden_layer_sizes=[int(min(dg.nfeatures, 100) / (i + 1)) for i in range(10)],
-            training_max_iter=10000,
-            alpha=0.0001,
+            classifier_kwargs={
+                # hidden_layer_sizes=(dg.natoms, dg.nclusters * 2),
+                'hidden_layer_sizes': [int(min(dg.nfeatures, 100) / (i + 1)) for i in range(10)],
+                'max_iter': 10000,
+                'alpha': 0.0001,
+            },
             activation="relu",
             **kwargs),
         # fe.ElmFeatureExtractor(
@@ -48,19 +50,23 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
         fe.KLFeatureExtractor(**kwargs),
         fe.RandomForestFeatureExtractor(
             one_vs_rest=False,
-            n_estimators=1000,
+            classifier_kwargs={'n_estimators': 1000},
             **kwargs),
     ]
     unsupervised_feature_extractors = [
         fe.MlpAeFeatureExtractor(
-            # hidden_layer_sizes=(int(data.shape[1]/2),),
-            hidden_layer_sizes=(200, 100, 30, dg.nclusters, 30, 100, 200,),
-            # hidden_layer_sizes=(100, 1, 100,),
-            # hidden_layer_sizes=(200, 50, 10, 1, 10, 50, 200, ),
-            training_max_iter=100000,
+            classifier_kwargs={
+                # hidden_layer_sizes=(int(data.shape[1]/2),),
+                'hidden_layer_sizes': (200, 100, 30, dg.nclusters, 30, 100, 200,),
+                # hidden_layer_sizes=(100, 1, 100,),
+                # hidden_layer_sizes=(200, 50, 10, 1, 10, 50, 200, ),
+                'max_iter': 100000,
+                # hidden_layer_sizes=(300, 200, 50, 10, 1, 10, 50, 200, 300,),
+                # max_iter=10000,
+                'alpha': 0.0001,
+                'solver': "adam",
+            },
             use_reconstruction_for_lrp=True,
-            alpha=0.0001,
-            solver="adam",
             activation="logistic",
             **kwargs),
         # fe.RbmFeatureExtractor(n_components=dg.nclusters,
@@ -68,11 +74,11 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
         #                        name='RBM_from_components',
         #                        variance_cutoff='auto',
         #                        **kwargs),
-        fe.PCAFeatureExtractor(n_components=None,
+        fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
                                variance_cutoff=variance_cutoff,
                                name='PCA',
                                **kwargs),
-        fe.RbmFeatureExtractor(n_components=dg.nclusters,
+        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
                                relevance_method='from_lrp',
                                name='RBM',
                                **kwargs),
@@ -156,4 +162,4 @@ data, labels = dg.generate_data(
     xyz_output_dir=None)
 # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
 logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-run(dg, data, labels, supervised=False, n_iterations=4)
+run(dg, data, labels, supervised=True, n_iterations=4)

@@ -10,7 +10,6 @@ import numpy as np
 
 from .. import relevance_propagation as relprop
 from .feature_extractor import FeatureExtractor
-from ..postprocessing import PostProcessor
 from sklearn.neural_network import BernoulliRBM
 from .. import utils
 import scipy
@@ -22,29 +21,32 @@ class RbmFeatureExtractor(FeatureExtractor):
 
     def __init__(self,
                  name="RBM",
-                 n_components=1,
                  randomize=True,
                  relevance_method="from_lrp",
                  variance_cutoff='auto',
+                 classifier_kwargs={
+                     'n_components': 1,
+                 },
                  **kwargs):
 
         FeatureExtractor.__init__(self,
                                   supervised=False,
                                   name=name,
                                   **kwargs)
-        self.n_components = n_components
-        self.randomize = randomize
         self.relevance_method = relevance_method
         self.variance_cutoff = variance_cutoff
+        self.randomize = randomize
+        self._classifier_kwargs = classifier_kwargs.copy()
+        if not self.randomize:
+            self._classifier_kwargs['random_state'] = 89274
         logger.debug("Initializing RBM with the following parameters: "
-                     " n_components %s, randomize %s, relevance_method %s, relevance_method %s, variance_cutoff %s",
-                     n_components, randomize, relevance_method, relevance_method, variance_cutoff)
+                     " randomize %s, relevance_method %s, relevance_method %s, variance_cutoff %s,"
+                     " classifier_kwargs %s",
+                     randomize, relevance_method, relevance_method, variance_cutoff, classifier_kwargs)
 
     def train(self, train_set, train_labels):
         logger.debug("Training RBM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier = BernoulliRBM(
-            random_state=(None if self.randomize else 89274),
-            n_components=self.n_components)
+        classifier = BernoulliRBM(**self._classifier_kwargs)
         classifier.fit(train_set)
         return classifier
 
@@ -111,16 +113,3 @@ class RbmFeatureExtractor(FeatureExtractor):
         return [relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
                 relprop.LogisticSigmoid()
                 ]
-
-    def postprocessing(self, working_dir=None, rescale_results=True, filter_results=False, feature_to_resids=None,
-                       pdb_file=None, predefined_relevant_residues=None, use_GMM_estimator=True, supervised=True):
-
-        return PostProcessor(extractor=self, \
-                             working_dir=working_dir, \
-                             rescale_results=rescale_results, \
-                             filter_results=filter_results, \
-                             feature_to_resids=feature_to_resids, \
-                             pdb_file=pdb_file, \
-                             predefined_relevant_residues=predefined_relevant_residues, \
-                             use_GMM_estimator=use_GMM_estimator, \
-                             supervised=False)

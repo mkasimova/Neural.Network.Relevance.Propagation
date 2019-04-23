@@ -69,7 +69,6 @@ def scatterplot():
 scatterplot()
 
 
-
 # # Feature importance vs frame plot
 # plt.figure(2)
 # plt.title('Most important feature')

@@ -31,6 +31,7 @@ class PostProcessor(object):
         self.extractor = extractor
         self.feature_importance = feature_importance
         self.std_feature_importance = std_feature_importance
+        self.errors = test_set_errors
         self.cluster_indices = cluster_indices
         self.working_dir = working_dir
         self.pdb_file = pdb_file
@@ -253,6 +254,7 @@ class PostProcessor(object):
         np.save(directory + "importance_per_residue", self.importance_per_residue)
         np.save(directory + "feature_importance", self.feature_importance)
         np.save(directory + "std_feature_importance", self.std_feature_importance)
+        np.save(directory + "errors", self.errors)
 
         if self.pdb_file is not None:
             pdb = PandasPdb()

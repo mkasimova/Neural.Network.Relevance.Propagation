@@ -103,12 +103,10 @@ class FeatureExtractor(object):
         feats = []
 
         for i_split in range(self.n_splits):
-
             for i_iter in range(self.n_iterations):
 
                 train_set, test_set, train_labels, test_labels = self.get_train_test_set(train_inds[i_split],
                                                                                          test_inds[i_split])
-
                 # Train model
                 model = self.train(train_set, train_labels)
 
@@ -131,7 +129,6 @@ class FeatureExtractor(object):
                                 i_split * self.n_iterations + i_iter + 1, self.n_splits * self.n_iterations, error)
 
         feats = np.asarray(feats)
-
         std_feats = np.std(feats, axis=0)
         feats = np.mean(feats, axis=0)
 

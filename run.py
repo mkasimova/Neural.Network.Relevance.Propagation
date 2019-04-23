@@ -169,7 +169,7 @@ postprocessors = []
 for (extractor, feature_importance, std_feature_importance, errors) in results:
     p = postprocessing.PostProcessor(extractor, feature_importance, std_feature_importance, errors, labels,
                                      working_dir  + "analysis/",
-                                     pdb_file=traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.pdb",
+                                     pdb_file=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb",
                                      feature_to_resids=feature_to_resids,
                                      filter_results=True)
     p.average()

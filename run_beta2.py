@@ -10,7 +10,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
-from modules import utils, feature_extraction as fe, visualization
+from modules import utils, filtering, feature_extraction as fe, visualization
 
 logger = logging.getLogger("beta2")
 utils.remove_outliers = False
@@ -55,10 +55,13 @@ def run(nclusters=2,
     # ## Define the different methods to use
     #
     # Every method is encapsulated in a so called FeatureExtractor class which all follow the same interface
+    cutoff_offset = 0.2 if "closest-heavy" in feature_type else 0
     kwargs = {
         'samples': data,
         'cluster_indices': cluster_indices,
         'filter_by_distance_cutoff': filter_by_distance_cutoff,
+        'lower_bound_distance_cutoff': filtering.lower_bound_distance_cutoff_default - cutoff_offset,
+        'upper_bound_distance_cutoff': filtering.upper_bound_distance_cutoff_default - cutoff_offset,
         'use_inverse_distances': True,
         'n_splits': n_splits,
         'n_iterations': n_iterations,
@@ -104,21 +107,23 @@ def run(nclusters=2,
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        # fe.RandomForestFeatureExtractor(
-        #     one_vs_rest=False,
-        #     classifier_kwargs={'n_estimators': 1000},
-        #     **kwargs),
-        # fe.KLFeatureExtractor(**kwargs),
-        fe.MlpFeatureExtractor(
-            classifier_kwargs={
-                'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-                'max_iter': 10000,
-                'alpha': 0.0001,
-                'activation': "relu"
-            },
-            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories"
-                                         "/mlp_perframeimportance_{}clusters.txt".format(nclusters),
+        fe.RandomForestFeatureExtractor(
+            one_vs_rest=False,
+            classifier_kwargs={'n_estimators': 1000},
             **kwargs),
+        # fe.KLFeatureExtractor(**kwargs),
+        # fe.MlpFeatureExtractor(
+        #     classifier_kwargs={
+        #         'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+        #         'max_iter': 10000,
+        #         'alpha': 0.0001,
+        #         'activation': "relu"
+        #     },
+        # per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories"
+        #                              "/mlp_perframe_importance/"
+        #                              "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
+        #     .format(feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        # **kwargs),
     ]
 
     if supervised is None:
@@ -134,7 +139,7 @@ def run(nclusters=2,
         extractor.extract_features()
         p = extractor.postprocessing(working_dir=results_dir,
                                      pdb_file=working_dir + "/trajectories/all.pdb",
-                                     #pdb_file=working_dir + "/trajectories/protein_noh.pdb",
+                                     # pdb_file=working_dir + "/trajectories/protein_noh.pdb",
                                      feature_to_resids=feature_to_resids,
                                      filter_results=False)
         p.average()
@@ -169,14 +174,14 @@ def run(nclusters=2,
 
 
 simu_type = "clustering"
-for nclusters in range(6, 7):
+for nclusters in range(2, 6):
     run(nclusters=nclusters,
         feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=10,
-        n_splits=1,
+        n_iterations=30,
+        n_splits=4,
         supervised=True,
-        shuffle_datasets=False,
-        filter_by_distance_cutoff=False)
+        shuffle_datasets=True,
+        filter_by_distance_cutoff=True)
     if simu_type != "clustering":
         break

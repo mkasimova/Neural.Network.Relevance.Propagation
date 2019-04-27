@@ -20,55 +20,68 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from prettytable import PrettyTable
 
-# Method to get the name of the residue from the biological index resid
 def get_residue(resid):
-    res = apo_asp_traj.top.select("resSeq " + str(resid) + " and name CA")
-    return apo_asp_traj.top.atom(res[0]).residue
+  ''' Method to get the name of the residue from the biological index resid '''
+  res = apo_asp_traj.top.select("resSeq " + str(resid) + " and name CA")
+  return apo_asp_traj.top.atom(res[0]).residue
 
 def average_error(errors):
   ''' Method which returns an array of errors less than the error limit (5) and the average '''
   avg_error = [e for e in errors if e <= 5]
   return np.average(avg_error), 1-(len(errors)-len(avg_error))/len(errors)
 
+def cluster_distance(X, Y):
+  ''' Method which calculates the average distance between points in a cluster '''  
+  if len(X) != len(Y):
+      raise Exception('Given coordinates have different shapes, %s vs %s', len(X), len(Y))
+  else:
+      # Calculate average distance between points in cluster
+      mean_distance = 0
+      for i in range(len(X)):
+          mean_distance += np.sqrt( (X[0]-X[i])**2 + (Y[0]-Y[i])**2 ) / len(X)
+  return mean_distance
 
 logger = logging.getLogger("terminal")
 working_dir = os.path.expanduser("~/kex/bachelor_thesis2019_gpcr/")     # Path to directory containing the data to be analysed
 traj_dir = working_dir + "swarm_trajectories/" #TODO change directory
-save_dir = working_dir + "analysis/data/"
+save_dir = working_dir + "analysis/"
 logger.info("Done with init")
 
 # Load the MD trajectories
 stride = 50
 
 
-# ASP79 APO / HOLO
-apo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
-                        top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
+# ## ASP79 --- APO vs HOLO
+# apo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
-holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
-                        top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
+# holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
-# ## ASH79 APO / HOLO
+
+# ## ASH79  --- APO vs HOLO
 # apo_asp_traj = md.load(traj_dir + "ash79-apo-swarms-nowater-nolipid.xtc",
 #                         top=traj_dir + "ash79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
 # holo_asp_traj = md.load(traj_dir + "ash79-holo-swarms-nowater-nolipid.xtc",
 #                         top=traj_dir + "ash79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
-# # ASP79 APO  Neutral / Deprotonated
-# apo_asp_traj = md.load(traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.xtc",
-#                         top=traj_dir + "asp79_Na-apo-swarms-nowater-nolipid.pdb", stride=stride)
+
+## APO --- ASH79 vs ASP79 
+
+# apo_asp_traj = md.load(traj_dir + "ash79-apo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "ash79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
 # holo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
 #                         top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
 
-# ## ASP79 HOLO Neutral / Deprotonated
-# apo_asp_traj = md.load(traj_dir + "asp79_Na-holo-swarms-nowater-nolipid.xtc",
-#                         top=traj_dir + "asp79_Na-holo-swarms-nowater-nolipid.pdb", stride=stride)
+## HOLO --- ASH79 vs ASP79
+apo_asp_traj = md.load(traj_dir + "ash79-holo-swarms-nowater-nolipid.xtc",
+                        top=traj_dir + "ash79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
-# holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
-#                         top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
+holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
+                        top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
 logger.info("Loaded trajectories with properties %s, %s", holo_asp_traj, apo_asp_traj)
 
@@ -121,7 +134,7 @@ logger.info("Done. Created samples of shape %s", samples.shape)
 
 
 ### FEATURE EXTRACTION ###
-n_iterations, n_splits = 25, 4 #Number of times to run and number of splits in cross validation
+n_iterations, n_splits = 2, 4 #Number of times to run and number of splits in cross validation
 filter_by_distance_cutoff = False #Remove all distances greater than 0.5 nm (configurable limit). Typically residues close to each other contribute most to the stability of the protein
 use_inverse_distances = True #Usually it is a good idea to take the inverse of the distances since a larg number then indicates two residues in contact -> stronger interaction
 
@@ -140,7 +153,7 @@ feature_extractors = [
                             filter_by_distance_cutoff=filter_by_distance_cutoff),
 
 
-        ############ Unsupervised learning methods #######################
+     #    ############ Unsupervised learning methods #######################
      # fe.RbmFeatureExtractor(samples, labels, n_splits=n_splits, n_iterations=n_iterations,
      #                      n_components=8,
      #                       # use_inverse_distances=use_inverse_distances,
@@ -159,7 +172,6 @@ for extractor in feature_extractors:
     logger.info("Computing relevance for extractors %s", extractor.name)
     feature_importance, std_feature_importance, errors = extractor.extract_features()
     #logger.info("Get feature_importance and std of shapes %s, %s", feature_importance.shape, std_feature_importance.shape)
-    print("Average error and success rate for the method models: ", average_error(errors))
     results.append((extractor, feature_importance, std_feature_importance, errors))
 logger.info("Done")
 
@@ -169,7 +181,7 @@ postprocessors = []
 for (extractor, feature_importance, std_feature_importance, errors) in results:
     p = postprocessing.PostProcessor(extractor, feature_importance, std_feature_importance, errors, labels,
                                      working_dir  + "analysis/",
-                                     pdb_file=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb",
+                                     pdb_file=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb",
                                      feature_to_resids=feature_to_resids,
                                      filter_results=True)
     p.average()
@@ -180,51 +192,34 @@ logger.info("Done")
 
 ### VISUALIZE THE RESULTS ###
 sns.set()
-visualization.visualize(postprocessors,
+fig1 = visualization.visualize(postprocessors,
           show_importance=True,
           show_performance=False,
           show_projected_data=False)
-
+plt.show()
+fig1.savefig(save_dir+"feature_importance.pdf")
 logger.info("Done. The settings were n_iterations, n_splits = %s, %s.\nFiltering (filter_by_distance_cutoff = %s)",
             n_iterations, n_splits, filter_by_distance_cutoff)
 
 
+### Further visualization of the results and writing data ouput to file ###
 methods = [extractor.name for extractor in feature_extractors]
-
-# Print top 5 features of the methods, with std and contact pair
-
-for j in range(len(methods)):
-
-    table = PrettyTable()
-    table.field_names = ['Feature Importance', 'Standard Deviation', 'Contact Pair']
-
-    feature_importance = np.load(working_dir + "analysis/" + methods[j] + "/feature_importance.npy") # feature_importance from training
-    std_feature_importance = np.load(working_dir + "analysis/" + methods[j] + "/std_feature_importance.npy")
-    # print(feature_to_resids.shape, feature_importance[:,0].shape,"\n")
-
-    # Find the feature_idx of the two most important features (contact pairs)
-    feature_idx = feature_importance[:,0].argsort(axis=0)[[-1, -2, -3, -4, -5]] # Get the feature_idx of the 2 most important features (inputs)
-    std_feat = std_feature_importance[:,0][feature_idx]
-    top5_feats = feature_importance[:,0][feature_idx]
-
-    for i in range(5):
-      table.add_row([top5_feats[i], std_feat[i],  str([get_residue(feature_to_resids[feature_idx[i]].astype(int)[0]), get_residue(feature_to_resids[feature_idx[i]].astype(int)[1])]) ] )
-
-    print(methods[j], '\n' ,table)
-
-# Create scatterplots of top 2 features for each method
-
 fig, axs = plt.subplots(ncols = len(methods))
 fig.suptitle('Contact pairs with highest importance')
+f = open(save_dir+"output.txt", "w") # Open the file outputfile and overwrite it with new data
 for i in range(len(methods)):
+
+    # Load data files used for the processing
     feature_importance = np.load(working_dir + "analysis/" + methods[i] + "/feature_importance.npy") # feature_importance from training
-    # print(feature_to_resids.shape, feature_importance[:,0].shape,"\n")
+    std_feature_importance = np.load(working_dir + "analysis/" + methods[i] + "/std_feature_importance.npy")
+    errors = results[i][3] # Get errors from result array
+
 
     # Find the feature_idx of the two most important features (contact pairs)
-    feature_idx = feature_importance[:,0].argsort(axis=0)[[-1, -2]] # Get the feature_idx of the 2 most important features (inputs)
+    feature_idx = feature_importance[:,0].argsort(axis=0)[[-1, -2, -3, -4, -5]] # Get the feature_idx of the 5 most important features (inputs)
 
-    resids1 = feature_to_resids[feature_idx[0]].astype(int)# Get the residue ids from top 1 contact pair
-    resids2 = feature_to_resids[feature_idx[1]].astype(int)# Get the residue ids from top 2 contact pair
+    resids1 = feature_to_resids[feature_idx[0]].astype(int)# Get the residue ids associated with top 1 feature
+    resids2 = feature_to_resids[feature_idx[1]].astype(int)# Get the residue ids associated with top 2 feature
 
     # Get the residue names from the feature_idx
     contacts1 = [get_residue(resids1[0]), get_residue(resids1[1])]
@@ -234,16 +229,46 @@ for i in range(len(methods)):
     holo_feature1 = samples[labels==1, feature_idx[0]]  # Top 1 across all holo frames
     holo_feature2 = samples[labels==1, feature_idx[1]]  # Top 2 across all holo frames
 
-    apo_feature1 = samples[labels==2, feature_idx [0]]  # Top 1 across all apo frames
-    apo_feature2 = samples[labels==2, feature_idx [1]]  # Top 2 across all apo frames
+    apo_feature1 = samples[labels==2, feature_idx[0]]  # Top 1 across all apo frames
+    apo_feature2 = samples[labels==2, feature_idx[1]]  # Top 2 across all apo frames
+
+    # Calculate the average distance between the points in each cluster
+    apo_cluster_avg_distance = cluster_distance(apo_feature1, apo_feature2)
+    holo_cluster_avg_distance = cluster_distance(holo_feature1, holo_feature2)
+
+    # Create output string for cluster distances
+    cluster_str = "\nAverage cluster distance is "+str((apo_cluster_avg_distance+holo_cluster_avg_distance)/2)+"\nBlue: "+str(holo_cluster_avg_distance)+"\nRed: "+str(apo_cluster_avg_distance)+"\n"
+
+    # Calculate error and successrate for method and build error string used for output to txt file
+    error_str = "\nAverage error and success rate for the method models: " + str(average_error(errors))
+
+    # Create an empty table with important features and the correspoding standard deviations
+    table = PrettyTable()
+    table.field_names = ['Feature Importance', 'Standard Deviation', 'Residue Pair']
+
+    # Get the data that is to be added to the table
+    top5_feats = feature_importance[:,0][feature_idx] # Get the relative importance of the top 5 features
+    std_feat = std_feature_importance[:,0][feature_idx] # Get the standard deviations associated with the top 5 features
+    
+    # Build the ASCII table
+    for j in range(5):
+      table.add_row([top5_feats[j], std_feat[j],  str([get_residue(feature_to_resids[feature_idx[j]].astype(int)[0]), get_residue(feature_to_resids[feature_idx[j]].astype(int)[1])]) ] )
+
+
+    # Write method error, cluster distances and table to output file
+    f.write(methods[i]+error_str+cluster_str+str(table)+"\n\n")
+  
 
     axs[i].set_title(methods[i])
-    axs[i].scatter(holo_feature1, holo_feature2, c='blue', label='Holo')
-    axs[i].scatter(apo_feature1, apo_feature2, c='red', label='Apo')
+    axs[i].scatter(holo_feature1, holo_feature2, c='blue', label='Holo neutral')
+    axs[i].scatter(apo_feature1, apo_feature2, c='red', label='Holo deprotonated')
     axs[i].set_xlabel(u"Contacts for the pairs " + str(contacts1) + u" (Å)")
     axs[i].set_ylabel(u"Contacts for the pairs " + str(contacts2) + u" (Å)")
     axs[i].legend(loc=2)
+
+f.close()
 plt.show()
+fig.savefig(save_dir+"scatterplot.pdf", bbox_inches = 'tight')
 
 
 

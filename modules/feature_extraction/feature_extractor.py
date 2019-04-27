@@ -49,8 +49,7 @@ class FeatureExtractor(object):
             all_indices = all_indices.astype(int)
             return all_indices, all_indices
 
-        kf = KFold(n_splits=self.n_splits, shuffle=False)
-
+        kf = KFold(n_splits=self.n_splits, shuffle=True)
         train_inds = []
         test_inds = []
 

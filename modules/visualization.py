@@ -99,7 +99,7 @@ def vis_multiple_run_performance_metrics(x_vals, metrics, metric_labels, per_clu
         vis_per_cluster_projection_entropy(x_val_clusters+width*i_estimator, ave_per_cluster_projection_entropies[i_estimator,:], width, fig2.axes[0], colors[i_estimator],
                                            extractor_names[i_estimator], std_val=std_per_cluster_projection_entropies[i_estimator,:],
                                            xlabel='Cluster',ylabel='Projection entropy',ylim=cluster_proj_entroy_ylim)
-    return
+    return 
 
 def vis_projected_data(proj_data, cluster_indices, fig, title):
     """
@@ -211,4 +211,4 @@ def visualize(postprocessors, show_importance=True, show_performance=True, show_
             if dp.raw_projection is not None:
                 vis_projected_data(dp.raw_projection, dp.labels, plt.figure(fig_counter), "Raw projection "+pp[i_run].extractor.name)
                 fig_counter += 1
-    plt.show()
+    return fig1

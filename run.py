@@ -35,11 +35,12 @@ def cluster_distance(X, Y):
   if len(X) != len(Y):
       raise Exception('Given coordinates have different shapes, %s vs %s', len(X), len(Y))
   else:
-      # Calculate average distance between points in cluster
+      # Calculate mean distance between all the points in cluster
       mean_distance = 0
       for i in range(len(X)):
-          mean_distance += np.sqrt( (X[0]-X[i])**2 + (Y[0]-Y[i])**2 ) / len(X)
-  return mean_distance
+        for j in range(i,len(Y)):
+          mean_distance += np.sqrt( (X[i]-X[j])**2 + (Y[i]-Y[j])**2 )
+  return mean_distance / ( len(X)*(len(X)-1)/2 )              # For N points there will be N(N-1)/2 distances between them
 
 logger = logging.getLogger("terminal")
 working_dir = os.path.expanduser("~/kex/bachelor_thesis2019_gpcr/")     # Path to directory containing the data to be analysed
@@ -134,7 +135,7 @@ logger.info("Done. Created samples of shape %s", samples.shape)
 
 
 ### FEATURE EXTRACTION ###
-n_iterations, n_splits = 2, 4 #Number of times to run and number of splits in cross validation
+n_iterations, n_splits = 1, 3 #Number of times to run and number of splits in cross validation
 filter_by_distance_cutoff = False #Remove all distances greater than 0.5 nm (configurable limit). Typically residues close to each other contribute most to the stability of the protein
 use_inverse_distances = True #Usually it is a good idea to take the inverse of the distances since a larg number then indicates two residues in contact -> stronger interaction
 
@@ -237,7 +238,7 @@ for i in range(len(methods)):
     holo_cluster_avg_distance = cluster_distance(holo_feature1, holo_feature2)
 
     # Create output string for cluster distances
-    cluster_str = "\nAverage cluster distance is "+str((apo_cluster_avg_distance+holo_cluster_avg_distance)/2)+"\nBlue: "+str(holo_cluster_avg_distance)+"\nRed: "+str(apo_cluster_avg_distance)+"\n"
+    cluster_str = "\nCluster distance for\nRed: "+str(apo_cluster_avg_distance)+"\nBlue: "+str(holo_cluster_avg_distance)
 
     # Calculate error and successrate for method and build error string used for output to txt file
     error_str = "\nAverage error and success rate for the method models: " + str(average_error(errors))
@@ -268,7 +269,7 @@ for i in range(len(methods)):
 
 f.close()
 plt.show()
-fig.savefig(save_dir+"scatterplot.pdf", bbox_inches = 'tight')
+fig.savefig(save_dir+"scatterplot.pdf", bbox_inches = 'tight', pad_inches=0)
 
 
 

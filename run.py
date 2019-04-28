@@ -52,7 +52,7 @@ logger.info("Done with init")
 stride = 50
 
 
-# ## ASP79 --- APO vs HOLO
+# ## ASP79 --- APO vs HOLO (Deprotonated)
 # apo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
 #                         top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
@@ -60,7 +60,7 @@ stride = 50
 #                         top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
 
-# ## ASH79  --- APO vs HOLO
+# ## ASH79  --- APO vs HOLO (NEUTRAL)
 # apo_asp_traj = md.load(traj_dir + "ash79-apo-swarms-nowater-nolipid.xtc",
 #                         top=traj_dir + "ash79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
@@ -68,21 +68,20 @@ stride = 50
 #                         top=traj_dir + "ash79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
 
-## APO --- ASH79 vs ASP79 
+# APO --- ASH79 vs ASP79 (Neutral vs Deprotonated)
+apo_asp_traj = md.load(traj_dir + "ash79-apo-swarms-nowater-nolipid.xtc",
+                        top=traj_dir + "ash79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
-# apo_asp_traj = md.load(traj_dir + "ash79-apo-swarms-nowater-nolipid.xtc",
-#                         top=traj_dir + "ash79-apo-swarms-nowater-nolipid.pdb", stride=stride)
-
-# holo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
-#                         top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
+holo_asp_traj = md.load(traj_dir + "asp79-apo-swarms-nowater-nolipid.xtc",
+                        top=traj_dir + "asp79-apo-swarms-nowater-nolipid.pdb", stride=stride)
 
 
-## HOLO --- ASH79 vs ASP79
-apo_asp_traj = md.load(traj_dir + "ash79-holo-swarms-nowater-nolipid.xtc",
-                        top=traj_dir + "ash79-holo-swarms-nowater-nolipid.pdb", stride=stride)
+# ## HOLO --- ASH79 vs ASP79 (Neutral vs Deprotonated)
+# apo_asp_traj = md.load(traj_dir + "ash79-holo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "ash79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
-holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
-                        top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
+# holo_asp_traj = md.load(traj_dir + "asp79-holo-swarms-nowater-nolipid.xtc",
+#                         top=traj_dir + "asp79-holo-swarms-nowater-nolipid.pdb", stride=stride)
 
 logger.info("Loaded trajectories with properties %s, %s", holo_asp_traj, apo_asp_traj)
 
@@ -135,7 +134,7 @@ logger.info("Done. Created samples of shape %s", samples.shape)
 
 
 ### FEATURE EXTRACTION ###
-n_iterations, n_splits = 1, 3 #Number of times to run and number of splits in cross validation
+n_iterations, n_splits = 25, 4 #Number of times to run and number of splits in cross validation
 filter_by_distance_cutoff = False #Remove all distances greater than 0.5 nm (configurable limit). Typically residues close to each other contribute most to the stability of the protein
 use_inverse_distances = True #Usually it is a good idea to take the inverse of the distances since a larg number then indicates two residues in contact -> stronger interaction
 
@@ -241,7 +240,7 @@ for i in range(len(methods)):
     output_string = methods[i] + "\nCluster distance for\nRed: "+str(apo_cluster_avg_distance)+"\nBlue: "+str(holo_cluster_avg_distance)
 
     # Calculate error and successrate for method and build error string used for output to txt file
-    output_string += "\nAverage error and success rate for the method models: " + str(average_error(errors))
+    output_string += "\nAverage error and success rate for the method models: " + str(average_error(errors)) + "\n"
 
     # Create an empty table with important features and the correspoding standard deviations
     table = PrettyTable()
@@ -262,8 +261,8 @@ for i in range(len(methods)):
   
 
     axs[i].set_title(methods[i])
-    axs[i].scatter(holo_feature1, holo_feature2, c='blue', label='Holo neutral')
-    axs[i].scatter(apo_feature1, apo_feature2, c='red', label='Holo deprotonated')
+    axs[i].scatter(holo_feature1, holo_feature2, c='blue', label='Apo deprotoated')
+    axs[i].scatter(apo_feature1, apo_feature2, c='red', label='Apo neutral')
     axs[i].set_xlabel(u"Contacts for the pairs " + str(contacts1) + u" (Å)")
     axs[i].set_ylabel(u"Contacts for the pairs " + str(contacts2) + u" (Å)")
     axs[i].legend(loc=2)

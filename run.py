@@ -238,10 +238,10 @@ for i in range(len(methods)):
     holo_cluster_avg_distance = cluster_distance(holo_feature1, holo_feature2)
 
     # Create output string for cluster distances
-    cluster_str = "\nCluster distance for\nRed: "+str(apo_cluster_avg_distance)+"\nBlue: "+str(holo_cluster_avg_distance)
+    output_string = methods[i] + "\nCluster distance for\nRed: "+str(apo_cluster_avg_distance)+"\nBlue: "+str(holo_cluster_avg_distance)
 
     # Calculate error and successrate for method and build error string used for output to txt file
-    error_str = "\nAverage error and success rate for the method models: " + str(average_error(errors))
+    output_string += "\nAverage error and success rate for the method models: " + str(average_error(errors))
 
     # Create an empty table with important features and the correspoding standard deviations
     table = PrettyTable()
@@ -253,11 +253,12 @@ for i in range(len(methods)):
     
     # Build the ASCII table
     for j in range(5):
-      table.add_row([top5_feats[j], std_feat[j],  str([get_residue(feature_to_resids[feature_idx[j]].astype(int)[0]), get_residue(feature_to_resids[feature_idx[j]].astype(int)[1])]) ] )
+      table.add_row([np.round(top5_feats[j],2), np.round(std_feat[j],2),  str([get_residue(feature_to_resids[feature_idx[j]].astype(int)[0]), get_residue(feature_to_resids[feature_idx[j]].astype(int)[1])]) ] )
 
+    output_string += str(table)+"\n\n"
 
-    # Write method error, cluster distances and table to output file
-    f.write(methods[i]+error_str+cluster_str+str(table)+"\n\n")
+    # Write string to output file
+    f.write(output_string)
   
 
     axs[i].set_title(methods[i])

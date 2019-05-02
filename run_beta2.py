@@ -131,6 +131,23 @@ def run(nclusters=2,
     else:
         feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
+    highlighted_residues = [75,
+                            79,
+                            121,
+                            207,
+                            219,
+                            268,
+                            275,
+                            279,
+                            282,
+                            315,
+                            322,
+                            323,
+                            324,
+                            325,
+                            326,
+                            327,
+                            ]
 
     # # Run the relevance analysis
     postprocessors = []
@@ -153,6 +170,7 @@ def run(nclusters=2,
                             show_importance=True,
                             show_performance=False,
                             show_projected_data=False,
+                            highlighted_residues=highlighted_residues,
                             outfile=results_dir + "/importance_per_residue_{suffix}.{filetype}".format(suffix=suffix,
                                                                                                        filetype=filetype))
 

@@ -259,7 +259,7 @@ def visualize(postprocessors,
 
     n_feature_extractors = len(postprocessors)
     #colors = np.array(plt.rcParams["axes.prop_cycle"].by_key()["color"])
-    colors = [[33.0/256.0,36.0/256.0,50.0/256.0]]*n_feature_extractors
+    colors = np.array([[33.0/256.0,36.0/256.0,50.0/256.0]])*n_feature_extractors
     markers = ['o','s','>','^','d','v','<']
     if color_offset > 0:
         colors2 = colors.copy()

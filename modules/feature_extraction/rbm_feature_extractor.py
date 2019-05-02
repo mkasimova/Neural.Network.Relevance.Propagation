@@ -110,6 +110,7 @@ class RbmFeatureExtractor(FeatureExtractor):
             raise Exception("Method {} not supported".format(self.relevance_method))
 
     def _create_layers(self, classifier):
-        return [relprop.FirstLinear(classifier.components_.T, classifier.intercept_hidden_),
+        return [relprop.FirstLinear(min_val=0, max_val=1, weight=classifier.components_.T,
+                                    bias=classifier.intercept_hidden_),
                 relprop.LogisticSigmoid()
                 ]

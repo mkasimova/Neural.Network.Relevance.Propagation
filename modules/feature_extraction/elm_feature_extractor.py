@@ -22,7 +22,6 @@ class ElmFeatureExtractor(MlpFeatureExtractor):
         MlpFeatureExtractor.__init__(self,
                                      name=name,
                                      **kwargs)
-        logger.debug("Initializing ELM with the following parameters: %s")
 
     def train(self, train_set, train_labels):
         logger.debug("Training ELM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
@@ -32,16 +31,17 @@ class ElmFeatureExtractor(MlpFeatureExtractor):
 
 
 class SingleLayerELMClassifier(object):
-    def __init__(self, hidden_layer_sizes=(1000), activation_func=relprop.relu, alpha=1):
+    def __init__(self, hidden_layer_sizes=(1000), activation=relprop.relu, alpha=1):
         if isinstance(hidden_layer_sizes, int):
-            hidden_layer_sizes = (hidden_layer_sizes)
+            hidden_layer_sizes = (hidden_layer_sizes, )
         if len(hidden_layer_sizes) != 1:
             raise Exception("ELM currently only support one layer")
         self.hidden_layer_sizes = hidden_layer_sizes
-        self.activation_func = activation_func
+        self.activation = activation
         self.coefs_ = None
         self.intercepts_ = None
         self.alpha = alpha  # regularization constant
+        self.out_activation_ = "identity"
 
     def fit(self, x, t):
         (N, n) = x.shape
@@ -57,13 +57,19 @@ class SingleLayerELMClassifier(object):
         return np.random.normal(0, 0.25, (x, self.hidden_layer_sizes[0]))
 
     def _g_ELM(self, x):
-        if self.activation_func == relprop.relu:  # good if you use regularization
+        if self.activation == relprop.relu:
             Z = x > 0
             return x * Z
-        elif self.activation_func == relprop.logistic_sigmoid:
+        elif self.activation == relprop.logistic_sigmoid:
             return scipy.special.expit(x)
+        elif self.activation == relprop.tanh:
+            return np.tanh(x)
+        elif self.activation == relprop.softmax:
+            return np.exp(x) / np.exp(x).sum(keepdims=True, axis=1)
+        elif self.activation == relprop.identity:
+            return x
         else:
-            raise Exception("Currently supported activation functions are only relu and logistic")
+            raise Exception("Activation {} function not supported".format(self.activation))
 
     def _pseudo_inverse(self, x):
         # see eq 3.17 in bishop

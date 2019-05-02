@@ -33,10 +33,11 @@ class MlpFeatureExtractor(FeatureExtractor):
                                   name=name,
                                   supervised=supervised,
                                   **kwargs)
+        self.backend = "scikit-learn"  # Only available option for now, more to come probably
         logger.debug("Initializing MLP with the following parameters:"
                      " activation function %s, randomize %s, classifier_kwargs %s,"
-                     " per_frame_importance_outfile %s",
-                     activation, randomize, classifier_kwargs, per_frame_importance_outfile)
+                     " per_frame_importance_outfile %s, backend %s",
+                     activation, randomize, classifier_kwargs, per_frame_importance_outfile, self.backend)
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
@@ -107,18 +108,29 @@ class MlpFeatureExtractor(FeatureExtractor):
         for idx, weight in enumerate(weights):
 
             if idx == 0:
-                l = relprop.FirstLinear(weight, biases[idx])
-            elif self.activation == relprop.relu:
-                l = relprop.NextLinear(weight, biases[idx])
-            elif self.activation == relprop.logistic_sigmoid:
-                l = relprop.FirstLinear(weight, biases[idx])
+                l = relprop.FirstLinear(min_val=0, max_val=1, weight=weight, bias=biases[idx])
+            else:
+                l = relprop.layer_for_string(self.activation, weight=weight, bias=biases[idx])
+            if l is None:
+                raise Exception(
+                    "Cannot create layer at index {} for activation function {}".format(idx, self.activation))
             layers.append(l)
             if idx < len(weights) - 1:
                 # Add activation to all except output layer
-                if self.activation == relprop.logistic_sigmoid:
-                    layers.append(relprop.LogisticSigmoid())
-                elif self.activation == relprop.relu:
-                    layers.append(relprop.ReLU())
+                activation = relprop.layer_activation_for_string(self.activation)
+                if activation is None:
+                    raise Exception("Unknown activation function {}".format(self.activation))
+                layers.append(activation)
+            else:
+                if self.backend == 'scikit-learn':
+                    # For scikit implementation see  # https://stats.stackexchange.com/questions/243588/how-to-apply-softmax-as-activation-function-in-multi-layer-perceptron-in-scikit
+                    # or https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/neural_network/multilayer_perceptron.py
+                    out_activation = relprop.layer_activation_for_string(classifier.out_activation_)
+                    if out_activation is None:
+                        raise Exception("Unknown activation function {}".format(self.activation))
+                    layers.append(out_activation)
+                else:
+                    raise Exception("Unsupported MLP backend {}".format(self.backend))
 
         self.layers = layers
 

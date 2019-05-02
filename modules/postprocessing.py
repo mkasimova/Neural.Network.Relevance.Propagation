@@ -152,6 +152,10 @@ class PostProcessor(object):
                     self._save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
                                       self._map_to_correct_residues(importance))
 
+        if self.extractor.supervised and self.data_projector.separation_score is not None:
+            separation_score = [self.data_projector.separation_score]
+            np.savetxt(directory + 'separation_score.txt', separation_score)
+
         return self
 
     def _map_feature_to_resids(self):
@@ -233,19 +237,21 @@ class PostProcessor(object):
         """
 
         relevant_residues_all_clusters = [y for x in self.predefined_relevant_residues for y in x]
-        self.auc_all_clusters = self._compute_AUC(relevant_residues_all_clusters,self.importance_per_residue)
-        self.accuracy_all_clusters = self._compute_accuracy(relevant_residues_all_clusters,self.importance_per_residue)
+        self.auc_all_clusters = self._compute_AUC(relevant_residues_all_clusters, self.importance_per_residue)
+        self.accuracy_all_clusters = self._compute_accuracy(relevant_residues_all_clusters, self.importance_per_residue)
 
         if self.supervised:
             self.auc_per_cluster = 0
             self.accuracy_per_cluster = 0
             for i in range(self.nclusters):
-                self.auc_per_cluster += self._compute_AUC(self.predefined_relevant_residues[i],self.importance_per_residue_and_cluster[:,i])
-                self.accuracy_per_cluster += self._compute_accuracy(self.predefined_relevant_residues[i],self.importance_per_residue_and_cluster[:,i])
+                self.auc_per_cluster += self._compute_AUC(self.predefined_relevant_residues[i],
+                                                          self.importance_per_residue_and_cluster[:, i])
+                self.accuracy_per_cluster += self._compute_accuracy(self.predefined_relevant_residues[i],
+                                                                    self.importance_per_residue_and_cluster[:, i])
             self.auc_per_cluster /= self.nclusters
             self.accuracy_per_cluster /= self.nclusters
 
-    def _compute_AUC(self,relevant_residues,importance):
+    def _compute_AUC(self, relevant_residues, importance):
         """
         Computes area under ROC
         """
@@ -263,24 +269,24 @@ class PostProcessor(object):
         ind_scores_sorted = np.argsort(-importance)
         actives_sorted = actives[ind_scores_sorted]
 
-        tp=0
-        fp=0
+        tp = 0
+        fp = 0
         tp_rate = []
         fp_rate = []
         for j in actives_sorted:
-            if j=='a':
-                tp+=1
+            if j == 'a':
+                tp += 1
             else:
-                fp+=1
-            tp_rate.append(float(tp)/float(actives_len))
-            fp_rate.append(float(fp)/float(decoys_len))
+                fp += 1
+            tp_rate.append(float(tp) / float(actives_len))
+            fp_rate.append(float(fp) / float(decoys_len))
 
-        for j in range(len(fp_rate)-1):
-            auc += (fp_rate[j+1]-fp_rate[j])*(tp_rate[j+1]+tp_rate[j])/2
+        for j in range(len(fp_rate) - 1):
+            auc += (fp_rate[j + 1] - fp_rate[j]) * (tp_rate[j + 1] + tp_rate[j]) / 2
 
         return auc
 
-    def _compute_accuracy(self,relevant_residues,importance):
+    def _compute_accuracy(self, relevant_residues, importance):
         """
         Computes ( TP + TN )/( P + N )
         """
@@ -294,19 +300,19 @@ class PostProcessor(object):
         difference_max = max(difference)
         difference_max_index = difference.index(difference_max)
 
-        POSITIVE = importance_SORTED_ind[0:difference_max_index+1]
-        NEGATIVE = importance_SORTED_ind[difference_max_index+1:]
+        POSITIVE = importance_SORTED_ind[0:difference_max_index + 1]
+        NEGATIVE = importance_SORTED_ind[difference_max_index + 1:]
 
         ind_a = relevant_residues
 
-        TP = len( list(set(POSITIVE) & set(ind_a)) )
-        #FP = len(POSITIVE) - TP
+        TP = len(list(set(POSITIVE) & set(ind_a)))
+        # FP = len(POSITIVE) - TP
 
-        ind_d = [j for j in np.arange(0,self.nresidues,1) if j not in ind_a]
-        TN = len( list(set(NEGATIVE) & set(ind_d)) )
-        #FN = len(NEGATIVE) - TN
+        ind_d = [j for j in np.arange(0, self.nresidues, 1) if j not in ind_a]
+        TN = len(list(set(NEGATIVE) & set(ind_d)))
+        # FN = len(NEGATIVE) - TN
 
-        accuracy = (TP+TN)/self.nresidues
+        accuracy = (TP + TN) / self.nresidues
 
         return accuracy
 

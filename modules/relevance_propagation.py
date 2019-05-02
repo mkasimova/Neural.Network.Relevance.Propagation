@@ -12,7 +12,50 @@ import scipy.special
 
 relu = "relu"
 logistic_sigmoid = "logistic"
+tanh = "tanh"
+softmax = "softmax"
+identity = "identity"
 logger = logging.getLogger("relevance_propagation")
+
+"""
+TODO implement more activation functions or import another library for this, see for example https://github.com/sebastian-lapuschkin/lrp_toolbox/tree/master/python/modules
+Heavily inspired by http://www.heatmapping.org/tutorial/, visited 2019-05-02
+"""
+
+
+def layer_activation_for_string(activation):
+    """
+    :return: an activation function. None if not found
+    """
+    if activation == logistic_sigmoid:
+        return LogisticSigmoid()
+    elif activation == relu:
+        return ReLU()
+    elif activation == tanh:
+        return Tanh()
+    elif activation == softmax:
+        return SoftMax()
+    elif activation == identity:
+        return Identity()
+    else:
+        return None
+
+
+def layer_for_string(activation, weight, bias):
+    kwargs = {
+        'weight': weight,
+        'bias': bias
+    }
+    if activation == logistic_sigmoid:
+        return FirstLinear(min_val=0, max_val=1, **kwargs)
+    elif activation == relu:
+        return NextLinear(**kwargs)
+    elif activation == tanh:
+        return FirstLinear(min_val=-1, max_val=1, **kwargs)
+    else:
+        # we don't support softmax or linear now since we don't know the bounds.
+        # They are often used in the output layer only though
+        return None
 
 
 class RelevancePropagator(object):
@@ -55,20 +98,45 @@ class ReLU:
 
 
 class LogisticSigmoid:
-    """Used for RBM"""
-
-    def _logistic(self, X):
-        return scipy.special.expit(X)
 
     def forward(self, X):
-        return self._logistic(X)
+        return scipy.special.expit(X)
+
+    def relprop(self, R):
+        return R
+
+
+class Tanh:
+
+    def forward(self, X):
+        return np.tan(X)
+
+    def relprop(self, R):
+        return R
+
+
+class SoftMax:
+
+    def forward(self, X):
+        self.X = X
+        self.Y = np.exp(X) / np.exp(X).sum(keepdims=True, axis=1)
+        return self.Y
+
+    def relprop(self, R):
+        return R
+
+
+class Identity:
+
+    def forward(self, X):
+        return X
 
     def relprop(self, R):
         return R
 
 
 class Linear:
-    def __init__(self, weight, bias):
+    def __init__(self, weight=None, bias=None):
         self.W = weight
         self.B = bias
 
@@ -80,15 +148,21 @@ class Linear:
 class FirstLinear(Linear):
     """For z-beta rule"""
 
+    def __init__(self, min_val=None, max_val=None, **kwargs):
+        Linear.__init__(self, **kwargs)
+        self.min_val = min_val
+        self.max_val = max_val
+
     def relprop(self, R):
-        min_val, max_val = np.min(self.X, axis=0), np.max(self.X, axis=0)
-        min_val = 0
-        max_val = 1
+        # min_val, max_val = np.min(self.X, axis=0), np.max(self.X, axis=0)
         W, V, U = self.W, np.maximum(0, self.W), np.minimum(0, self.W)
-        X, L, H = self.X, self.X * 0 + min_val, self.X * 0 + max_val
+        X = self.X
+        L = np.zeros(X.shape) + self.min_val
+        H = np.zeros(X.shape) + self.max_val
         Z = np.dot(X, W) - np.dot(L, V) - np.dot(H, U) + 1e-9
         S = R / Z
-        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T # a constant just corresponds to a diagonal matrix with that constant along the diagonal
+        # a constant just corresponds to a diagonal matrix with that constant along the diagonal
+        Wt = W if isinstance(W, int) or isinstance(W, float) else W.T
         R = X * np.dot(S, Wt) - L * np.dot(S, V.T) - H * np.dot(S, U.T)
         return R
 

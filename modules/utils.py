@@ -12,7 +12,9 @@ import numpy as np
 from scipy.spatial.distance import squareform
 from biopandas.pdb import PandasPdb
 from sklearn.preprocessing import MinMaxScaler
+
 logger = logging.getLogger("utils")
+
 
 def vectorize(data):
     """
@@ -120,21 +122,21 @@ def rescale_feature_importance(relevances, std_relevances):
 
     logger.info("Rescaling feature importances ...")
     if len(relevances.shape) == 1:
-        relevances = relevances[:,np.newaxis]
-        std_relevances = std_relevances[:,np.newaxis]
+        relevances = relevances[:, np.newaxis]
+        std_relevances = std_relevances[:, np.newaxis]
     n_states = relevances.shape[1]
     n_features = relevances.shape[0]
 
     # indices of residues pairs which were not filtered during features filtering
-    indices_not_filtered = np.where(relevances[:,0]>=0)[0]
+    indices_not_filtered = np.where(relevances[:, 0] >= 0)[0]
 
     for i in range(n_states):
-        max_val, min_val = relevances[indices_not_filtered,i].max(), relevances[indices_not_filtered,i].min()
-        scale = max_val-min_val
+        max_val, min_val = relevances[indices_not_filtered, i].max(), relevances[indices_not_filtered, i].min()
+        scale = max_val - min_val
         offset = min_val
         if scale < 1e-9:
-            scale = max(scale,1e-9)
-        relevances[indices_not_filtered,i] = (relevances[indices_not_filtered,i] - offset)/scale
+            scale = max(scale, 1e-9)
+        relevances[indices_not_filtered, i] = (relevances[indices_not_filtered, i] - offset) / scale
         std_relevances[indices_not_filtered, i] /= scale
 
     return relevances, std_relevances
@@ -153,16 +155,17 @@ def get_default_feature_to_resids(n_features):
     return feature_to_resids
 
 
-def get_feature_to_resids_from_pdb(n_features,pdb_file):
+def get_feature_to_resids_from_pdb(n_features, pdb_file):
     pdb = PandasPdb()
     pdb.read_pdb(pdb_file)
-    
+
     resid_numbers = np.unique(np.asarray(list(pdb.df['ATOM']['residue_number'])))
     n_residues = len(resid_numbers)
 
     n_residues_check = 0.5 * (1 + np.sqrt(8 * n_features + 1))
-    if n_residues!=n_residues_check:
-        sys.exit("The number of residues in pdb file ("+str(n_residues)+") is incompatible with number of features ("+str(n_residues_check)+")")
+    if n_residues != n_residues_check:
+        sys.exit("The number of residues in pdb file (" + str(
+            n_residues) + ") is incompatible with number of features (" + str(n_residues_check) + ")")
 
     idx = 0
     feature_to_resids = np.empty((n_features, 2))
@@ -215,3 +218,20 @@ def compute_feature_importance_from_components(explained_variance, components, v
         c *= explained_variance[i]
         importance = c if importance is None else importance + c
     return importance
+
+
+def compute_mse_accuracy(relevant_residues, measured_importance, true_importance=None):
+    """
+     **MSE accuracy**: Based on the normalized Mean squared error (MSE) $1-\frac{|\bar{x}-\bar{\phi}|^2}{|\bar{x}|^2+|\bar{\phi}|^2}$ where $\bar{\phi}$ is the measured importance and $\bar{x}$ is the true importance
+     In other word, we take the error from the measured distribution to the expected and normalize it. We take 1 minus this value so to get accuracy instead of error.
+    :param relevant_residues: the indices of the truly relevant residues
+    :param measured_importance: np.array of dimension 1 with values between 0 and 1. The value at an index corresponds to the relevance of that residue
+    :param true_importance: (optional) Overrides the parameter relevant_residues. Should be the same shape as meaured_importance
+    :return:
+    """
+    true_importance = np.zeros(measured_importance.shape)
+    if true_importance is None:
+        # The code is written to handle weighted true importance (i.e. when not all residues are equally relevant as well)
+        true_importance[relevant_residues] = 1
+    norm = np.linalg.norm(measured_importance - true_importance)
+    return 1 - norm ** 2 / (np.linalg.norm(true_importance) ** 2 + np.linalg.norm(measured_importance) ** 2)

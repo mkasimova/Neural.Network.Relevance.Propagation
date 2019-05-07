@@ -49,11 +49,11 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
                 'alpha': 50,
             },
             **kwargs),
-        # fe.KLFeatureExtractor(**kwargs),
-        # fe.RandomForestFeatureExtractor(
-        #     one_vs_rest=False,
-        #     classifier_kwargs={'n_estimators': 1000},
-        #     **kwargs),
+        fe.KLFeatureExtractor(**kwargs),
+        fe.RandomForestFeatureExtractor(
+            one_vs_rest=False,
+            classifier_kwargs={'n_estimators': 1000},
+            **kwargs),
     ]
     unsupervised_feature_extractors = [
         fe.MlpAeFeatureExtractor(
@@ -77,10 +77,10 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
                                variance_cutoff=variance_cutoff,
                                name='PCA',
                                **kwargs),
-        # fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
-        #                        relevance_method='from_lrp',
-        #                        name='RBM',
-        #                        **kwargs),
+        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
+                               relevance_method='from_lrp',
+                               name='RBM',
+                               **kwargs),
     ]
     feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
@@ -125,18 +125,18 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
                             color_offset=0 if supervised else 3,
                             outfile="output/test_importance_per_residue_{suffix}.{filetype}".format(suffix=suffix,
                                                                                                     filetype=filetype))
-    # visualization.visualize(postprocessors,
-    #                         show_importance=False,
-    #                         show_performance=True,
-    #                         show_projected_data=False,
-    #                         outfile="output/test_performance_{suffix}.{filetype}".format(suffix=suffix,
-    #                                                                                      filetype=filetype))
-    # visualization.visualize(postprocessors,
-    #                         show_importance=False,
-    #                         show_performance=False,
-    #                         show_projected_data=True,
-    #                         outfile="output/test_projection_{suffix}.{filetype}".format(suffix=suffix,
-    #                                                                                     filetype=filetype))
+    visualization.visualize(postprocessors,
+                            show_importance=False,
+                            show_performance=True,
+                            show_projected_data=False,
+                            outfile="output/test_performance_{suffix}.{filetype}".format(suffix=suffix,
+                                                                                         filetype=filetype))
+    visualization.visualize(postprocessors,
+                            show_importance=False,
+                            show_performance=False,
+                            show_projected_data=True,
+                            outfile="output/test_projection_{suffix}.{filetype}".format(suffix=suffix,
+                                                                                        filetype=filetype))
     logger.info("Done. The settings were n_iterations = {n_iterations}, n_splits = {n_splits}."
                 "\nFiltering (filter_by_distance_cutoff={filter_by_distance_cutoff})".format(**kwargs))
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
         noise_level=0.005,  # 1e-2, #1e-2,
         displacement=0.5,
         noise_natoms=0,
-        feature_type='cartesian_rot',
+        feature_type='inv-dist',
         test_model='non-linear'
         # test_model='non-linear'
         # test_model='non-linear-random-displacement'
@@ -164,4 +164,4 @@ if __name__ == "__main__":
         xyz_output_dir=None)
     # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
     logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-    run(dg, data, labels, supervised=False, n_iterations=5)
+    run(dg, data, labels, supervised=True, n_iterations=5)

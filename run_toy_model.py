@@ -59,31 +59,28 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
         fe.MlpAeFeatureExtractor(
             classifier_kwargs={
                 # hidden_layer_sizes=(int(data.shape[1]/2),),
-                'hidden_layer_sizes': (200, 100, 30, dg.nclusters, 30, 100, 200,),
+                # 'hidden_layer_sizes': (200, 100, 30, dg.nclusters, 30, 100, 200,),
+                'hidden_layer_sizes': (10, 5, 1, 5, 10,),
                 # hidden_layer_sizes=(100, 1, 100,),
                 # hidden_layer_sizes=(200, 50, 10, 1, 10, 50, 200, ),
                 'max_iter': 100000,
                 # hidden_layer_sizes=(300, 200, 50, 10, 1, 10, 50, 200, 300,),
                 # max_iter=10000,
-                'alpha': 0.0001,
+                # 'alpha': 0.0001,
+                'alpha': 1,
                 'solver': "adam",
             },
             use_reconstruction_for_lrp=True,
-            activation="tanh",
+            activation="logistic",
             **kwargs),
-        # fe.RbmFeatureExtractor(n_components=dg.nclusters,
-        #                        relevance_method='from_components',
-        #                        name='RBM_from_components',
-        #                        variance_cutoff='auto',
-        #                        **kwargs),
         fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
                                variance_cutoff=variance_cutoff,
                                name='PCA',
                                **kwargs),
-        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
-                               relevance_method='from_lrp',
-                               name='RBM',
-                               **kwargs),
+        # fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
+        #                        relevance_method='from_lrp',
+        #                        name='RBM',
+        #                        **kwargs),
     ]
     feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
@@ -144,26 +141,27 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
                 "\nFiltering (filter_by_distance_cutoff={filter_by_distance_cutoff})".format(**kwargs))
 
 
-dg = DataGenerator(
-    natoms=50,
-    nclusters=3,
-    natoms_per_cluster=[1, 1, 1],
-    moved_atoms=[[10], [12], [14]],
-    # natoms=200,
-    # nclusters=4,
-    # natoms_per_cluster=[1, 1, 1, 1],
-    # moved_atoms=[[10], [60], [110], [130]],
-    nframes_per_cluster=300,
-    noise_level=0.005,  # 1e-2, #1e-2,
-    displacement=0.5,
-    noise_natoms=0,
-    feature_type='inv-dist',
-    test_model='linear'
-    # test_model='non-linear'
-    # test_model='non-linear-random-displacement'
-)
-data, labels = dg.generate_data(
-    xyz_output_dir=None)
-# "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
-logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-run(dg, data, labels, supervised=False, n_iterations=4)
+if __name__ == "__main__":
+    dg = DataGenerator(
+        natoms=20,
+        nclusters=3,
+        natoms_per_cluster=[1, 1, 1],
+        moved_atoms=[[10], [12], [14]],
+        # natoms=200,
+        # nclusters=4,
+        # natoms_per_cluster=[1, 1, 1, 1],
+        # moved_atoms=[[10], [60], [110], [130]],
+        nframes_per_cluster=2000,
+        noise_level=0.005,  # 1e-2, #1e-2,
+        displacement=0.5,
+        noise_natoms=0,
+        feature_type='cartesian_rot',
+        test_model='non-linear'
+        # test_model='non-linear'
+        # test_model='non-linear-random-displacement'
+    )
+    data, labels = dg.generate_data(
+        xyz_output_dir=None)
+    # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
+    logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
+    run(dg, data, labels, supervised=False, n_iterations=5)

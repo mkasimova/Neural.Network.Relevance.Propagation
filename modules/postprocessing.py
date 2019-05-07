@@ -29,8 +29,7 @@ class PostProcessor(object):
                  feature_to_resids=None,
                  pdb_file=None,
                  predefined_relevant_residues=None,
-                 use_GMM_estimator=True,
-                 supervised=False):
+                 use_GMM_estimator=True):
         """
         Class which computes all the necessary averages and saves them as fields
         TODO move some functionality from class feature_extractor here

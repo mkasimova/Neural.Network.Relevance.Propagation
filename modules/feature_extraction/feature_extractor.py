@@ -181,4 +181,4 @@ class FeatureExtractor(object):
         self.test_set_errors = errors
 
     def postprocessing(self, **kwargs):
-        return PostProcessor(extractor=self, supervised=self.supervised, **kwargs)
+        return PostProcessor(extractor=self, **kwargs)

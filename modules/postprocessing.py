@@ -153,6 +153,9 @@ class PostProcessor(object):
             separation_score = [self.data_projector.separation_score]
             np.savetxt(directory + 'separation_score.txt', separation_score)
 
+        if self.predefined_relevant_residues is not None:
+            np.save(directory + "predefined_relevant_residues", self.predefined_relevant_residues)
+
         return self
 
     def _map_feature_to_resids(self):

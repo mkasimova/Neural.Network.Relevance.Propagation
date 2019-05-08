@@ -55,20 +55,24 @@ class PostProcessor(object):
 
         # Rescale and filter results if needed
         self.rescale_results = rescale_results
-        if rescale_results:
-            self.feature_importances, self.std_feature_importances = utils.rescale_feature_importance(
-                self.feature_importances, self.std_feature_importances)
-        if filter_results:
-            self.feature_importances, self.std_feature_importances = filtering.filter_feature_importance(
-                self.feature_importances, self.std_feature_importances)
+        if self.feature_importances is not None:
+            if rescale_results:
+                self.feature_importances, self.std_feature_importances = utils.rescale_feature_importance(
+                    self.feature_importances, self.std_feature_importances)
+            if filter_results:
+                self.feature_importances, self.std_feature_importances = filtering.filter_feature_importance(
+                    self.feature_importances, self.std_feature_importances)
 
-        # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importances and self.std_feature_importances)
-        self.indices_filtered = np.where(self.feature_importances[:, 0] == -1)[0]
-        self.feature_importances[self.indices_filtered, :] = 0
-        self.std_feature_importances[self.indices_filtered, :] = 0
+            # Put importance and std to 0 for residues pairs which were filtered out during features filtering (they are set as -1 in self.feature_importances and self.std_feature_importances)
+            self.indices_filtered = np.where(self.feature_importances[:, 0] == -1)[0]
+            self.feature_importances[self.indices_filtered, :] = 0
+            self.std_feature_importances[self.indices_filtered, :] = 0
+            # Set mapping from features to residues
+            self.nfeatures = self.feature_importances.shape[0]
+        else:
+            self.indices_filtered = np.empty((0, 0))
+            self.nfeatures = self.extractor.samples.shape[1]
 
-        # Set mapping from features to residues
-        self.nfeatures = self.feature_importances.shape[0]
         if feature_to_resids is None and self.pdb_file is None:
             feature_to_resids = utils.get_default_feature_to_resids(self.nfeatures)
         elif feature_to_resids is None and self.pdb_file is not None:
@@ -85,9 +89,13 @@ class PostProcessor(object):
         # Performance metrics
         self.predefined_relevant_residues = predefined_relevant_residues
         self.average_std = None
-        self.test_set_errors = extractor.test_set_errors.mean()
+        if extractor.test_set_errors is not None:
+            self.test_set_errors = extractor.test_set_errors.mean()
+        else:
+            self.test_set_errors = None
         self.data_projector = None
-        self.accuracy_all_clusters = None
+        self.separation_score = None
+        self.accuracy = None
         self.accuracy_per_cluster = None
 
     def average(self):
@@ -137,6 +145,16 @@ class PostProcessor(object):
         if self.importance_per_residue_and_cluster is not None and self.std_importance_per_residue_and_cluster is not None:
             np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
             np.save(directory + "std_importance_per_residue_and_cluster", self.std_importance_per_residue_and_cluster)
+        if self.separation_score is not None:
+            np.save(directory + 'separation_score.txt', self.separation_score)
+        if self.predefined_relevant_residues is not None:
+            np.save(directory + "predefined_relevant_residues", self.predefined_relevant_residues)
+        if self.accuracy is not None:
+            np.save(directory + 'accuracy', self.accuracy)
+        if self.accuracy_per_cluster is not None:
+            np.save(directory + 'accuracy_per_cluster', self.accuracy_per_cluster)
+        if self.test_set_errors is not None:
+            np.save(directory + 'test_set_errors', self.test_set_errors)
 
         if self.pdb_file is not None:
             pdb = PandasPdb()
@@ -149,12 +167,36 @@ class PostProcessor(object):
                     self._save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
                                       self._map_to_correct_residues(importance))
 
-        if self.extractor.supervised and self.data_projector.separation_score is not None:
-            separation_score = [self.data_projector.separation_score]
-            np.savetxt(directory + 'separation_score.txt', separation_score)
+        return self
 
-        if self.predefined_relevant_residues is not None:
-            np.save(directory + "predefined_relevant_residues", self.predefined_relevant_residues)
+    def _load_if_exists(self, filepath):
+        if os.path.exists(filepath):
+            return np.load(filepath)
+        else:
+            return None
+
+    def load(self):
+        """
+        Loads files dumped by the 'persist' method
+        :return: itself
+        """
+        directory = self.working_dir + "/{}/".format(self.extractor.name)
+
+        if not os.path.exists(directory):
+            return self
+
+        self.importance_per_residue = np.load(directory + "importance_per_residue.npy")
+        self.std_importance_per_residue = np.load(directory + "std_importance_per_residue.npy")
+        self.std_importance_per_residue = np.load(directory + "feature_importance.npy")
+        self.std_importance_per_residue = np.load(directory + "std_feature_importance.npy")
+
+        self.importance_per_residue_and_cluster = self._load_if_exists("importance_per_residue_and_cluster.npy")
+        self.std_importance_per_residue_and_cluster = self._load_if_exists("std_importance_per_residue_and_cluster.npy")
+        self.separation_score = self._load_if_exists("separation_score.npy")
+        self.predefined_relevant_residues = self._load_if_exists("predefined_relevant_residues.npy")
+        self.accuracy = self._load_if_exists("accuracy.npy")
+        self.accuracy_per_cluster = self._load_if_exists("accuracy_per_cluster.npy")
+        self.test_set_errors = self._load_if_exists("test_set_errors.npy")
 
         return self
 
@@ -228,7 +270,8 @@ class PostProcessor(object):
         else:
             self.data_projector.project(self.feature_importances)
             self.data_projector.separation_score = np.nan
-
+        # self.separation_score = np.array([self.data_projector.separation_score])
+        self.separation_score = self.data_projector.separation_score
         return self
 
     def _compute_class_score(self):
@@ -237,8 +280,8 @@ class PostProcessor(object):
         """
 
         relevant_residues_all_clusters = [y for x in self.predefined_relevant_residues for y in x]
-        self.accuracy_all_clusters = utils.compute_mse_accuracy(relevant_residues_all_clusters,
-                                                                self.importance_per_residue)
+        self.accuracy = utils.compute_mse_accuracy(relevant_residues_all_clusters,
+                                                   self.importance_per_residue)
 
         if self.supervised:
             self.accuracy_per_cluster = 0

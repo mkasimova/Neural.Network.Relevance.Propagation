@@ -8,72 +8,62 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
-import os
-import glob
+import matplotlib as mpl
+
+mpl.use('Agg')  # TO DISABLE GUI. USEFUL WHEN RUNNING ON CLUSTER WITHOUT X SERVER
 import argparse
-from benchmarking import configuration
+import numpy as np
+from benchmarking import computing, visualization, utils
 
 logger = logging.getLogger("benchmarking")
-
-
-def run(extractor_type="KL",
-        n_splits=1,
-        n_iterations=10,
-        feature_type='cartesian_rot',
-        n_iter_per_example=10,
-        test_model='linear',
-        overwrite=False,
-        output_dir="output/benchmarking/"):
-    test_noise = [1e-2, 1e-2, 2e-1, 2e-1]
-    for j, j_noise in enumerate(test_noise):
-        for k in range(n_iter_per_example):
-            modeldir = "{}/{}/{}/{}/noise_{}/iter_{}/".format(output_dir, extractor_type, feature_type, test_model,
-                                                              j_noise, k)
-            if os.path.exists(modeldir):
-                existing_files = glob.glob(modeldir + "*.npy")
-                if len(existing_files) > 0 and not overwrite:
-                    logger.debug("File %s already exists. skipping computations", glob[0])
-                    continue
-            else:
-                os.makedirs(modeldir)
-            samples, cluster_indices, moved_atoms, feature_to_resids = configuration.generate_data(test_model, j,
-                                                                                                   j_noise,
-                                                                                                   feature_type)
-
-            feature_extractors = configuration.create_feature_extractors(extractor_type,
-                                                                         samples=samples,
-                                                                         cluster_indices=cluster_indices,
-                                                                         n_splits=n_splits,
-                                                                         n_iterations=n_iterations)
-            for i_extractor, extractor in enumerate(feature_extractors):
-                extractor.extract_features()
-                pp = extractor.postprocessing(predefined_relevant_residues=moved_atoms,
-                                              rescale_results=True,
-                                              filter_results=False,
-                                              working_dir=modeldir,
-                                              feature_to_resids=feature_to_resids)
-                pp.average()
-                pp.evaluate_performance()
-                pp.persist()
 
 
 def create_argparser():
     _bool_lambda = lambda x: (str(x).lower() == 'true')
     parser = argparse.ArgumentParser(
         epilog='Benchmarking for demystifying')
-    parser.add_argument('--extractor_type', type=str, help='', required=True)
+    parser.add_argument('--extractor_type', nargs='+', type=str, required=True)
     parser.add_argument('--output_dir', type=str, help='', default="output/benchmarking/")
     parser.add_argument('--test_model', type=str, help='', default="linear")
     parser.add_argument('--feature_type', type=str, help='', default="cartesian_rot")
+    parser.add_argument('--noise_level', type=float, help='', default=1e-2)
     parser.add_argument('--overwrite', type=_bool_lambda, help='', default=False)
+    parser.add_argument('--visualize', type=_bool_lambda, help='', default=True)
     return parser
+
+
+def run(args):
+    extractor_types = utils._fix_extractor_typed(args.extractor_type)
+    visualize = args.visualize
+    output_dir = args.output_dir
+    best_processors = []
+    feature_type = args.feature_type
+    test_model = args.test_model
+    noise_level = args.noise_level
+    fig_filename = "{feature_type}_{test_model}_{noise_level}noise.svg".format(
+        feature_type=feature_type,
+        test_model=test_model,
+        noise_level=noise_level)
+    for et in extractor_types:
+        postprocessors = computing.compute(extractor_type=et,
+                                           output_dir=output_dir,
+                                           feature_type=feature_type,
+                                           overwrite=args.overwrite,
+                                           noise_level=args.noise_level,
+                                           test_model=args.test_model)
+        if visualize:
+            visualization.show_all(postprocessors=postprocessors,
+                                   extractor_type=et,
+                                   filename=fig_filename,
+                                   output_dir=output_dir)
+        best_processors.append(utils.find_best(postprocessors))
+    if visualize:
+        visualization.show_best(np.array(best_processors), extractor_types, filename=fig_filename,
+                                output_dir=output_dir)
 
 
 if __name__ == "__main__":
     parser = create_argparser()
     args = parser.parse_args()
-    run(extractor_type=args.extractor_type,
-        output_dir=args.output_dir,
-        feature_type=args.feature_type,
-        overwrite=args.overwrite,
-        test_model=args.test_model)
+    run(args)
+    logger.info("Done!")

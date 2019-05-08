@@ -159,7 +159,7 @@ class FeatureExtractor(object):
         feats = np.asarray(feats)
         self._on_all_features_extracted(feats, errors, original_samples.shape[1])
         self.samples = np.copy(original_samples)  # TODO why do we do this?
-        logger.debug("Done with feature extractio for %s", self.name)
+        logger.debug("Done with feature extraction for %s", self.name)
         return self
 
     def _on_all_features_extracted(self, feats, errors, n_features):

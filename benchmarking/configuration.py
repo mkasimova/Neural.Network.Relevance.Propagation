@@ -13,15 +13,20 @@ from modules.data_generation import DataGenerator
 from modules import feature_extraction as fe
 
 
-def generate_data(i_model, j, j_noise, feature_type):
-    if j % 2 == 1:
-        dg = DataGenerator(natoms=100, nclusters=3, natoms_per_cluster=[10, 10, 10], nframes_per_cluster=1200,
-                           test_model=i_model, \
-                           noise_natoms=12, noise_level=j_noise, displacement=0.1, feature_type=feature_type)
-    else:
-        dg = DataGenerator(natoms=100, nclusters=3, natoms_per_cluster=[10, 10, 10], nframes_per_cluster=1200,
-                           test_model=i_model, \
-                           noise_natoms=None, noise_level=j_noise, displacement=0.1, feature_type=feature_type)
+def generate_data(test_model, noise_level, feature_type,
+                  displacement=0.1,
+                  nframes_per_cluster=1200,
+                  noise_natoms=None  # 12
+                  ):
+    dg = DataGenerator(natoms=100,
+                       nclusters=3,
+                       natoms_per_cluster=[10, 10, 10],
+                       nframes_per_cluster=nframes_per_cluster,
+                       test_model=test_model,
+                       noise_natoms=noise_natoms,
+                       noise_level=noise_level,
+                       displacement=displacement,
+                       feature_type=feature_type)
     samples, labels = dg.generate_data()
     cluster_indices = labels.argmax(axis=1)
     moved_atoms = dg.moved_atoms
@@ -118,7 +123,7 @@ def create_MLP_feature_extractors(extractor_kwargs,
                                   ):
     feature_extractors = []
     for alpha, layers in alpha_hidden_layers:
-        name = "{}-alpha_{}".format(alpha, "x".join([str(l) for l in layers]))
+        name = "{}-alpha_{}-layers".format(alpha, "x".join([str(l) for l in layers]))
         feature_extractors.append(
             fe.MlpFeatureExtractor(
                 name=name,
@@ -149,7 +154,7 @@ def create_AE_feature_extractors(extractor_kwargs,
                                  ):
     feature_extractors = []
     for alpha, layers in alpha_hidden_layers:
-        name = "{}-alpha_{}".format(alpha, "x".join([str(l) for l in layers]))
+        name = "{}-alpha_{}-layers".format(alpha, "x".join([str(l) for l in layers]))
         feature_extractors.append(
             fe.MlpAeFeatureExtractor(
                 name=name,

@@ -147,7 +147,6 @@ class MlpFeatureExtractor(FeatureExtractor):
 
     def postprocessing(self, **kwargs):
         return PerFrameImportancePostProcessor(extractor=self,
-                                               supervised=self.supervised,
                                                per_frame_importance_outfile=self.per_frame_importance_outfile,
                                                frame_importances=self.frame_importances,
                                                **kwargs)

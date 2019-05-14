@@ -34,19 +34,25 @@ def create_argparser():
     _bool_lambda = lambda x: (str(x).lower() == 'true')
     parser = argparse.ArgumentParser(
         epilog='Benchmarking for demystifying')
-    parser.add_argument('--extractor_type', nargs='+', type=str, required=True)
-    parser.add_argument('--output_dir', type=str, help='', default="output/benchmarking/")
-    parser.add_argument('--test_model', type=str, help='', default="linear")
-    parser.add_argument('--feature_type', type=str, help='', default="cartesian_rot")
-    parser.add_argument('--noise_level', type=float, help='', default=1e-2)
-    parser.add_argument('--displacement', type=float, help='', default=1e-1)
-    parser.add_argument('--overwrite', type=_bool_lambda, help='', default=False)
-    parser.add_argument('--visualize', type=_bool_lambda, help='', default=True)
+    parser.add_argument('--extractor_type', nargs='+', help='list of extractor types (MLP, KL, PCA, ..)', type=str,
+                        required=True)
+    parser.add_argument('--output_dir', type=str, help='Root directory for output files',
+                        default="output/benchmarking/")
+    parser.add_argument('--test_model', type=str, help='Toy model displacement: linear or non-linear', default="linear")
+    parser.add_argument('--feature_type', type=str, help='Toy model feature type: cartesian_rot, inv-dist, etc.',
+                        default="cartesian_rot")
+    parser.add_argument('--noise_level', type=float, help='Strength of noise added to atomic coordinates at each frame',
+                        default=1e-2)
+    parser.add_argument('--displacement', type=float, help='Strength of displacement for important atoms', default=1e-1)
+    parser.add_argument('--overwrite', type=_bool_lambda,
+                        help='Overwrite existing results with new (if set to False no new computations will be performed)',
+                        default=False)
+    parser.add_argument('--visualize', type=_bool_lambda, help='Generate output figures', default=True)
     return parser
 
 
 def run(args):
-    extractor_types = utils._fix_extractor_type(args.extractor_type)
+    extractor_types = _fix_extractor_type(args.extractor_type)
     visualize = args.visualize
     output_dir = args.output_dir
     best_processors = []

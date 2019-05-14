@@ -123,7 +123,7 @@ class PostProcessor(object):
         self._compute_projection_classification_entropy()
 
         if self.predefined_relevant_residues is not None:
-            self._compute_class_score()
+            self.compute_accuracy()
 
         return self
 
@@ -146,7 +146,7 @@ class PostProcessor(object):
             np.save(directory + "importance_per_residue_and_cluster", self.importance_per_residue_and_cluster)
             np.save(directory + "std_importance_per_residue_and_cluster", self.std_importance_per_residue_and_cluster)
         if self.separation_score is not None:
-            np.save(directory + 'separation_score.txt', self.separation_score)
+            np.save(directory + 'separation_score', self.separation_score)
         if self.predefined_relevant_residues is not None:
             np.save(directory + "predefined_relevant_residues", self.predefined_relevant_residues)
         if self.accuracy is not None:
@@ -190,13 +190,15 @@ class PostProcessor(object):
         self.std_importance_per_residue = np.load(directory + "feature_importance.npy")
         self.std_importance_per_residue = np.load(directory + "std_feature_importance.npy")
 
-        self.importance_per_residue_and_cluster = self._load_if_exists("importance_per_residue_and_cluster.npy")
-        self.std_importance_per_residue_and_cluster = self._load_if_exists("std_importance_per_residue_and_cluster.npy")
-        self.separation_score = self._load_if_exists("separation_score.npy")
-        self.predefined_relevant_residues = self._load_if_exists("predefined_relevant_residues.npy")
-        self.accuracy = self._load_if_exists("accuracy.npy")
-        self.accuracy_per_cluster = self._load_if_exists("accuracy_per_cluster.npy")
-        self.test_set_errors = self._load_if_exists("test_set_errors.npy")
+        self.importance_per_residue_and_cluster = self._load_if_exists(
+            directory + "importance_per_residue_and_cluster.npy")
+        self.std_importance_per_residue_and_cluster = self._load_if_exists(
+            directory + "std_importance_per_residue_and_cluster.npy")
+        self.separation_score = self._load_if_exists(directory + "separation_score.npy")
+        self.predefined_relevant_residues = self._load_if_exists(directory + "predefined_relevant_residues.npy")
+        self.accuracy = self._load_if_exists(directory + "accuracy.npy")
+        self.accuracy_per_cluster = self._load_if_exists(directory + "accuracy_per_cluster.npy")
+        self.test_set_errors = self._load_if_exists(directory + "test_set_errors.npy")
 
         return self
 
@@ -274,20 +276,21 @@ class PostProcessor(object):
         self.separation_score = self.data_projector.separation_score
         return self
 
-    def _compute_class_score(self):
+    def compute_accuracy(self):
         """
         Computes accuracy with an normalized MSE based metric
         """
 
         relevant_residues_all_clusters = [y for x in self.predefined_relevant_residues for y in x]
-        self.accuracy = utils.compute_mse_accuracy(relevant_residues_all_clusters,
-                                                   self.importance_per_residue)
+        self.accuracy = utils.compute_mse_accuracy(self.importance_per_residue,
+                                                   relevant_residues=relevant_residues_all_clusters)
 
         if self.supervised:
             self.accuracy_per_cluster = 0
             for i in range(self.nclusters):
-                self.accuracy_per_cluster += utils.compute_mse_accuracy(self.predefined_relevant_residues[i],
-                                                                        self.importance_per_residue_and_cluster[:, i])
+                self.accuracy_per_cluster += utils.compute_mse_accuracy(self.importance_per_residue_and_cluster[:, i],
+                                                                        relevant_residues=
+                                                                        self.predefined_relevant_residues[i])
             self.accuracy_per_cluster /= self.nclusters
 
     def _map_to_correct_residues(self, importance_per_residue):

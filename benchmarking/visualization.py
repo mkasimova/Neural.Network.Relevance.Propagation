@@ -18,7 +18,7 @@ plt.style.use("seaborn-colorblind")
 logger = logging.getLogger("viz_benchmarking")
 plt.rcParams['figure.autolayout'] = True
 plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.size'] = 18
+# plt.rcParams['font.size'] = 18
 _boxprops = dict(facecolor=[50.0 / 256.0, 117.0 / 256.0, 220.0 / 256.0])
 
 
@@ -32,28 +32,32 @@ def show_all(postprocessors, extractor_type,
         os.makedirs(output_dir)
     supervised = postprocessors[0, 0].extractor.supervised
     xlabels = [utils.strip_name(pp.extractor.name) for pp in postprocessors[0]]
-    fig, axs = plt.subplots(3 if supervised else 1, 1, sharex=True, sharey=True, squeeze=False)
+    fig, axs = plt.subplots(3 if supervised else 1, 1, sharex=True, sharey=False, squeeze=False)
     accuracy = utils.to_accuracy(postprocessors)
-    axs[0, 0].boxplot(accuracy,
-                      showmeans=True,
-                      labels=xlabels,
-                      patch_artist=True,
-                      boxprops=_boxprops)
-    axs[0, 0].set_ylabel("Accuracy")
+    ax0 = axs[0, 0]
+    ax0.boxplot(accuracy,
+                showmeans=True,
+                labels=xlabels,
+                patch_artist=True,
+                boxprops=_boxprops)
+    ax0.set_ylabel("Total\naccuracy")
     if supervised:
+        # Per state
+        ax0.get_shared_y_axes().join(ax0, axs[1, 0])  # share y range with regular accuracy
         axs[1, 0].boxplot(utils.to_accuracy_per_cluster(postprocessors),
                           showmeans=True,
                           labels=xlabels,
                           patch_artist=True,
                           boxprops=_boxprops)
-        axs[1, 0].set_ylabel("Accuracy")
+        axs[1, 0].set_ylabel("Accuracy\nper state")
+        # Separation score
         axs[2, 0].boxplot(utils.to_separation_score(postprocessors),
                           showmeans=True,
                           labels=xlabels,
                           patch_artist=True,
                           boxprops=_boxprops)
         axs[2, 0].set_ylabel("Separation score")
-
+    plt.title(extractor_type)
     plt.tight_layout(pad=0.3)
     plt.savefig(output_dir + filename)
     plt.clf()

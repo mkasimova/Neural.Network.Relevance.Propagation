@@ -14,18 +14,6 @@ import numpy as np
 logger = logging.getLogger("utils-benchmarking")
 
 
-def _fix_extractor_typed(extractor_types):
-    if len(extractor_types) == 1:
-        et = extractor_types[0]
-        if et == "supervised":
-            return ["KL", "RF", "MLP"]
-        elif et == "unsupervised":
-            return ["PCA", "RBM", "AE"]
-        elif et == "all":
-            return ["KL", "RF", "MLP", "PCA", "RBM", "AE"]
-    return extractor_types
-
-
 def _to_numerical(postprocessors, postprocessor_to_number_func):
     res = np.empty(postprocessors.shape, dtype=float)
     for indices, pp in np.ndenumerate(postprocessors):

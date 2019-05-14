@@ -8,31 +8,14 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
-
-from modules.data_generation import DataGenerator
+import numpy as np
 from modules import feature_extraction as fe
 
 
-def generate_data(test_model, noise_level, feature_type,
-                  displacement=0.1,
-                  nframes_per_cluster=1200,
-                  noise_natoms=None  # 12
-                  ):
-    dg = DataGenerator(natoms=100,
-                       nclusters=3,
-                       natoms_per_cluster=[10, 10, 10],
-                       nframes_per_cluster=nframes_per_cluster,
-                       test_model=test_model,
-                       noise_natoms=noise_natoms,
-                       noise_level=noise_level,
-                       displacement=displacement,
-                       feature_type=feature_type)
-    samples, labels = dg.generate_data()
-    cluster_indices = labels.argmax(axis=1)
-    moved_atoms = dg.moved_atoms
-    feature_to_resids = dg.feature_to_resids()
-
-    return samples, cluster_indices, moved_atoms, feature_to_resids
+def get_feature_extractors_names(extractor_type, n_splits, n_iterations):
+    return np.array([e.name for e in
+                      create_feature_extractors(extractor_type, np.zeros((3, 4)), np.array([0, 1, 0]), n_splits,
+                                                n_iterations)])
 
 
 def create_feature_extractors(extractor_type, samples, cluster_indices, n_splits, n_iterations):
@@ -74,7 +57,7 @@ def create_KL_feature_extractors(extractor_kwargs, bin_widths=[0.01, 0.1, 0.2, 0
 def create_RF_feature_extractors(extractor_kwargs, n_estimators=[10, 100, 200]):
     return [
         fe.RandomForestFeatureExtractor(
-            name=" {}-estimators".format(nest),
+            name="{}-estimators".format(nest),
             classifier_kwargs={
                 'n_estimators': nest
             },
@@ -86,7 +69,7 @@ def create_RF_feature_extractors(extractor_kwargs, n_estimators=[10, 100, 200]):
 def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1_components", "1_components", 50, 100]):
     return [
         fe.PCAFeatureExtractor(
-            name=" {}-cutoff".format(cutoff),
+            name="{}-cutoff".format(cutoff),
             variance_cutoff=cutoff,
             **extractor_kwargs)
         for cutoff in variance_cutoffs
@@ -96,7 +79,7 @@ def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1
 def create_RBM_feature_extractors(extractor_kwargs, n_components=[1, 10, 100, 200]):
     return [
         fe.RbmFeatureExtractor(
-            name=" {}-components".format(ncomp),
+            name="{}-components".format(ncomp),
             classifier_kwargs={
                 'n_components': ncomp
             },

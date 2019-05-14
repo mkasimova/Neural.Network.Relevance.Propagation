@@ -11,6 +11,7 @@ logging.basicConfig(
 import os
 import glob
 import numpy as np
+from modules.data_generation import DataGenerator
 from . import configuration
 
 logger = logging.getLogger("ex_benchmarking")
@@ -23,6 +24,7 @@ def compute(extractor_type,
             iterations_per_model=10,
             test_model='linear',
             overwrite=False,
+            displacement=1e-1,
             noise_level=1e-2,  # [1e-2, 1e-2, 2e-1, 2e-1],
             output_dir="output/benchmarking/"):
     """
@@ -34,7 +36,8 @@ def compute(extractor_type,
     :param iterations_per_model:
     :param test_model:
     :param overwrite:
-    :param noise_levels:
+    :param displacement: for toy model important atoms
+    :param noise_level: for toy model frame generation
     :param output_dir:
     :return: postprocessors (np.array of dim iterations_per_model, nfeature_extractors)
     """
@@ -47,12 +50,32 @@ def compute(extractor_type,
             test_model=test_model,
             noise_level=noise_level,
             iter=iter)
-        samples, cluster_indices, moved_atoms, feature_to_resids = \
-            configuration.generate_data(test_model,
-                                        noise_level,
-                                        feature_type,
-                                        nframes_per_cluster=1200  # TODO not necessary if files exist
-                                        )
+
+        extractor_names = configuration.get_feature_extractors_names(extractor_type, n_splits=n_splits,
+                                                                     n_iterations=n_iterations)
+        finished_extractors = []
+        for name in extractor_names:
+            if os.path.exists(modeldir):
+                existing_files = glob.glob("{}/{}/importance_per_residue.npy".format(modeldir, name))
+                if len(existing_files) > 0 and not overwrite:
+                    logger.debug("File %s already exists. skipping computations", existing_files[0])
+                    finished_extractors.append(name)
+            else:
+                os.makedirs(modeldir)
+        needs_computations = len(finished_extractors) < len(extractor_names)
+        dg = DataGenerator(natoms=100,
+                           nclusters=3,
+                           natoms_per_cluster=[10, 10, 10],
+                           nframes_per_cluster=1200 if needs_computations else 2,
+                           # Faster generation for postprocessing purposes when we don't need the frames
+                           test_model=test_model,
+                           noise_natoms=None,
+                           noise_level=noise_level,
+                           displacement=displacement,
+                           feature_type=feature_type)
+        samples, labels = dg.generate_data()
+        cluster_indices = labels.argmax(axis=1)
+
         feature_extractors = configuration.create_feature_extractors(extractor_type,
                                                                      samples=samples,
                                                                      cluster_indices=cluster_indices,
@@ -60,27 +83,21 @@ def compute(extractor_type,
                                                                      n_iterations=n_iterations)
         all_postprocessors.append([])
         for i_extractor, extractor in enumerate(feature_extractors):
-            do_computations = True
-            if os.path.exists(modeldir):
-                existing_files = glob.glob("{}/{}/accuracy*.npy".format(modeldir, extractor.name))
-                if len(existing_files) > 0 and not overwrite:
-                    logger.debug("File %s already exists. skipping computations", existing_files[0])
-                    do_computations = False
-            else:
-                os.makedirs(modeldir)
+            do_computations = extractor.name not in finished_extractors
             if do_computations:
                 extractor.extract_features()
-            pp = extractor.postprocessing(predefined_relevant_residues=moved_atoms,
+            pp = extractor.postprocessing(predefined_relevant_residues=dg.moved_atoms,
                                           rescale_results=True,
                                           filter_results=False,
                                           working_dir=modeldir,
-                                          feature_to_resids=feature_to_resids)
+                                          feature_to_resids=dg.feature_to_resids())
             if do_computations:
                 pp.average()
                 pp.evaluate_performance()
                 pp.persist()
             else:
                 pp.load()
+                pp.compute_accuracy()  # Recompute performance to handle changes in the accuracy measure
             all_postprocessors[-1].append(pp)
 
     return np.array(all_postprocessors)

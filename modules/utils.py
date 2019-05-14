@@ -220,18 +220,23 @@ def compute_feature_importance_from_components(explained_variance, components, v
     return importance
 
 
-def compute_mse_accuracy(relevant_residues, measured_importance, true_importance=None):
+def compute_mse_accuracy(measured_importance, relevant_residues=None, true_importance=None):
     """
      **MSE accuracy**: Based on the normalized Mean squared error (MSE) $1-\frac{|\bar{x}-\bar{\phi}|^2}{|\bar{x}|^2+|\bar{\phi}|^2}$ where $\bar{\phi}$ is the measured importance and $\bar{x}$ is the true importance
      In other word, we take the error from the measured distribution to the expected and normalize it. We take 1 minus this value so to get accuracy instead of error.
-    :param relevant_residues: the indices of the truly relevant residues
+    The code is written to handle weighted true importance (i.e. when not all residues are equally relevant as well)
+
     :param measured_importance: np.array of dimension 1 with values between 0 and 1. The value at an index corresponds to the relevance of that residue
-    :param true_importance: (optional) Overrides the parameter relevant_residues. Should be the same shape as meaured_importance
+    :param relevant_residues: the indices of the truly relevant residues, either as 1D or 2D array
+    :param true_importance: (optional) Overrides the parameter relevant_residues. Should be the same shape as meaured_importance.
     :return:
     """
-    true_importance = np.zeros(measured_importance.shape)
+    if true_importance is None and relevant_residues is None:
+        raise Exception("Either true_importance or relevant_residues must be set")
     if true_importance is None:
-        # The code is written to handle weighted true importance (i.e. when not all residues are equally relevant as well)
-        true_importance[relevant_residues] = 1
+        true_importance = np.zeros(measured_importance.shape)
+        relevant_residues = np.array(relevant_residues, dtype=int).squeeze()
+        true_importance[relevant_residues.flatten()] = 1
+
     norm = np.linalg.norm(measured_importance - true_importance)
     return 1 - norm ** 2 / (np.linalg.norm(true_importance) ** 2 + np.linalg.norm(measured_importance) ** 2)

@@ -18,6 +18,18 @@ from benchmarking import computing, visualization, utils
 logger = logging.getLogger("benchmarking")
 
 
+def _fix_extractor_type(extractor_types):
+    if len(extractor_types) == 1:
+        et = extractor_types[0]
+        if et == "supervised":
+            return ["KL", "RF", "MLP"]
+        elif et == "unsupervised":
+            return ["PCA", "RBM", "AE"]
+        elif et == "all":
+            return ["KL", "RF", "MLP", "PCA", "RBM", "AE"]
+    return extractor_types
+
+
 def create_argparser():
     _bool_lambda = lambda x: (str(x).lower() == 'true')
     parser = argparse.ArgumentParser(
@@ -27,13 +39,14 @@ def create_argparser():
     parser.add_argument('--test_model', type=str, help='', default="linear")
     parser.add_argument('--feature_type', type=str, help='', default="cartesian_rot")
     parser.add_argument('--noise_level', type=float, help='', default=1e-2)
+    parser.add_argument('--displacement', type=float, help='', default=1e-1)
     parser.add_argument('--overwrite', type=_bool_lambda, help='', default=False)
     parser.add_argument('--visualize', type=_bool_lambda, help='', default=True)
     return parser
 
 
 def run(args):
-    extractor_types = utils._fix_extractor_typed(args.extractor_type)
+    extractor_types = utils._fix_extractor_type(args.extractor_type)
     visualize = args.visualize
     output_dir = args.output_dir
     best_processors = []
@@ -58,7 +71,9 @@ def run(args):
                                    output_dir=output_dir)
         best_processors.append(utils.find_best(postprocessors))
     if visualize:
-        visualization.show_best(np.array(best_processors), extractor_types, filename=fig_filename,
+        visualization.show_best(np.array(best_processors),
+                                extractor_types,
+                                filename=fig_filename,
                                 output_dir=output_dir)
 
 

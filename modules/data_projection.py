@@ -92,7 +92,8 @@ class DataProjector():
                 self.projection_class_entropy = class_entropies.mean()
             else:
                 return correct_separation.sum()/n_points, class_entropies.mean()
-        except:
+        except Exception as ex:
+            logger.error(ex)
             logger.warning('Could not calculate projection prediction score and entropy.')
             class_entropies = np.nan*np.ones(class_entropies.shape)
             if projection is None:

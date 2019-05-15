@@ -36,9 +36,9 @@ def to_separation_score(postprocessors):
 
 
 def find_best(postprocessors):
-    accuracy = to_accuracy(postprocessors)
-    ind = np.unravel_index(np.argmax(accuracy, axis=None), accuracy.shape)
-    return postprocessors[ind]
+    accuracy = to_accuracy(postprocessors).mean(axis=0)
+    ind = accuracy.argmax()
+    return postprocessors[:, ind]
 
 
 def strip_name(name):

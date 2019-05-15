@@ -97,6 +97,8 @@ class PostProcessor(object):
         self.separation_score = None
         self.accuracy = None
         self.accuracy_per_cluster = None
+        self._importance_mapped_to_resids = None
+        self._std_importance_mapped_to_resids = None
 
     def average(self):
         """
@@ -212,25 +214,27 @@ class PostProcessor(object):
         res_id_to_index = {}  # a map pointing back to the index in the array index_to_resid
         for idx, resid in enumerate(self.index_to_resid):
             res_id_to_index[resid] = idx
-        importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
-        std_importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
+
+        # TODO what does this code below do and why is it here? the field _importance_mapped_to_resids duplicates importance_per_residue_and_cluster
+        _importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
+        _std_importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
         for feature_idx, rel in enumerate(self.feature_importances):
             res1, res2 = self.feature_to_resids[feature_idx]
             res1 = res_id_to_index[res1]
             res2 = res_id_to_index[res2]
-            importance_mapped_to_resids[res1, :] += rel
-            importance_mapped_to_resids[res2, :] += rel
-            std_importance_mapped_to_resids[res1, :] += self.std_feature_importances[feature_idx, :] ** 2
-            std_importance_mapped_to_resids[res2, :] += self.std_feature_importances[feature_idx, :] ** 2
-        std_importance_mapped_to_resids = np.sqrt(std_importance_mapped_to_resids)
+            _importance_mapped_to_resids[res1, :] += rel
+            _importance_mapped_to_resids[res2, :] += rel
+            _std_importance_mapped_to_resids[res1, :] += self.std_feature_importances[feature_idx, :] ** 2
+            _std_importance_mapped_to_resids[res2, :] += self.std_feature_importances[feature_idx, :] ** 2
+        _std_importance_mapped_to_resids = np.sqrt(_std_importance_mapped_to_resids)
 
-        self.importance_mapped_to_resids = importance_mapped_to_resids
-        self.std_importance_mapped_to_resids = std_importance_mapped_to_resids
+        self._importance_mapped_to_resids = _importance_mapped_to_resids
+        self._std_importance_mapped_to_resids = _std_importance_mapped_to_resids
 
     def _compute_importance_per_residue(self):
 
-        importance_per_residue = self.importance_mapped_to_resids.mean(axis=1)
-        std_importance_per_residue = np.sqrt(np.mean(self.std_importance_mapped_to_resids ** 2, axis=1))
+        importance_per_residue = self._importance_mapped_to_resids.mean(axis=1)
+        std_importance_per_residue = np.sqrt(np.mean(self._std_importance_mapped_to_resids ** 2, axis=1))
 
         if self.rescale_results:
             # Adds a second axis to feed to utils.rescale_feature_importance
@@ -245,13 +249,12 @@ class PostProcessor(object):
         self.std_importance_per_residue = std_importance_per_residue
 
     def _compute_importance_per_residue_and_cluster(self):
-
         if self.rescale_results:
-            self.importance_mapped_to_resids, self.std_importance_mapped_to_resids = utils.rescale_feature_importance(
-                self.importance_mapped_to_resids, self.std_importance_mapped_to_resids)
+            self._importance_mapped_to_resids, self._std_importance_mapped_to_resids = utils.rescale_feature_importance(
+                self._importance_mapped_to_resids, self._std_importance_mapped_to_resids)
 
-        self.importance_per_residue_and_cluster = self.importance_mapped_to_resids
-        self.std_importance_per_residue_and_cluster = self.std_importance_mapped_to_resids
+        self.importance_per_residue_and_cluster = self._importance_mapped_to_resids
+        self.std_importance_per_residue_and_cluster = self._std_importance_mapped_to_resids
 
     def _compute_average_std(self):
         """

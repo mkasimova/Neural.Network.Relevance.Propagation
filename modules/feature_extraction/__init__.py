@@ -9,6 +9,7 @@ from .mlp_ae_feature_extractor import MlpAeFeatureExtractor
 from .pca_feature_extractor import PCAFeatureExtractor
 from .random_forest_feature_extractor import RandomForestFeatureExtractor
 from .rbm_feature_extractor import RbmFeatureExtractor
+from .random_feature_extractor import RandomFeatureExtractor
 
 __all__ = []
 

@@ -87,7 +87,7 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
 
     results = []
     for extractor in feature_extractors:
-        extractor.error_limit = 500
+        extractor.error_limit = 50
         logger.info("Computing relevance for extractors %s", extractor.name)
         extractor.extract_features()
         test_set_errors = extractor.test_set_errors

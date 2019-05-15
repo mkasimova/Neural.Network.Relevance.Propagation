@@ -51,12 +51,17 @@ def show_all(postprocessors, extractor_type,
                           boxprops=_boxprops)
         axs[1, 0].set_ylabel("Accuracy\nper state")
         # Separation score
-        axs[2, 0].boxplot(utils.to_separation_score(postprocessors),
-                          showmeans=True,
-                          labels=xlabels,
-                          patch_artist=True,
-                          boxprops=_boxprops)
-        axs[2, 0].set_ylabel("Separation score")
+        ax2 = axs[2, 0]
+        ax2.boxplot(utils.to_separation_score(postprocessors),
+                    showmeans=True,
+                    labels=xlabels,
+                    patch_artist=True,
+                    boxprops=_boxprops)
+        ax2.set_ylabel("Separation score")
+
+    for [ax] in axs:
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+
     plt.title(extractor_type)
     plt.tight_layout(pad=0.3)
     plt.savefig(output_dir + filename)
@@ -70,7 +75,8 @@ def show_best(postprocessors, extractor_types,
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     xlabels = extractor_types
-    plt.boxplot(utils.to_accuracy(postprocessors),
+    accuracy = utils.to_accuracy(postprocessors)
+    plt.boxplot(accuracy.T,
                 showmeans=True,
                 labels=xlabels,
                 patch_artist=True,

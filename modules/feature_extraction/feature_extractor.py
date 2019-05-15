@@ -29,7 +29,7 @@ class FeatureExtractor(object):
                  n_splits=10,
                  n_iterations=10,
                  name='FeatureExtractor',
-                 error_limit=5,
+                 error_limit=None,
                  supervised=True,
                  remove_outliers=False,
                  shuffle_datasets=False):
@@ -48,6 +48,9 @@ class FeatureExtractor(object):
         self.scaling = scaling
         self.filter_by_distance_cutoff = filter_by_distance_cutoff
         self.name = name
+        if error_limit is None:
+            # We expect the error to be below random guessing (assuming balanced datasets)
+            error_limit = 100 * (1 - 1. / self.n_clusters) + 1e-4
         self.error_limit = error_limit
         self.use_inverse_distances = use_inverse_distances
         self.lower_bound_distance_cutoff = lower_bound_distance_cutoff

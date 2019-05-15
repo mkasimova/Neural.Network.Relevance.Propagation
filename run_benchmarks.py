@@ -22,11 +22,11 @@ def _fix_extractor_type(extractor_types):
     if len(extractor_types) == 1:
         et = extractor_types[0]
         if et == "supervised":
-            return ["KL", "RF", "MLP"]
+            return ["KL", "RF", "MLP", "RAND"]
         elif et == "unsupervised":
             return ["PCA", "RBM", "AE"]
         elif et == "all":
-            return ["KL", "RF", "MLP", "PCA", "RBM", "AE"]
+            return ["KL", "RF", "MLP", "PCA", "RBM", "AE", "RAND"]
     return extractor_types
 
 
@@ -64,19 +64,25 @@ def run(args):
         test_model=test_model,
         noise_level=noise_level)
     for et in extractor_types:
-        postprocessors = computing.compute(extractor_type=et,
-                                           output_dir=output_dir,
-                                           feature_type=feature_type,
-                                           overwrite=args.overwrite,
-                                           noise_level=args.noise_level,
-                                           test_model=args.test_model)
-        if visualize:
-            visualization.show_all(postprocessors=postprocessors,
-                                   extractor_type=et,
-                                   filename=fig_filename,
-                                   output_dir=output_dir)
-        best_processors.append(utils.find_best(postprocessors))
+        try:
+            postprocessors = computing.compute(extractor_type=et,
+                                               output_dir=output_dir,
+                                               feature_type=feature_type,
+                                               overwrite=args.overwrite,
+                                               noise_level=args.noise_level,
+                                               test_model=args.test_model)
+            if visualize:
+                visualization.show_all(postprocessors=postprocessors,
+                                       extractor_type=et,
+                                       filename=fig_filename,
+                                       output_dir=output_dir)
+            best_processors.append(utils.find_best(postprocessors))
+        except Exception as ex:
+            logger.exception(ex)
+            logger.warn("Failed for extractor %s ", et)
+            raise ex
     if visualize:
+        fig_filename = fig_filename.replace(".svg", "_{}.svg".format("-".join(extractor_types)))
         visualization.show_best(np.array(best_processors),
                                 extractor_types,
                                 filename=fig_filename,

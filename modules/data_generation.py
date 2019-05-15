@@ -74,9 +74,9 @@ class DataGenerator(object):
         if self.moved_atoms is None:
             self.moved_atoms = []
 
-            for c in range(self.nclusters):
+            for cluster_idx in range(self.nclusters):
                 # list of atoms to be moved in a selected cluster c
-                moved_atoms_c = self._pick_atoms(self.natoms_per_cluster[c], self.moved_atoms)
+                moved_atoms_c = self._pick_atoms(self.natoms_per_cluster[cluster_idx], self.moved_atoms)
                 self.moved_atoms.append(moved_atoms_c)
 
         if self.noise_natoms is not None:
@@ -89,24 +89,23 @@ class DataGenerator(object):
 
         frame_idx = 0
         self._save_xyz(xyz_output_dir, "conf", conf0, moved_atoms=[y for x in self.moved_atoms for y in x])
-        for c in range(self.nclusters):
+        for cluster_idx in range(self.nclusters):
 
             for f in range(self.nframes_per_cluster):
 
-                labels[frame_idx, c] = 1
+                labels[frame_idx, cluster_idx] = 1
                 conf = np.copy(conf0)
 
                 # Move atoms in each cluster
-                a_idx = 0
-                for a in self.moved_atoms[c]:
-                    conf[a, :] = self._move_an_atom(c, conf, a_idx, a)
-                    a_idx = a_idx + 1
+                for moved_atom_idx, atom_idx in enumerate(self.moved_atoms[cluster_idx]):
+                    self._move_an_atom(cluster_idx, conf, moved_atom_idx, atom_idx)
 
                 # Add constant noise
                 if self.noise_natoms is not None:
-                    for a in self.moved_atoms_noise:
+                    for atom_idx in self.moved_atoms_noise:
                         if frame_idx % 3 == 0:  # move noise atoms every 3rd frame
-                            conf[a, :] += [10 * self.displacement, 10 * self.displacement, 10 * self.displacement]
+                            conf[atom_idx, :] += [10 * self.displacement, 10 * self.displacement,
+                                                  10 * self.displacement]
 
                 # Add random noise
                 conf = self._perturb(conf)
@@ -120,8 +119,9 @@ class DataGenerator(object):
                     features = self._to_compact_dist(conf)
                 else:
                     raise Exception("Invalid feature type {}".format(self.feature_type))
-                self._save_xyz(xyz_output_dir, "cluster{}_frame{}".format(c, "0" + str(f) if f < 10 else f), conf,
-                               self.moved_atoms[c])
+                self._save_xyz(xyz_output_dir, "cluster{}_frame{}".format(cluster_idx, "0" + str(f) if f < 10 else f),
+                               conf,
+                               self.moved_atoms[cluster_idx])
                 data[frame_idx, :] = features
                 frame_idx += 1
 
@@ -155,58 +155,68 @@ class DataGenerator(object):
 
         return conf
 
-    def _move_an_atom(self, c, conf, a_idx, a):
+    def _move_an_atom(self, cluster_idx, conf, moved_atom_idx, atom_idx):
         """
         Move an atom of a cluster
+        :param cluster_idx:
+        :param conf:
+        :param moved_atom_idx: #The index of the moved atom for this cluster
+        :param atom_idx:
+        :return:
         """
-
         if self.test_model == 'linear':
-            conf[a, :] += [self.displacement, self.displacement, self.displacement]
+            conf[atom_idx, :] += [self.displacement, self.displacement, self.displacement]
 
         elif self.test_model == 'non-linear':
-            if a_idx == 0:
-                conf[a, :] += [c * self.displacement, 0, self.displacement - c * self.displacement]
+            if moved_atom_idx == 0:
+                conf[atom_idx, :] += [cluster_idx * self.displacement, 0,
+                                      self.displacement - cluster_idx * self.displacement]
             else:
-                conf[a, :] = self._move_an_atom_along_circle(c, conf, a_idx, a)
+                conf[atom_idx, :] = self._move_an_atom_along_circle(cluster_idx, conf, moved_atom_idx, atom_idx)
 
         elif self.test_model == 'non-linear-random-displacement':
-            if a_idx == 0:
-                conf[a, :] += [c * self.displacement + np.random.rand() * self.displacement, \
-                               0 + np.random.rand() * self.displacement, \
-                               self.displacement - c * self.displacement + np.random.rand() * self.displacement]  # displacement of the first atom is random
+            if moved_atom_idx == 0:
+                conf[atom_idx, :] += [cluster_idx * self.displacement + np.random.rand() * self.displacement, \
+                                      0 + np.random.rand() * self.displacement, \
+                                      self.displacement - cluster_idx * self.displacement + np.random.rand() * self.displacement]  # displacement of the first atom is random
             else:
-                conf[a, :] = self._move_an_atom_along_circle(c, conf, a_idx, a)
+                conf[atom_idx, :] = self._move_an_atom_along_circle(cluster_idx, conf, moved_atom_idx, atom_idx)
 
         elif self.test_model == 'non-linear-p-displacement':
             decision = np.random.rand()  # atoms move with [decision] probability
             if decision >= 0.5:
-                if a_idx == 0:
-                    conf[a, :] += [c * self.displacement, 0, self.displacement - c * self.displacement]
+                if moved_atom_idx == 0:
+                    conf[atom_idx, :] += [cluster_idx * self.displacement, 0,
+                                          self.displacement - cluster_idx * self.displacement]
                 else:
-                    conf[a, :] = self._move_an_atom_along_circle(c, conf, a_idx, a)
+                    conf[atom_idx, :] = self._move_an_atom_along_circle(cluster_idx, conf, moved_atom_idx, atom_idx)
 
-        return conf[a, :]
-
-    def _move_an_atom_along_circle(self, c, conf, a_idx, a):
+    def _move_an_atom_along_circle(self, cluster_idx, conf, moved_atom_idx, atom_idx):
         """
-        Move an atom of a cluster along the circle whose center is the previous atom (aa)
+        Move an atom of a cluster along the circle whose center is the previous atom
         First in XY plane
         And next in YZ plane
         """
+        if moved_atom_idx > 0:
+            previous_atom_idx = self.moved_atoms[cluster_idx][moved_atom_idx - 1]
 
-        aa = self.moved_atoms[c][a_idx - 1]  # previous atom
+            radius = np.sqrt(np.sum((conf[atom_idx, 0:2] - conf[previous_atom_idx, 0:2]) ** 2))
+            # direction of rotation in xyz plane is defined by atom index
+            angle_of_rotation = (-1) ** moved_atom_idx * self.displacement / radius
+            conf[atom_idx, 0:2] = conf[previous_atom_idx, 0:2] + \
+                                  self._rotate(angle_of_rotation,
+                                               conf[atom_idx] - conf[previous_atom_idx],
+                                               [0, 1])[0:2]
 
-        radius = np.sqrt(np.sum((conf[a, 0:2] - conf[aa, 0:2]) ** 2))
-        angle_of_rotation = (-1) ** (
-            a_idx) * self.displacement / radius  # direction of rotation is defined by a_idx - atom index
-        conf[a, 0:2] = conf[aa, 0:2] + self._rotate(angle_of_rotation, conf[a] - conf[aa], [0, 1])[0:2]
+            radius = np.sqrt(np.sum((conf[atom_idx, 1:3] - conf[previous_atom_idx, 1:3]) ** 2))
+            # direction of rotation in yz planed is defined by cluster index
+            angle_of_rotation = (-1) ** cluster_idx * self.displacement / radius
+            conf[atom_idx, 1:3] = conf[previous_atom_idx, 1:3] + \
+                                  self._rotate(angle_of_rotation,
+                                               conf[atom_idx] - conf[previous_atom_idx],
+                                               [1, 2])[1:3]
 
-        radius = np.sqrt(np.sum((conf[a, 1:3] - conf[aa, 1:3]) ** 2))
-        angle_of_rotation = (-1) ** (
-            c) * self.displacement / radius  # direction of rotation is defined by c - cluster index
-        conf[a, 1:3] = conf[aa, 1:3] + self._rotate(angle_of_rotation, conf[a] - conf[aa], [1, 2])[1:3]
-
-        return conf[a, :]
+        return conf[atom_idx, :]
 
     def _rotate(self, phi, xyz, dims):
 

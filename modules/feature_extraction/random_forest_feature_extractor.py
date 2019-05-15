@@ -67,12 +67,11 @@ class RandomForestFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using RF ...")
-        if self.one_vs_rest:
-            n_clusters = len(classifier)
-            n_features = data.shape[1]
-            feature_importances = np.zeros((n_features, n_clusters))
-            for i_cluster in range(n_clusters):
+        n_features = data.shape[1]
+        feature_importances = np.zeros((n_features, self.n_clusters))
+        for i_cluster in range(self.n_clusters):
+            if self.one_vs_rest:
                 feature_importances[:, i_cluster] = classifier[i_cluster].feature_importances_
-            return feature_importances
-        else:
-            return classifier.feature_importances_
+            else:
+                feature_importances[:, i_cluster] = classifier.feature_importances_
+        return feature_importances

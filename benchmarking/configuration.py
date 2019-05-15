@@ -14,8 +14,8 @@ from modules import feature_extraction as fe
 
 def get_feature_extractors_names(extractor_type, n_splits, n_iterations):
     return np.array([e.name for e in
-                      create_feature_extractors(extractor_type, np.zeros((3, 4)), np.array([0, 1, 0]), n_splits,
-                                                n_iterations)])
+                     create_feature_extractors(extractor_type, np.zeros((3, 4)), np.array([0, 1, 0]), n_splits,
+                                               n_iterations)])
 
 
 def create_feature_extractors(extractor_type, samples, cluster_indices, n_splits, n_iterations):
@@ -40,6 +40,8 @@ def create_feature_extractors(extractor_type, samples, cluster_indices, n_splits
         return create_AE_feature_extractors(extractor_kwargs)
     elif extractor_type == "PCA":
         return create_PCA_feature_extractors(extractor_kwargs)
+    elif extractor_type == "RAND":
+        return create_rand_feature_extractors(extractor_kwargs)
     else:
         raise Exception("Unknown extractor type {}".format(extractor_type))
 
@@ -54,19 +56,27 @@ def create_KL_feature_extractors(extractor_kwargs, bin_widths=[0.01, 0.1, 0.2, 0
     return feature_extractors
 
 
-def create_RF_feature_extractors(extractor_kwargs, n_estimators=[10, 100, 200]):
+def create_rand_feature_extractors(extractor_kwargs):
+    return [
+        fe.RandomFeatureExtractor(name="RAND", **extractor_kwargs)
+    ]
+
+
+def create_RF_feature_extractors(extractor_kwargs, n_estimators=[10, 100, 200], one_vs_rest=False):
+    suffix = "" if one_vs_rest else "_multiclass"
     return [
         fe.RandomForestFeatureExtractor(
-            name="{}-estimators".format(nest),
+            name="{}-estimators{}".format(nest, suffix),
             classifier_kwargs={
                 'n_estimators': nest
             },
+            one_vs_rest=one_vs_rest,
             **extractor_kwargs)
         for nest in n_estimators
     ]
 
 
-def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1_components", "1_components", 50, 100]):
+def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1_components", "2_components", 50, 100]):
     return [
         fe.PCAFeatureExtractor(
             name="{}-cutoff".format(cutoff),
@@ -76,7 +86,7 @@ def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1
     ]
 
 
-def create_RBM_feature_extractors(extractor_kwargs, n_components=[1, 10, 100, 200]):
+def create_RBM_feature_extractors(extractor_kwargs, n_components=[1, 3, 10, 100, 200]):
     return [
         fe.RbmFeatureExtractor(
             name="{}-components".format(ncomp),

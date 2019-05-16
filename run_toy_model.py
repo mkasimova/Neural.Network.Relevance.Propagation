@@ -36,19 +36,20 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
         fe.MlpFeatureExtractor(
             activation="relu",
             classifier_kwargs={
-                'hidden_layer_sizes': (dg.natoms, dg.nclusters * 2),
+                # 'hidden_layer_sizes': (dg.natoms, dg.nclusters * 2),
+                'hidden_layer_sizes': (int(dg.natoms / 2),),
                 # 'hidden_layer_sizes': [int(min(dg.nfeatures, 100) / (i + 1)) for i in range(10)],
                 'max_iter': 10000,
-                'alpha': 0.0001,
+                'alpha': 0.001,
             },
             **kwargs),
-        fe.ElmFeatureExtractor(
-            activation="relu",
-            classifier_kwargs={
-                'hidden_layer_sizes': (dg.nfeatures,),
-                'alpha': 50,
-            },
-            **kwargs),
+        # fe.ElmFeatureExtractor(
+        #     activation="relu",
+        #     classifier_kwargs={
+        #         'hidden_layer_sizes': (dg.nfeatures,),
+        #         'alpha': 50,
+        #     },
+        #     **kwargs),
         fe.KLFeatureExtractor(**kwargs),
         fe.RandomForestFeatureExtractor(
             one_vs_rest=False,
@@ -122,28 +123,27 @@ def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, vari
                             show_performance=False,
                             show_projected_data=False,
                             highlighted_residues=dg.moved_atoms,
-                            color_offset=0 if supervised else 3,
                             outfile="output/test_importance_per_residue_{suffix}.{filetype}".format(suffix=suffix,
                                                                                                     filetype=filetype))
-    visualization.visualize(postprocessors,
-                            show_importance=False,
-                            show_performance=True,
-                            show_projected_data=False,
-                            outfile="output/test_performance_{suffix}.{filetype}".format(suffix=suffix,
-                                                                                         filetype=filetype))
-    visualization.visualize(postprocessors,
-                            show_importance=False,
-                            show_performance=False,
-                            show_projected_data=True,
-                            outfile="output/test_projection_{suffix}.{filetype}".format(suffix=suffix,
-                                                                                        filetype=filetype))
+    # visualization.visualize(postprocessors,
+    #                         show_importance=False,
+    #                         show_performance=True,
+    #                         show_projected_data=False,
+    #                         outfile="output/test_performance_{suffix}.{filetype}".format(suffix=suffix,
+    #                                                                                      filetype=filetype))
+    # visualization.visualize(postprocessors,
+    #                         show_importance=False,
+    #                         show_performance=False,
+    #                         show_projected_data=True,
+    #                         outfile="output/test_projection_{suffix}.{filetype}".format(suffix=suffix,
+    #                                                                                     filetype=filetype))
     logger.info("Done. The settings were n_iterations = {n_iterations}, n_splits = {n_splits}."
                 "\nFiltering (filter_by_distance_cutoff={filter_by_distance_cutoff})".format(**kwargs))
 
 
 if __name__ == "__main__":
     dg = DataGenerator(
-        natoms=20,
+        natoms=30,
         nclusters=3,
         natoms_per_cluster=[1, 1, 1],
         moved_atoms=[[10], [12], [14]],
@@ -152,16 +152,16 @@ if __name__ == "__main__":
         # natoms_per_cluster=[1, 1, 1, 1],
         # moved_atoms=[[10], [60], [110], [130]],
         nframes_per_cluster=2000,
-        noise_level=0.005,  # 1e-2, #1e-2,
-        displacement=0.5,
+        noise_level=0.001,  # 1e-2, #1e-2,
+        displacement=0.1,
         noise_natoms=0,
-        feature_type='inv-dist',
+        # feature_type='inv-dist',
+        feature_type='cartesian_rot',
         test_model='non-linear'
         # test_model='non-linear'
-        # test_model='non-linear-random-displacement'
     )
     data, labels = dg.generate_data(
         xyz_output_dir=None)
     # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
     logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-    run(dg, data, labels, supervised=True, n_iterations=5)
+    run(dg, data, labels, supervised=True, n_iterations=10)

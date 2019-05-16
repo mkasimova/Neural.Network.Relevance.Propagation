@@ -240,3 +240,50 @@ def compute_mse_accuracy(measured_importance, relevant_residues=None, true_impor
 
     norm = np.linalg.norm(measured_importance - true_importance)
     return 1 - norm ** 2 / (np.linalg.norm(true_importance) ** 2 + np.linalg.norm(measured_importance) ** 2)
+
+
+def compute_relevant_fraction_accuracy(importance, relevant_residues):
+    """
+     relevant_fraction** = $\sum_{x} / \sum_{\phi} $ where $x$ = relevance of truly relevant atoms and $\phi$ = relevance of all atoms
+    :param importance:
+    :param relevant_residues:
+    :return:
+    """
+    return importance[relevant_residues].sum() / importance.sum()
+
+
+def strip_name(name):
+    if name is None:
+        return None
+    parts = [
+        n.split("-")[0]
+        for n in name.split("_")
+    ]
+    return "\n".join(parts)
+
+
+def _to_numerical(postprocessors, postprocessor_to_number_func):
+    res = np.empty(postprocessors.shape, dtype=float)
+    for indices, pp in np.ndenumerate(postprocessors):
+        num = postprocessor_to_number_func(pp)
+        res[indices] = np.nan if num is None else num
+
+    return res
+
+
+def to_accuracy(postprocessors):
+    return _to_numerical(postprocessors, lambda p: p.accuracy)
+
+
+def to_accuracy_per_cluster(postprocessors):
+    return _to_numerical(postprocessors, lambda p: p.accuracy_per_cluster)
+
+
+def to_separation_score(postprocessors):
+    return _to_numerical(postprocessors, lambda p: p.separation_score)
+
+
+def find_best(postprocessors):
+    accuracy = to_accuracy(postprocessors).mean(axis=0)
+    ind = accuracy.argmax()
+    return postprocessors[:, ind]

@@ -28,6 +28,7 @@ class PostProcessor(object):
                  filter_results=False,
                  feature_to_resids=None,
                  pdb_file=None,
+                 accuracy_method='mse',
                  predefined_relevant_residues=None,
                  use_GMM_estimator=True):
         """
@@ -78,13 +79,13 @@ class PostProcessor(object):
         elif feature_to_resids is None and self.pdb_file is not None:
             feature_to_resids = utils.get_feature_to_resids_from_pdb(self.nfeatures, self.pdb_file)
         self.feature_to_resids = feature_to_resids
+        self.accuracy_method = accuracy_method
 
         # Set average feature importances to None
         self.importance_per_residue_and_cluster = None
         self.std_importance_per_residue_and_cluster = None
         self.importance_per_residue = None
         self.std_importance_per_residue = None
-        self.index_to_resid = None
 
         # Performance metrics
         self.predefined_relevant_residues = predefined_relevant_residues
@@ -157,7 +158,8 @@ class PostProcessor(object):
             np.save(directory + 'accuracy_per_cluster', self.accuracy_per_cluster)
         if self.test_set_errors is not None:
             np.save(directory + 'test_set_errors', self.test_set_errors)
-
+        if self.feature_to_resids is not None:
+            np.save(directory + 'feature_to_resids', self.feature_to_resids)
         if self.pdb_file is not None:
             pdb = PandasPdb()
             pdb.read_pdb(self.pdb_file)
@@ -189,8 +191,8 @@ class PostProcessor(object):
 
         self.importance_per_residue = np.load(directory + "importance_per_residue.npy")
         self.std_importance_per_residue = np.load(directory + "std_importance_per_residue.npy")
-        self.std_importance_per_residue = np.load(directory + "feature_importance.npy")
-        self.std_importance_per_residue = np.load(directory + "std_feature_importance.npy")
+        self.feature_importances = np.load(directory + "feature_importance.npy")
+        self.std_feature_importances = np.load(directory + "std_feature_importance.npy")
 
         self.importance_per_residue_and_cluster = self._load_if_exists(
             directory + "importance_per_residue_and_cluster.npy")
@@ -201,21 +203,20 @@ class PostProcessor(object):
         self.accuracy = self._load_if_exists(directory + "accuracy.npy")
         self.accuracy_per_cluster = self._load_if_exists(directory + "accuracy_per_cluster.npy")
         self.test_set_errors = self._load_if_exists(directory + "test_set_errors.npy")
+        if self.feature_to_resids is None:  # Can be useful to override this in postprocesseing
+            self.feature_to_resids = self._load_if_exists(directory + "feature_to_resids.npy")
 
+        np.unique(np.asarray(self.feature_to_resids.flatten()))
         return self
 
     def _map_feature_to_resids(self):
-
-        self.index_to_resid = np.unique(
-            np.asarray(self.feature_to_resids.flatten()))  # at index X we have residue number
-        self.index_to_resid = [r for r in self.index_to_resid]
-        self.nresidues = len(self.index_to_resid)
-
+        # Create array of all unique reside numbers
+        index_to_resid = self.get_index_to_resid()
+        self.nresidues = len(index_to_resid)
         res_id_to_index = {}  # a map pointing back to the index in the array index_to_resid
-        for idx, resid in enumerate(self.index_to_resid):
-            res_id_to_index[resid] = idx
+        for idx, resid in enumerate(index_to_resid):
+            res_id_to_index[resid] = idx  # Now we now which residue points to which feature
 
-        # TODO what does this code below do and why is it here? the field _importance_mapped_to_resids duplicates importance_per_residue_and_cluster
         _importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
         _std_importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
         for feature_idx, rel in enumerate(self.feature_importances):
@@ -285,9 +286,14 @@ class PostProcessor(object):
         """
 
         relevant_residues_all_clusters = [y for x in self.predefined_relevant_residues for y in x]
-        self.accuracy = utils.compute_mse_accuracy(self.importance_per_residue,
-                                                   relevant_residues=relevant_residues_all_clusters)
-
+        if self.accuracy_method == 'mse':
+            self.accuracy = utils.compute_mse_accuracy(self.importance_per_residue,
+                                                       relevant_residues=relevant_residues_all_clusters)
+        elif self.accuracy_method == 'relevant_fraction':
+            self.accuracy = utils.compute_relevant_fraction_accuracy(self.importance_per_residue,
+                                                                     relevant_residues=relevant_residues_all_clusters)
+        else:
+            raise Exception("Invalid accuracy method {}".format(self.accuracy_method))
         if self.supervised:
             self.accuracy_per_cluster = 0
             for i in range(self.nclusters):
@@ -301,8 +307,9 @@ class PostProcessor(object):
         Maps importances to correct residue numbers
         """
         residue_to_importance = {}
+        index_to_resid = self.get_index_to_resid()
         for idx, rel in enumerate(importance_per_residue):
-            resSeq = self.index_to_resid[idx]
+            resSeq = index_to_resid[idx]
             residue_to_importance[resSeq] = rel
 
         return residue_to_importance
@@ -325,6 +332,9 @@ class PostProcessor(object):
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
         return self
+
+    def get_index_to_resid(self):
+        return np.unique(np.asarray(self.feature_to_resids.flatten()))
 
 
 class PerFrameImportancePostProcessor(PostProcessor):

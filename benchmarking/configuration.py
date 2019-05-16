@@ -62,18 +62,22 @@ def create_rand_feature_extractors(extractor_kwargs):
     ]
 
 
-def create_RF_feature_extractors(extractor_kwargs, n_estimators=[10, 100, 200], one_vs_rest=False):
-    suffix = "" if one_vs_rest else "_multiclass"
-    return [
-        fe.RandomForestFeatureExtractor(
-            name="{}-estimators{}".format(nest, suffix),
-            classifier_kwargs={
-                'n_estimators': nest
-            },
-            one_vs_rest=one_vs_rest,
-            **extractor_kwargs)
-        for nest in n_estimators
-    ]
+def create_RF_feature_extractors(extractor_kwargs, n_estimators=[10, 100, 200, 1000]):
+    extractors = []
+    for one_vs_rest in [True, False]:
+        suffix = "" if one_vs_rest else "_multiclass"
+        for nest in n_estimators:
+            extractors.append(
+                fe.RandomForestFeatureExtractor(
+                    name="{}-estimators{}".format(nest, suffix),
+                    classifier_kwargs={
+                        'n_estimators': nest
+                    },
+                    one_vs_rest=one_vs_rest,
+                    **extractor_kwargs)
+            )
+
+    return extractors
 
 
 def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1_components", "2_components", 50, 100]):

@@ -11,6 +11,7 @@ logging.basicConfig(
 import os
 import glob
 import numpy as np
+from modules import visualization
 from modules.data_generation import DataGenerator
 from . import configuration
 
@@ -24,7 +25,9 @@ def compute(extractor_type,
             iterations_per_model=10,
             test_model='linear',
             overwrite=False,
+            accuracy_method='mse',
             displacement=1e-1,
+            visualize=True,
             noise_level=1e-2,  # [1e-2, 1e-2, 2e-1, 2e-1],
             output_dir="output/benchmarking/"):
     """
@@ -42,6 +45,9 @@ def compute(extractor_type,
     :return: postprocessors (np.array of dim iterations_per_model, nfeature_extractors)
     """
     all_postprocessors = []
+    extractor_names = configuration.get_feature_extractors_names(extractor_type, n_splits=n_splits,
+                                                                 n_iterations=n_iterations)
+    n_extractors = len(extractor_names)
     for iter in range(iterations_per_model):
         modeldir = "{output_dir}/{extractor_type}/{feature_type}/{test_model}/noise-{noise_level}/iter-{iter}/".format(
             output_dir=output_dir,
@@ -51,8 +57,6 @@ def compute(extractor_type,
             noise_level=noise_level,
             iter=iter)
 
-        extractor_names = configuration.get_feature_extractors_names(extractor_type, n_splits=n_splits,
-                                                                     n_iterations=n_iterations)
         finished_extractors = []
         for name in extractor_names:
             if os.path.exists(modeldir):
@@ -62,7 +66,7 @@ def compute(extractor_type,
                     finished_extractors.append(name)
             else:
                 os.makedirs(modeldir)
-        needs_computations = len(finished_extractors) < len(extractor_names)
+        needs_computations = len(finished_extractors) < n_extractors
         dg = DataGenerator(natoms=100,
                            nclusters=3,
                            natoms_per_cluster=[10, 10, 10],
@@ -90,6 +94,7 @@ def compute(extractor_type,
                                           rescale_results=True,
                                           filter_results=False,
                                           working_dir=modeldir,
+                                          accuracy_method=accuracy_method,
                                           feature_to_resids=dg.feature_to_resids())
             if do_computations:
                 pp.average()
@@ -98,6 +103,15 @@ def compute(extractor_type,
             else:
                 pp.load()
                 pp.compute_accuracy()  # Recompute performance to handle changes in the accuracy measure
+            if visualize:
+                visualization.visualize([[pp]],
+                                        show_importance=True,
+                                        show_performance=False,
+                                        show_projected_data=False,
+                                        outfile="{}/{}/importance_per_residue.svg".format(modeldir, extractor.name),
+                                        highlighted_residues=pp.predefined_relevant_residues.flatten(),
+                                        show_average=False
+                                        )
             all_postprocessors[-1].append(pp)
 
     return np.array(all_postprocessors)

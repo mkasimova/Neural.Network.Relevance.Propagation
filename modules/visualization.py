@@ -4,21 +4,24 @@ import logging
 import sys
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 plt.style.use("seaborn-colorblind")
-from . import utils
-
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.DEBUG,
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
+import os
+import numpy as np
+from . import utils
 
 logger = logging.getLogger("visualization")
 plt.rcParams['figure.autolayout'] = True
 plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.size'] = 18
+# plt.rcParams['font.size'] = 18
+_blue = [50.0 / 256.0, 117.0 / 256.0, 220.0 / 256.0]
+_gray = [33.0 / 256.0, 36.0 / 256.0, 50.0 / 256.0]
+_boxprops = dict(facecolor=_blue)
 
 
 def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None,
@@ -30,7 +33,7 @@ def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, av
         ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:
         for h in highlighted_residues:
-            ax.axvline(h, linestyle='--', color=[50.0/256.0,117.0/256.0,220.0/256.0], linewidth=2)
+            ax.axvline(h, linestyle='--', color=_blue, linewidth=2)
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
     if set_ylim:
@@ -42,10 +45,10 @@ def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, av
         ax.legend()
 
 
-def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, marker, show_legends=False, std_val=None,ylim=None):
-
-    if not(np.isnan(y_val)):
-        ax.scatter(x_val, y_val, label=extractor_name, c='w', linewidth=2, marker=marker, s=300,edgecolor='k')
+def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, color, marker, show_legends=False,
+                             std_val=None, ylim=None):
+    if not (np.isnan(y_val)):
+        ax.scatter(x_val, y_val, label=extractor_name, c='w', linewidth=2, marker=marker, s=300, edgecolor='k')
         if ylim is not None:
             ax.set_ylim(ylim)
 
@@ -58,12 +61,15 @@ def _vis_performance_metrics(x_val, y_val, ax, xlabel, ylabel, extractor_name, c
     if show_legends:
         ax.legend()
 
-def _vis_performance_metrics_box_plot(performance_scores, ax, xlabel, ylabel, extractor_names, colors, show_legends=False,ylim=None):
+
+def _vis_performance_metrics_box_plot(performance_scores, ax, xlabel, ylabel, extractor_names, colors,
+                                      show_legends=False, ylim=None):
     medianprops = dict(color=[0.2, 0.2, 0.2], linewidth=1)
-    boxprops = dict(color='k', linewidth=1, facecolor=[0.8,0.8,0.8])
-    bp = ax.boxplot(performance_scores.T, notch=False, medianprops=medianprops,boxprops=boxprops, labels=extractor_names, patch_artist=True)
+    boxprops = dict(color='k', linewidth=1, facecolor=[0.8, 0.8, 0.8])
+    bp = ax.boxplot(performance_scores.T, notch=False, medianprops=medianprops, boxprops=boxprops,
+                    labels=extractor_names, patch_artist=True)
     for i_patch, patch in enumerate(bp['boxes']):
-        patch.set(facecolor=colors[i_patch],alpha=1)
+        patch.set(facecolor=colors[i_patch], alpha=1)
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -74,6 +80,7 @@ def _vis_performance_metrics_box_plot(performance_scores, ax, xlabel, ylabel, ex
     if show_legends:
         ax.legend()
 
+
 def _vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_name, std_val=None, xlabel='',
                                         ylabel='', ylim=None):
     ax.bar(x_val, y_val, width, color=col, edgecolor='', label=extractor_name)
@@ -83,7 +90,7 @@ def _vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_
                     linewidth=1,
                     linestyle='-', marker='s', markersize=1)
 
-    if ylim is not None and not(np.any(np.isnan(ylim))):
+    if ylim is not None and not (np.any(np.isnan(ylim))):
         ax.set_ylim(ylim)
 
     ax.set_xlabel(xlabel)
@@ -93,7 +100,7 @@ def _vis_per_cluster_projection_entropy(x_val, y_val, width, ax, col, extractor_
 
 
 def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
-                                          extractor_names, colors, markers):
+                                                  extractor_names, colors, markers):
     """
     Visualize (average + stddev) performance metrics of multiple runs.
     :param x_vals:
@@ -140,24 +147,26 @@ def _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels
             _vis_performance_metrics(x_vals[i_estimator], ave_metrics[i_metric][i_estimator], fig1.axes[i_metric],
                                      'Estimator',
                                      metric_labels[i_metric], extractor_names[i_estimator],
-                                     colors[i_estimator % len(colors)], markers[i_estimator], std_val=std_metrics[i_metric][i_estimator],
+                                     colors[i_estimator % len(colors)], markers[i_estimator],
+                                     std_val=std_metrics[i_metric][i_estimator],
                                      show_legends=False, ylim=[0, 1.05])
             if i_estimator == n_estimators - 1:
                 fig1.axes[i_metric].xaxis.set_ticks(x_vals)
                 fig1.axes[i_metric].set_xticklabels(x_tick_labels)
-                fig1.axes[i_metric].set_xlim([x_vals.min()-0.5,x_vals.max()+0.5])
+                fig1.axes[i_metric].set_xlim([x_vals.min() - 0.5, x_vals.max() + 0.5])
 
         if not (np.any(np.isnan(ave_per_cluster_projection_entropies[i_estimator, :]))):
             _vis_per_cluster_projection_entropy(x_val_clusters + width * i_estimator,
-                                                ave_per_cluster_projection_entropies[i_estimator, :], width, fig2.axes[0],
+                                                ave_per_cluster_projection_entropies[i_estimator, :], width,
+                                                fig2.axes[0],
                                                 colors[i_estimator % len(colors)],
                                                 extractor_names[i_estimator],
                                                 std_val=std_per_cluster_projection_entropies[i_estimator, :],
                                                 xlabel='Cluster', ylabel='Projection entropy',
                                                 ylim=cluster_proj_entroy_ylim)
 
-
     return
+
 
 def _vis_projected_data(proj_data, cluster_indices, fig, title):
     """
@@ -229,10 +238,10 @@ def extract_metrics(postprocessors):
             if i_run == 0:
                 extractor_names.append(pp.extractor.name)
 
-    #metric_labels = ['Average standard deviation', 'Separation score', 'Projection entropy']
+    # metric_labels = ['Average standard deviation', 'Separation score', 'Projection entropy']
     metric_labels = ['Separation score']
 
-    #metrics = [standard_devs, separation_scores, projection_entropies] # Only plot separation scores
+    # metrics = [standard_devs, separation_scores, projection_entropies] # Only plot separation scores
     metrics = [separation_scores]
 
     return x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names
@@ -244,7 +253,6 @@ def visualize(postprocessors,
               show_projected_data=False,
               outfile=None,
               highlighted_residues=None,
-              color_offset=0,
               show_average=False):
     """
     Plots the feature per residue.
@@ -258,29 +266,24 @@ def visualize(postprocessors,
     """
 
     n_feature_extractors = len(postprocessors)
-    #colors = np.array(plt.rcParams["axes.prop_cycle"].by_key()["color"])
-    colors = np.array([[33.0/256.0,36.0/256.0,50.0/256.0]])*n_feature_extractors
-    markers = ['o','s','>','^','d','v','<']
-    if color_offset > 0:
-        colors2 = colors.copy()
-        colors[:len(colors) - color_offset] = colors2[color_offset:]
-        colors[len(colors) - color_offset:] = colors2[:color_offset]
-
+    # colors = np.array(plt.rcParams["axes.prop_cycle"].by_key()["color"])
+    colors = np.array([_gray]) * n_feature_extractors
+    markers = ['o', 's', '>', '^', 'd', 'v', '<']
     if show_performance:
         x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names = extract_metrics(
             postprocessors)
 
         _vis_multiple_run_performance_metrics_ave_std(x_vals, metrics, metric_labels, per_cluster_projection_entropies,
-                                              extractor_names, colors, markers)
+                                                      extractor_names, colors, markers)
 
     # Visualize the first run
     i_run = 0
     if show_importance:
         ave_feats, std_feats = get_average_feature_importance(postprocessors, i_run)
-        fig1, axes1 = plt.subplots(1,n_feature_extractors, figsize=(65, 4))
+        fig1, axes1 = plt.subplots(1, n_feature_extractors, figsize=(8 * n_feature_extractors, 4))
         counter = 0
         for pp, ax in zip(postprocessors, fig1.axes):
-            _vis_feature_importance(pp[i_run].index_to_resid, pp[i_run].importance_per_residue,
+            _vis_feature_importance(pp[i_run].get_index_to_resid(), pp[i_run].importance_per_residue,
                                     pp[i_run].std_importance_per_residue,
                                     ax, pp[i_run].extractor.name, colors[counter % len(colors)],
                                     highlighted_residues=highlighted_residues,
@@ -301,3 +304,86 @@ def visualize(postprocessors,
         plt.tight_layout(pad=0.3)
         plt.savefig(outfile)
         plt.clf()
+
+
+def _show_performance(postprocessors,
+                      xlabels=None,
+                      title=None,
+                      filename=None,
+                      supervised=False,
+                      output_dir=None):
+    if len(postprocessors) == 0:
+        return
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    fig, axs = plt.subplots(3 if supervised else 1, 1, sharex=True, sharey=False, squeeze=False)
+    if title is not None:
+        plt.title(title)
+    accuracy = utils.to_accuracy(postprocessors)
+    ax0 = axs[0, 0]
+    ax0.boxplot(accuracy,
+                showmeans=True,
+                labels=xlabels,
+                patch_artist=True,
+                boxprops=_boxprops)
+    ax0.set_ylabel("Total\naccuracy")
+    if supervised:
+        # Per state
+        ax0.get_shared_y_axes().join(ax0, axs[1, 0])  # share y range with regular accuracy
+        axs[1, 0].boxplot(utils.to_accuracy_per_cluster(postprocessors),
+                          showmeans=True,
+                          labels=xlabels,
+                          patch_artist=True,
+                          boxprops=_boxprops)
+        axs[1, 0].set_ylabel("Accuracy\nper state")
+        # Separation score
+        ax2 = axs[2, 0]
+        ax2.boxplot(utils.to_separation_score(postprocessors),
+                    showmeans=True,
+                    labels=xlabels,
+                    patch_artist=True,
+                    boxprops=_boxprops)
+        ax2.set_ylabel("Separation score")
+
+    for [ax] in axs:
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+
+    plt.tight_layout(pad=0.3)
+    plt.savefig(output_dir + filename)
+    plt.clf()
+
+
+def show_single_extractor_performance(postprocessors,
+                                      extractor_type,
+                                      filename="all.svg",
+                                      output_dir="output/benchmarking/"):
+    output_dir = "{}/{}/".format(output_dir, extractor_type)
+    xlabels = [utils.strip_name(pp.extractor.name) for pp in postprocessors[0]]
+    _show_performance(postprocessors,
+                      xlabels=xlabels,
+                      title=extractor_type,
+                      filename=filename,
+                      supervised=postprocessors[0, 0].extractor.supervised,
+                      output_dir=output_dir)
+
+
+def show_all_extractors_performance(postprocessors,
+                                    extractor_types,
+                                    feature_type=None,
+                                    filename="all.svg",
+                                    output_dir="output/benchmarking/"
+                                    ):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    xlabels = extractor_types
+    supervised = True
+    for pp in postprocessors.flatten():
+        if not pp.extractor.supervised:
+            supervised = False
+            break
+    _show_performance(postprocessors.T,
+                      xlabels=xlabels,
+                      title=feature_type,
+                      filename=filename,
+                      supervised=supervised,
+                      output_dir=output_dir)

@@ -15,6 +15,7 @@ logger = logging.getLogger("KL divergence")
 
 
 class RandomFeatureExtractor(FeatureExtractor):
+    """Class which randomly assigns importance to features"""
 
     def __init__(self,
                  name="RAND",

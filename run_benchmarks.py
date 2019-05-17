@@ -20,12 +20,13 @@ logger = logging.getLogger("benchmarking")
 
 
 def _fix_extractor_type(extractor_types):
+    extractor_types = utils.make_list(extractor_types)
     if len(extractor_types) == 1:
         et = extractor_types[0]
         if et == "supervised":
             return ["KL", "RF", "MLP", "RAND"]
         elif et == "unsupervised":
-            return ["PCA", "RBM", "AE"]
+            return ["PCA", "RBM", "AE", "RAND"]
         elif et == "all":
             return ["KL", "RF", "MLP", "PCA", "RBM", "AE", "RAND"]
     return extractor_types
@@ -39,10 +40,13 @@ def create_argparser():
                         required=True)
     parser.add_argument('--output_dir', type=str, help='Root directory for output files',
                         default="output/benchmarking/")
-    parser.add_argument('--test_model', type=str, help='Toy model displacement: linear or non-linear', default="linear")
-    parser.add_argument('--feature_type', type=str, help='Toy model feature type: cartesian_rot, inv-dist, etc.',
+    parser.add_argument('--test_model', nargs='+', type=str, help='Toy model displacement: linear or non-linear',
+                        default="linear")
+    parser.add_argument('--feature_type', nargs='+',
+                        type=str, help='Toy model feature type: cartesian_rot, inv-dist, etc.',
                         default="cartesian_rot")
-    parser.add_argument('--noise_level', type=float, help='Strength of noise added to atomic coordinates at each frame',
+    parser.add_argument('--noise_level', nargs='+', type=float,
+                        help='Strength of noise added to atomic coordinates at each frame',
                         default=1e-2)
     parser.add_argument('--displacement', type=float, help='Strength of displacement for important atoms', default=1e-1)
     parser.add_argument('--overwrite', type=_bool_lambda,
@@ -50,35 +54,31 @@ def create_argparser():
                         default=False)
     parser.add_argument('--visualize', type=_bool_lambda, help='Generate output figures', default=True)
     parser.add_argument('--iterations_per_model', type=int, help='', default=10)
-    parser.add_argument('--accuracy_method', type=str, help='', default='relevant_fraction')
+    parser.add_argument('--accuracy_method', nargs='+', type=str, help='', default='mse')
 
     return parser
 
 
-def run(args):
-    extractor_types = _fix_extractor_type(args.extractor_type)
+def do_run(args, extractor_types, noise_level, test_model, feature_type, accuracy_method):
     visualize = args.visualize
     output_dir = args.output_dir
-    best_processors = []
-    feature_type = args.feature_type
-    test_model = args.test_model
-    noise_level = args.noise_level
     fig_filename = "{feature_type}_{test_model}_{noise_level}noise_{accuracy_method}.svg".format(
         feature_type=feature_type,
         test_model=test_model,
         noise_level=noise_level,
-        accuracy_method=args.accuracy_method)
+        accuracy_method=accuracy_method)
+    best_processors = []
     for et in extractor_types:
         try:
             postprocessors = computing.compute(extractor_type=et,
                                                output_dir=output_dir,
                                                feature_type=feature_type,
                                                overwrite=args.overwrite,
-                                               accuracy_method=args.accuracy_method,
+                                               accuracy_method=accuracy_method,
                                                iterations_per_model=args.iterations_per_model,
-                                               noise_level=args.noise_level,
+                                               noise_level=noise_level,
                                                visualize=visualize,
-                                               test_model=args.test_model)
+                                               test_model=test_model)
             if visualize:
                 visualization.show_single_extractor_performance(postprocessors=postprocessors,
                                                                 extractor_type=et,
@@ -98,8 +98,17 @@ def run(args):
                                                       output_dir=output_dir)
 
 
+def run_all(args):
+    extractor_types = _fix_extractor_type(args.extractor_type)
+    for noise_level in utils.make_list(args.noise_level):
+        for test_model in utils.make_list(args.test_model):
+            for feature_type in utils.make_list(args.feature_type):
+                for accuracy_method in utils.make_list(args.accuracy_method):
+                    do_run(args, extractor_types, noise_level, test_model, feature_type, accuracy_method)
+
+
 if __name__ == "__main__":
     parser = create_argparser()
     args = parser.parse_args()
-    run(args)
+    run_all(args)
     logger.info("Done!")

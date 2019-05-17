@@ -316,11 +316,13 @@ def _show_performance(postprocessors,
         return
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    fig, axs = plt.subplots(3 if supervised else 1, 1, sharex=True, sharey=False, squeeze=False)
-    if title is not None:
-        plt.title(title)
+    nrows = 3 if supervised else 1
+    fig, axs = plt.subplots(nrows, 1, sharex=True, sharey=False, squeeze=False,
+                            figsize=(int(1.5 * postprocessors.shape[0]), 3 * nrows))
     accuracy = utils.to_accuracy(postprocessors)
     ax0 = axs[0, 0]
+    if title is not None:
+        ax0.set_title(title)
     ax0.boxplot(accuracy,
                 showmeans=True,
                 labels=xlabels,

@@ -26,7 +26,19 @@ def _get_important_residues():
     all_ligands = [109, 113, 114, 117, 193, 195, 203, 204, 207, 286, 289, 290, 293, 308, 309, 312]
     agonists = [193, 117, 109, 113, 308, 293, 289, 207]
     asp_cavity = [79, 82, 322]
-    highlighted_residues = g_protein + yy + connector + npxxy + all_ligands + asp_cavity + agonists
+    other = [75, 275]
+    all = [g_protein,
+           yy,
+           connector,
+           npxxy,
+           all_ligands,
+           asp_cavity,
+           agonists,
+           other
+           ]
+    highlighted_residues = []
+    for h in all:
+        highlighted_residues += h
     highlighted_residues = set(highlighted_residues)
     return highlighted_residues
 
@@ -84,10 +96,10 @@ def run(nclusters=2,
     }
     unsupervised_feature_extractors = [
         fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
-                               variance_cutoff=75,
+                               variance_cutoff='auto',
                                name='PCA',
                                **kwargs),
-        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 4},
+        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 1},
                                relevance_method='from_lrp',
                                name='RBM',
                                **kwargs),
@@ -111,20 +123,20 @@ def run(nclusters=2,
             one_vs_rest=False,
             classifier_kwargs={'n_estimators': 1000},
             **kwargs),
-        fe.KLFeatureExtractor(**kwargs),
-        fe.MlpFeatureExtractor(
-            classifier_kwargs={
-                # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-                'hidden_layer_sizes': (100,),
-                'max_iter': 10000,
-                'alpha': 0.01,
-                'activation': "relu"
-            },
-            # per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories"
-            #                              "/mlp_perframe_importance/"
-            #                              "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
-            #     .format(feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
-            **kwargs),
+        # fe.KLFeatureExtractor(**kwargs),
+        # fe.MlpFeatureExtractor(
+        #     classifier_kwargs={
+        #         # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+        #         'hidden_layer_sizes': (30,),
+        #         'max_iter': 10000,
+        #         'alpha': 0.01,
+        #         'activation': "relu"
+        #     },
+        #     # per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories"
+        #     #                              "/mlp_perframe_importance/"
+        #     #                              "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
+        #     #     .format(feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        #     **kwargs),
     ]
 
     if supervised is None:
@@ -198,8 +210,9 @@ for nclusters in range(2, 6):
         simu_type=simu_type,
         n_iterations=10,
         n_splits=4,
-        supervised=None,
+        supervised=True,
         shuffle_datasets=True,
-        filter_by_distance_cutoff=True)
+        overwrite=True,
+        filter_by_distance_cutoff=False)
     if simu_type != "clustering":
         break

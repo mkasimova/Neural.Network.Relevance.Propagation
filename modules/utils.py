@@ -287,3 +287,13 @@ def find_best(postprocessors):
     accuracy = to_accuracy(postprocessors).mean(axis=0)
     ind = accuracy.argmax()
     return postprocessors[:, ind]
+
+
+def make_list(obj):
+    """
+    :param it:
+    :return: empty list if obj is None, a singleton list of obj is not a list, else obj
+    """
+    if obj is None:
+        return []
+    return obj if isinstance(obj, list) else [obj]

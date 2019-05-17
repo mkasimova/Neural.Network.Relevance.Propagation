@@ -17,7 +17,7 @@ logger = logging.getLogger("beta2")
 utils.remove_outliers = False
 
 
-def _get_important_residues():
+def _get_important_residues(supervised):
     npxxy = [322, 323, 324, 325, 326, ]
     yy = [219, 326]
     connector = [121, 282]
@@ -25,19 +25,39 @@ def _get_important_residues():
     # see https://www.nature.com/articles/srep34736/figures/3
     all_ligands = [109, 113, 114, 117, 193, 195, 203, 204, 207, 286, 289, 290, 293, 308, 309, 312]
     agonists = [193, 117, 109, 113, 308, 293, 289, 207]
-    asp_cavity = [79, 82, 322]
-    other = [75, 275]
-    all = [g_protein,
-           yy,
-           connector,
-           npxxy,
-           all_ligands,
-           asp_cavity,
-           agonists,
-           other
-           ]
+    asp_cavity = [79]
+    # For holo the ion is most prominently bound to Cys184, Asn187 and Cys190, as it should be.
+    # There is occasionally a sodium bound to Asp192 and quite often a sodium bount to Asp300 but the signal is not near as strong.
+    sodium_sites = [79, 113, 184, 187, 190, 192, 300, 319]
+    identified_byt_not_known = [144, 160, 163, 169, 179, 316]
+    other = [75, 82, 275]
+    all_supervised = [
+        # g_protein,
+        #               npxxy,
+        #               yy,
+        # connector,
+        asp_cavity,
+        all_ligands,
+        # agonists,
+        # identified_byt_not_known,
+        # sodium_sites,
+        # other
+    ]
+    all_unsupervised = [
+        g_protein,
+        npxxy,
+        yy,
+        connector,
+        asp_cavity,
+        # all_ligands,
+        # agonists,
+        # identified_byt_not_known,
+        # sodium_sites,
+        # other
+    ]
+
     highlighted_residues = []
-    for h in all:
+    for h in all_supervised if supervised else all_unsupervised:
         highlighted_residues += h
     highlighted_residues = set(highlighted_residues)
     return highlighted_residues
@@ -96,13 +116,14 @@ def run(nclusters=2,
     }
     unsupervised_feature_extractors = [
         fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
-                               variance_cutoff='auto',
+                               # variance_cutoff='auto',
+                               variance_cutoff='1_components',
                                name='PCA',
                                **kwargs),
-        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 1},
-                               relevance_method='from_lrp',
-                               name='RBM',
-                               **kwargs),
+        # fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 1},
+        #                        relevance_method='from_lrp',
+        #                        name='RBM',
+        #                        **kwargs),
         # fe.MlpAeFeatureExtractor(
         #     classifier_kwargs={
         #         'hidden_layer_sizes': (100, 30, 2, 30, 100,),  # int(data.shape[1]/2),),
@@ -144,7 +165,7 @@ def run(nclusters=2,
     else:
         feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
-    highlighted_residues = _get_important_residues()
+    highlighted_residues = _get_important_residues(supervised)
     # # Run the relevance analysis
     postprocessors = []
     for extractor in feature_extractors:
@@ -208,11 +229,11 @@ for nclusters in range(2, 6):
         # feature_type="closest-heavy_inv",
         feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=10,
+        n_iterations=30,
         n_splits=4,
         supervised=True,
         shuffle_datasets=True,
-        overwrite=True,
+        overwrite=False,
         filter_by_distance_cutoff=False)
     if simu_type != "clustering":
         break

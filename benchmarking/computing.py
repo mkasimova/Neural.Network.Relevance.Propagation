@@ -109,9 +109,26 @@ def compute(extractor_type,
                                         show_performance=False,
                                         show_projected_data=False,
                                         outfile="{}/{}/importance_per_residue.svg".format(modeldir, extractor.name),
-                                        highlighted_residues=pp.predefined_relevant_residues.flatten(),
+                                        highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
                                         show_average=False
                                         )
+                if do_computations:
+                    visualization.visualize([[pp]],
+                                            show_importance=False,
+                                            show_performance=False,
+                                            show_projected_data=True,
+                                            outfile="{}/{}/projected_data.svg".format(modeldir, extractor.name),
+                                            highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
+                                            show_average=False
+                                            )
+                    visualization.visualize([[pp]],
+                                            show_importance=False,
+                                            show_performance=True,
+                                            show_projected_data=False,
+                                            outfile="{}/{}/performance.svg".format(modeldir, extractor.name),
+                                            highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
+                                            show_average=False
+                                            )
             all_postprocessors[-1].append(pp)
 
     return np.array(all_postprocessors)

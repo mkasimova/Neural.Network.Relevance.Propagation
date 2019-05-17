@@ -83,7 +83,8 @@ def do_run(args, extractor_types, noise_level, test_model, feature_type, accurac
                 visualization.show_single_extractor_performance(postprocessors=postprocessors,
                                                                 extractor_type=et,
                                                                 filename=fig_filename,
-                                                                output_dir=output_dir)
+                                                                output_dir=output_dir,
+                                                                accuracy_method=accuracy_method)
             best_processors.append(utils.find_best(postprocessors))
         except Exception as ex:
             logger.exception(ex)
@@ -95,7 +96,8 @@ def do_run(args, extractor_types, noise_level, test_model, feature_type, accurac
                                                       extractor_types,
                                                       feature_type=feature_type,
                                                       filename=fig_filename,
-                                                      output_dir=output_dir)
+                                                      output_dir=output_dir,
+                                                      accuracy_method=accuracy_method)
 
 
 def run_all(args):

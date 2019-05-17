@@ -33,7 +33,8 @@ def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, av
         ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:
         for h in highlighted_residues:
-            ax.axvline(h, linestyle='--', color=_blue, linewidth=2)
+            ax.axvline(h, linestyle='--', color=_blue, linewidth=2, alpha=0.67)
+            # ax.text(h, 1.05, str(h), rotation=45)
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
     if set_ylim:
@@ -311,14 +312,15 @@ def _show_performance(postprocessors,
                       title=None,
                       filename=None,
                       supervised=False,
-                      output_dir=None):
+                      output_dir=None,
+                      accuracy_method=None):
     if len(postprocessors) == 0:
         return
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     nrows = 3 if supervised else 1
     fig, axs = plt.subplots(nrows, 1, sharex=True, sharey=False, squeeze=False,
-                            figsize=(int(1.5 * postprocessors.shape[0]), 3 * nrows))
+                            figsize=(int(0.5 * postprocessors.shape[0]), 2 * nrows))
     accuracy = utils.to_accuracy(postprocessors)
     ax0 = axs[0, 0]
     if title is not None:
@@ -328,7 +330,12 @@ def _show_performance(postprocessors,
                 labels=xlabels,
                 patch_artist=True,
                 boxprops=_boxprops)
-    ax0.set_ylabel("Total\naccuracy")
+    accuracy_label = "Accuracy"
+    if accuracy_method == 'mse':
+        accuracy_label = "Accuracy:\nfinding all"
+    elif accuracy_method == 'relevant_fraction':
+        accuracy_label = "Accuracy:\nignoring irrelevant"
+    ax0.set_ylabel(accuracy_label)
     if supervised:
         # Per state
         ax0.get_shared_y_axes().join(ax0, axs[1, 0])  # share y range with regular accuracy
@@ -358,7 +365,8 @@ def _show_performance(postprocessors,
 def show_single_extractor_performance(postprocessors,
                                       extractor_type,
                                       filename="all.svg",
-                                      output_dir="output/benchmarking/"):
+                                      output_dir="output/benchmarking/",
+                                      accuracy_method=None):
     output_dir = "{}/{}/".format(output_dir, extractor_type)
     xlabels = [utils.strip_name(pp.extractor.name) for pp in postprocessors[0]]
     _show_performance(postprocessors,
@@ -366,14 +374,16 @@ def show_single_extractor_performance(postprocessors,
                       title=extractor_type,
                       filename=filename,
                       supervised=postprocessors[0, 0].extractor.supervised,
-                      output_dir=output_dir)
+                      output_dir=output_dir,
+                      accuracy_method=accuracy_method)
 
 
 def show_all_extractors_performance(postprocessors,
                                     extractor_types,
                                     feature_type=None,
                                     filename="all.svg",
-                                    output_dir="output/benchmarking/"
+                                    output_dir="output/benchmarking/",
+                                    accuracy_method=None
                                     ):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -383,9 +393,11 @@ def show_all_extractors_performance(postprocessors,
         if not pp.extractor.supervised:
             supervised = False
             break
+    title = "Cartesian" if "cart" in feature_type else "Inverse distance"
     _show_performance(postprocessors.T,
                       xlabels=xlabels,
-                      title=feature_type,
+                      title=title,
                       filename=filename,
                       supervised=supervised,
-                      output_dir=output_dir)
+                      output_dir=output_dir,
+                      accuracy_method=accuracy_method)

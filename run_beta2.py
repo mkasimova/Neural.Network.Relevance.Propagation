@@ -18,10 +18,10 @@ utils.remove_outliers = False
 
 
 def _get_important_residues(supervised):
-    npxxy = [322, 323, 324, 325, 326, ]
+    npxxy = [322, 323, 324, 325]
     yy = [219, 326]
     connector = [121, 282]
-    g_protein = [131, 266, 268, 327, 272, 124, 279]
+    # g_protein = [131, 266, 268, 327, 272, 124, 279]
     # see https://www.nature.com/articles/srep34736/figures/3
     all_ligands = [109, 113, 114, 117, 193, 195, 203, 204, 207, 286, 289, 290, 293, 308, 309, 312]
     agonists = [193, 117, 109, 113, 308, 293, 289, 207]
@@ -31,36 +31,33 @@ def _get_important_residues(supervised):
     sodium_sites = [79, 113, 184, 187, 190, 192, 300, 319]
     identified_byt_not_known = [144, 160, 163, 169, 179, 316]
     other = [75, 82, 275]
-    all_supervised = [
-        # g_protein,
-        #               npxxy,
-        #               yy,
-        # connector,
-        asp_cavity,
-        all_ligands,
-        # agonists,
-        # identified_byt_not_known,
-        # sodium_sites,
-        # other
-    ]
-    all_unsupervised = [
-        g_protein,
-        npxxy,
-        yy,
-        connector,
-        asp_cavity,
-        # all_ligands,
-        # agonists,
-        # identified_byt_not_known,
-        # sodium_sites,
-        # other
-    ]
-
-    highlighted_residues = []
-    for h in all_supervised if supervised else all_unsupervised:
-        highlighted_residues += h
-    highlighted_residues = set(highlighted_residues)
-    return highlighted_residues
+    if supervised:
+        return {
+            # g_protein,
+            #               npxxy,
+            #               yy,
+            # connector,
+            'Ligand interactions': all_ligands,
+            'Asp79': asp_cavity,
+            # agonists,
+            # identified_byt_not_known,
+            # sodium_sites,
+            # other
+        }
+    else:
+        return {
+            # 'G protein site': g_protein,
+            'NPxxY': npxxy,
+            'YY bond': yy,
+            # 'Connector': connector,
+            # 'Asp79': asp_cavity,
+            # all_ligands,
+            # agonists,
+            # identified_byt_not_known,
+            # sodium_sites,
+            # other
+        }
+    return
 
 
 def run(nclusters=2,

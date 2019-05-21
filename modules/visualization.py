@@ -24,17 +24,34 @@ _gray = [33.0 / 256.0, 36.0 / 256.0, 50.0 / 256.0]
 _boxprops = dict(facecolor=_blue)
 
 
+def _plot_highligthed_residues(highlighted_residues, ax, linestyles=['dashed', 'solid', 'dotted', 'dashdot'],
+                               alpha=0.67, linewidth=1):
+    if isinstance(highlighted_residues, dict):
+        for idx, (label, residues) in enumerate(highlighted_residues.items()):
+            for r_idx, r in enumerate(residues):
+                ax.axvline(r, linestyle=linestyles[idx % len(linestyles)],
+                           label=label if r_idx == 0 else None,
+                           color=_blue,
+                           linewidth=linewidth,
+                           alpha=alpha)
+        ax.legend()
+    else:
+        for r in highlighted_residues:
+            ax.axvline(r, linestyle=linestyles[0], label=None, color=_blue, linewidth=linewidth,
+                       alpha=alpha)
+
+
 def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None,
                             show_title=True, set_ylim=True):
     y_val, std_val = y_val.squeeze(), std_val.squeeze()  # Remove unnecessary unit dimensions for visualization
-    ax.plot(x_val, y_val, color=color, label=extractor_name, linewidth=3)
+    ax.plot(x_val, y_val, color=color,
+            # label=extractor_name,
+            linewidth=3)
     ax.fill_between(x_val, y_val - std_val, y_val + std_val, color=color, alpha=0.2)
     if average is not None:
         ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:
-        for h in highlighted_residues:
-            ax.axvline(h, linestyle='--', color=_blue, linewidth=2, alpha=0.67)
-            # ax.text(h, 1.05, str(h), rotation=45)
+        _plot_highligthed_residues(highlighted_residues, ax)
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
     if set_ylim:
@@ -281,7 +298,7 @@ def visualize(postprocessors,
     i_run = 0
     if show_importance:
         ave_feats, std_feats = get_average_feature_importance(postprocessors, i_run)
-        fig1, axes1 = plt.subplots(1, n_feature_extractors, figsize=(8 * n_feature_extractors, 4))
+        fig1, axes1 = plt.subplots(1, n_feature_extractors, figsize=(6 * n_feature_extractors, 3))
         counter = 0
         for pp, ax in zip(postprocessors, fig1.axes):
             _vis_feature_importance(pp[i_run].get_index_to_resid(), pp[i_run].importance_per_residue,

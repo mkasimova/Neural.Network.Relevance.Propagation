@@ -158,8 +158,10 @@ def create_AE_feature_extractors(extractor_kwargs,
                 classifier_kwargs={
                     'alpha': alpha,
                     'hidden_layer_sizes': layers,
-                    'max_iter': 100000,
-                    'solver': "adam"
+                    'max_iter': 500,
+                    'solver': "adam",
+                    'early_stopping': True,
+                    'tol': 1e-3
                 },
                 activation="logistic",
                 **extractor_kwargs)

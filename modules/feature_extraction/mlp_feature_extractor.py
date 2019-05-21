@@ -55,7 +55,8 @@ class MlpFeatureExtractor(FeatureExtractor):
         self.frame_importances = None
 
     def train(self, train_set, train_labels):
-        logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
+        logger.debug("Training %s with %s samples and %s features ...", self.name, train_set.shape[0],
+                     train_set.shape[1])
         classifier = sklearn.neural_network.MLPClassifier(**self._classifier_kwargs)
         classifier.fit(train_set, train_labels)
         return classifier

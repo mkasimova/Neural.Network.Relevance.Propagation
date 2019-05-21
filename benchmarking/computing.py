@@ -99,6 +99,7 @@ def compute(extractor_type,
             if do_computations:
                 pp.average()
                 pp.evaluate_performance()
+                logger.debug("Saving feature importance")
                 pp.persist()
             else:
                 pp.load()

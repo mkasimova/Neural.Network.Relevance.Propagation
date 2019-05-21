@@ -27,18 +27,17 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
         self.use_reconstruction_for_lrp = use_reconstruction_for_lrp
         logger.debug("Initializing MLP AE with the following parameters:"
                      " use_reconstruction_for_lrp %s", use_reconstruction_for_lrp)
-        self.classifier = None
 
     def train(self, train_set, train_labels):
-        logger.debug("Training MLP with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
+        logger.debug("Training %s with %s samples and %s features ...", self.name, train_set.shape[0],
+                     train_set.shape[1])
         classifier_kwargs = self._classifier_kwargs
         classifier_kwargs['hidden_layer_sizes'] = list(classifier_kwargs['hidden_layer_sizes']) + [train_set.shape[1]]
         classifier = sklearn.neural_network.MLPRegressor(**classifier_kwargs)
         classifier.fit(train_set, train_set)  # note same output as input
-        self.classifier = classifier
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP Autoencoder ...")
-        target_values = self.classifier.predict(data) if self.use_reconstruction_for_lrp else data
-        res = MlpFeatureExtractor.get_feature_importance(self, self.classifier, data, target_values)
+        target_values = classifier.predict(data) if self.use_reconstruction_for_lrp else data
+        res = MlpFeatureExtractor.get_feature_importance(self, classifier, data, target_values)
         return res.mean(axis=1)

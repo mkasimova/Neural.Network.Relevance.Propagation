@@ -35,6 +35,7 @@ class MlpAeFeatureExtractor(MlpFeatureExtractor):
         classifier_kwargs['hidden_layer_sizes'] = list(classifier_kwargs['hidden_layer_sizes']) + [train_set.shape[1]]
         classifier = sklearn.neural_network.MLPRegressor(**classifier_kwargs)
         classifier.fit(train_set, train_set)  # note same output as input
+        return classifier
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP Autoencoder ...")

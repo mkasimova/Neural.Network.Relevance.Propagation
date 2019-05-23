@@ -335,7 +335,7 @@ def _show_performance(postprocessors,
         return
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    nrows = 3 if supervised else 1
+    nrows = 2 if supervised else 1
     fig, axs = plt.subplots(nrows, 1, sharex=True, sharey=False, squeeze=False,
                             figsize=(int(0.5 * postprocessors.shape[0]), 2 * nrows))
     accuracy = utils.to_accuracy(postprocessors)
@@ -362,14 +362,14 @@ def _show_performance(postprocessors,
                           patch_artist=True,
                           boxprops=_boxprops)
         axs[1, 0].set_ylabel("Accuracy\nper state")
-        # Separation score
-        ax2 = axs[2, 0]
-        ax2.boxplot(utils.to_separation_score(postprocessors),
-                    showmeans=True,
-                    labels=xlabels,
-                    patch_artist=True,
-                    boxprops=_boxprops)
-        ax2.set_ylabel("Separation score")
+        # # Separation score
+        # ax2 = axs[2, 0]
+        # ax2.boxplot(utils.to_separation_score(postprocessors),
+        #             showmeans=True,
+        #             labels=xlabels,
+        #             patch_artist=True,
+        #             boxprops=_boxprops)
+        # ax2.set_ylabel("Separation score")
 
     for [ax] in axs:
         ax.set_xticklabels(xlabels, rotation=45, ha='right')

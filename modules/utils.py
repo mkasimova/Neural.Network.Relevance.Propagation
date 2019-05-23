@@ -255,10 +255,11 @@ def compute_relevant_fraction_accuracy(importance, relevant_residues):
 def strip_name(name):
     if name is None:
         return None
-    parts = [
-        n.split("-")[0]
-        for n in name.split("_")
-    ]
+    parts = []
+    for n in name.split("_"):
+        n = n.split("-")[0]
+        n = n.replace("components", "PC")
+        parts.append(n)
     return "\n".join(parts)
 
 

@@ -63,9 +63,9 @@ class MlpFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP ...")
-        self._create_layers(classifier)
+        layers = self._create_layers(classifier)
         # Calculate relevance
-        propagator = relprop.RelevancePropagator(self.layers)
+        propagator = relprop.RelevancePropagator(layers)
         relevance = propagator.propagate(data, labels)
         # Average relevance per cluster
         nclusters = labels.shape[1]
@@ -133,7 +133,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                 else:
                     raise Exception("Unsupported MLP backend {}".format(self.backend))
 
-        self.layers = layers
+        return layers
 
     def _on_all_features_extracted(self, feats, errors, n_features):
         FeatureExtractor._on_all_features_extracted(self, feats, errors, n_features)

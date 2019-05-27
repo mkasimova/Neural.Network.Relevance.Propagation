@@ -138,14 +138,20 @@ def create_MLP_feature_extractors(extractor_kwargs,
 
 def create_AE_feature_extractors(extractor_kwargs,
                                  alpha_hidden_layers=[
+                                     # New values
+                                     (0.0001, [8, 2, 8, ]),
+                                     (0.0001, [16, ]),
+                                     (0.1, [8, 2, 8, ]),
+                                     # (0.0001, [1, ]),
+
                                      # Benchmarking layer size
-                                     (0.0001, [10, 2, 10, ]),
-                                     (0.0001, [100, 25, 100, ]),  # actually used in both benchmarks
-                                     (0.0001, [100, 25, 5, 25, 100, ]),
-                                     # benchmarking alpha
-                                     (0.001, [100, 25, 100, ]),
-                                     (0.01, [100, 25, 100, ]),
-                                     (0.1, [100, 25, 100, ]),
+                                     # (0.0001, [10, 2, 10, ]),
+                                     # (0.0001, [100, 25, 100, ]),  # actually used in both benchmarks
+                                     # (0.0001, [100, 25, 5, 25, 100, ]),
+                                     # # benchmarking alpha
+                                     # (0.001, [100, 25, 100, ]),
+                                     # (0.01, [100, 25, 100, ]),
+                                     # (0.1, [100, 25, 100, ]),
 
                                  ]
                                  ):

@@ -284,7 +284,9 @@ class PostProcessor(object):
         """
         Computes accuracy with an normalized MSE based metric
         """
-
+        if self.predefined_relevant_residues is None:
+            logger.warn("Cannot compute accuracy without predefined relevant residues")
+            return
         relevant_residues_all_clusters = [y for x in self.predefined_relevant_residues for y in x]
         if self.accuracy_method == 'mse':
             self.accuracy = utils.compute_mse_accuracy(self.importance_per_residue,

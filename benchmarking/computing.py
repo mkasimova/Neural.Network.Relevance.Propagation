@@ -104,6 +104,7 @@ def compute(extractor_type,
             else:
                 pp.load()
                 pp.compute_accuracy()  # Recompute performance to handle changes in the accuracy measure
+            logger.info("Accuracy for %s: %s (%s)", extractor.name, pp.accuracy, pp.accuracy_method)
             if visualize:
                 visualization.visualize([[pp]],
                                         show_importance=True,

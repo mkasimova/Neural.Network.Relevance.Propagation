@@ -90,3 +90,6 @@ class KLFeatureExtractor(FeatureExtractor):
             data_rest = data[labels[:, i_cluster] == 0, :]
             self.feature_importances[:, i_cluster] = self._KL_divergence(data_cluster, data_rest)
         return self
+
+    def _train_one_vs_one(self, data, labels):
+        raise NotImplementedError()

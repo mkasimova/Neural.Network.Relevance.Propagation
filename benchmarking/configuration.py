@@ -138,10 +138,11 @@ def create_MLP_feature_extractors(extractor_kwargs,
 
 def create_AE_feature_extractors(extractor_kwargs,
                                  alpha_hidden_layers=[
+                                     (0.01, [10, 7, 5, 2, 5, 7, 10, ])
                                      # New values
-                                     (0.0001, [8, 2, 8, ]),
-                                     (0.0001, [16, ]),
-                                     (0.1, [8, 2, 8, ]),
+                                     # (0.0001, [8, 2, 8, ]),
+                                     # (0.0001, [16, ]),
+                                     # (0.1, [8, 2, 8, ]),
                                      # (0.0001, [1, ]),
 
                                      # Benchmarking layer size
@@ -162,14 +163,17 @@ def create_AE_feature_extractors(extractor_kwargs,
             fe.MlpAeFeatureExtractor(
                 name=name,
                 classifier_kwargs={
-                    'alpha': alpha,
                     'hidden_layer_sizes': layers,
-                    'max_iter': 500,
+                    'max_iter': 200,
+                    'learning_rate': 'adaptive',
+                    'alpha': alpha,
                     'solver': "adam",
                     'early_stopping': True,
-                    'tol': 1e-3
+                    'tol': 1e-1,
+                    'warm_start': False
                 },
                 activation="logistic",
+                use_reconstruction_for_lrp=True,
                 **extractor_kwargs)
         )
     return feature_extractors

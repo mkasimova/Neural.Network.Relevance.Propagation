@@ -27,6 +27,8 @@ class MlpFeatureExtractor(FeatureExtractor):
                  randomize=True,
                  supervised=True,
                  per_frame_importance_outfile=None,
+                 per_frame_importance_samples=None,
+                 per_frame_importance_labels=None,
                  classifier_kwargs={},
                  **kwargs):
         FeatureExtractor.__init__(self,
@@ -36,8 +38,9 @@ class MlpFeatureExtractor(FeatureExtractor):
         self.backend = "scikit-learn"  # Only available option for now, more to come probably
         logger.debug("Initializing MLP with the following parameters:"
                      " activation function %s, randomize %s, classifier_kwargs %s,"
-                     " per_frame_importance_outfile %s, backend %s",
-                     activation, randomize, classifier_kwargs, per_frame_importance_outfile, self.backend)
+                     " per_frame_importance_outfile %s, backend %s, per_frame_importance_samples %s",
+                     activation, randomize, classifier_kwargs, per_frame_importance_outfile, self.backend,
+                     per_frame_importance_samples)
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
@@ -51,8 +54,10 @@ class MlpFeatureExtractor(FeatureExtractor):
         self._classifier_kwargs['activation'] = self.activation
         if not self.randomize:
             self._classifier_kwargs['random_state'] = 89274
-        self.per_frame_importance_outfile = per_frame_importance_outfile
         self.frame_importances = None
+        self.per_frame_importance_outfile = per_frame_importance_outfile
+        self.per_frame_importance_samples = per_frame_importance_samples
+        self.per_frame_importance_labels = per_frame_importance_labels
 
     def train(self, train_set, train_labels):
         logger.debug("Training %s with %s samples and %s features ...", self.name, train_set.shape[0],
@@ -61,8 +66,7 @@ class MlpFeatureExtractor(FeatureExtractor):
         classifier.fit(train_set, train_labels)
         return classifier
 
-    def get_feature_importance(self, classifier, data, labels):
-        logger.debug("Extracting feature importance using MLP ...")
+    def _perform_lrp(self, classifier, data, labels):
         layers = self._create_layers(classifier)
         # Calculate relevance
         propagator = relprop.RelevancePropagator(layers)
@@ -72,7 +76,6 @@ class MlpFeatureExtractor(FeatureExtractor):
         nfeatures = relevance.shape[1]
         result = np.zeros((nfeatures, nclusters))
         frames_per_cluster = np.zeros((nclusters))
-
         # Rescale relevance according to min and max relevance in each frame
         logger.debug("Rescaling feature importance extracted using MLP in each frame between min and max ...")
         for i in range(relevance.shape[0]):
@@ -84,21 +87,34 @@ class MlpFeatureExtractor(FeatureExtractor):
         for frame_idx, frame in enumerate(labels):
             cluster_idx = labels[frame_idx].argmax()
             frames_per_cluster[cluster_idx] += 1
-
-        if self.per_frame_importance_outfile is not None:
-            if self.n_splits != 1:
-                logger.error("Cannot average frame importance to outfile if n_splits != 1. n_splits is now set to %s",
-                             self.n_splits)
-            if self.shuffle_datasets:
-                logger.error("Data set has been shuffled, per frame importance will not be properly mapped")
-            else:
-                # for every feature in every frame...
-                self.frame_importances = np.zeros(relevance.shape)
-
         for frame_idx, rel in enumerate(relevance):
             cluster_idx = labels[frame_idx].argmax()
             result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
-            if self.frame_importances is not None:
+
+        return relevance, result
+
+    def get_feature_importance(self, classifier, data, labels):
+        logger.debug("Extracting feature importance using MLP ...")
+        relevance, result = self._perform_lrp(classifier, data, labels)
+
+        if self.per_frame_importance_outfile is not None:
+            if self.per_frame_importance_samples is not None:
+                other_labels = classifier.predict(self.per_frame_importance_samples) \
+                    if self.per_frame_importance_labels is None \
+                    else self.per_frame_importance_labels
+                frame_relevance, _ = self._perform_lrp(classifier, self.per_frame_importance_samples, other_labels)
+            else:
+                logger.info("Using same trajectory for per frame importance as was used for training.")
+                if self.n_splits != 1:
+                    logger.error(
+                        "Cannot average frame importance to outfile if n_splits != 1. n_splits is now set to %s",
+                        self.n_splits)
+                if self.shuffle_datasets:
+                    logger.error("Data set has been shuffled, per frame importance will not be properly mapped")
+                frame_relevance = relevance
+            # for every feature in every frame...
+            self.frame_importances = np.zeros(relevance.shape)
+            for frame_idx, rel in enumerate(frame_relevance):
                 self.frame_importances[frame_idx] += rel / self.n_iterations
         return result
 

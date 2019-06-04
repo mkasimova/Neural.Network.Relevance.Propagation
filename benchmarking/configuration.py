@@ -138,7 +138,10 @@ def create_MLP_feature_extractors(extractor_kwargs,
 
 def create_AE_feature_extractors(extractor_kwargs,
                                  alpha_hidden_layers=[
-                                     (0.01, [10, 7, 5, 2, 5, 7, 10, ])
+                                     (0.01, [10, 7, 5, 2, 5, 7, 10, ]),
+                                     (0.001, [10, 7, 5, 2, 5, 7, 10, ]),
+                                     (0.01, [20, 10, 7, 5, 2, 5, 7, 10, 20]),
+                                     (0.01, [20, 5, 20, ]),
                                      # New values
                                      # (0.0001, [8, 2, 8, ]),
                                      # (0.0001, [16, ]),
@@ -169,7 +172,7 @@ def create_AE_feature_extractors(extractor_kwargs,
                     'alpha': alpha,
                     'solver': "adam",
                     'early_stopping': True,
-                    'tol': 1e-1,
+                    'tol': 1e-2,
                     'warm_start': False
                 },
                 activation="logistic",

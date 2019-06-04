@@ -9,9 +9,10 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
+import mdtraj as md
 import numpy as np
 import glob
-from modules import utils, filtering, feature_extraction as fe, visualization
+from modules import utils, filtering, feature_extraction as fe, visualization, traj_preprocessing as tp
 
 logger = logging.getLogger("beta2")
 utils.remove_outliers = False
@@ -60,8 +61,18 @@ def _get_important_residues(supervised):
     return
 
 
+def _load_trajectory_for_predictions(simu_type, ligand):
+    if simu_type != "apo-holo" or ligand not in ['apo', 'holo']:
+        raise NotImplementedError
+    infile = "/home/oliverfl/projects/gpcr/temp_trajs/asp79-{}-swarms-nolipid".format(ligand)
+    traj = md.load(infile + ".xtc", top=infile + ".pdb")
+    samples, feature_to_resids, pairs = tp.to_distances(traj)
+    return samples, None
+
+
 def run(nclusters=2,
         simu_type="apo-holo",
+        ligand_type='holo',
         n_iterations=1,
         n_splits=1,
         shuffle_datasets=True,
@@ -70,6 +81,7 @@ def run(nclusters=2,
         feature_type="ca_inv",  # "contacts_5_cutoff", "closest-heavy_inv" or "CA_inv", "cartesian_ca", "cartesian_noh"
         filetype="svg",
         supervised=True,
+        load_trajectory_for_predictions=True,
         filter_by_distance_cutoff=True):
     if simu_type == "clustering":
         working_dir = os.path.expanduser("~/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/")
@@ -131,30 +143,37 @@ def run(nclusters=2,
         #     use_reconstruction_for_lrp=True,
         #     **kwargs),
     ]
+    if load_trajectory_for_predictions:
+        other_samples, other_labels = _load_trajectory_for_predictions(simu_type, ligand_type)
+    else:
+        None, None
     supervised_feature_extractors = [
         # fe.ElmFeatureExtractor(
         #     activation="relu",
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        fe.RandomForestFeatureExtractor(
-            one_vs_rest=False,
-            classifier_kwargs={'n_estimators': 1000},
-            **kwargs),
-        # fe.KLFeatureExtractor(**kwargs),
-        # fe.MlpFeatureExtractor(
-        #     classifier_kwargs={
-        #         # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-        #         'hidden_layer_sizes': (30,),
-        #         'max_iter': 10000,
-        #         'alpha': 0.01,
-        #         'activation': "relu"
-        #     },
-        #     # per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/trajectories"
-        #     #                              "/mlp_perframe_importance/"
-        #     #                              "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
-        #     #     .format(feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        # fe.RandomForestFeatureExtractor(
+        #     one_vs_rest=False,
+        #     classifier_kwargs={'n_estimators': 1000},
         #     **kwargs),
+        # fe.KLFeatureExtractor(**kwargs),
+        fe.MlpFeatureExtractor(
+            name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
+            classifier_kwargs={
+                # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+                'hidden_layer_sizes': (30,),
+                'max_iter': 10000,
+                'alpha': 0.01,
+                'activation': "relu"
+            },
+            per_frame_importance_samples=other_samples,
+            per_frame_importance_labels=other_labels,
+            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/trajectories"
+                                         "/mlp_perframe_importance_{}/"
+                                         "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
+                .format(ligand_type, feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+            **kwargs),
     ]
 
     if supervised is None:
@@ -227,10 +246,12 @@ for nclusters in range(2, 6):
         feature_type="ca_inv",
         simu_type=simu_type,
         n_iterations=30,
-        n_splits=4,
+        n_splits=1,
         supervised=True,
         shuffle_datasets=True,
         overwrite=False,
+        load_trajectory_for_predictions=True,
+        ligand_type='apo',
         filter_by_distance_cutoff=False)
     if simu_type != "clustering":
         break

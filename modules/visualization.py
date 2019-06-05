@@ -41,8 +41,39 @@ def _plot_highligthed_residues(highlighted_residues, ax, linestyles=['dashed', '
                        alpha=alpha)
 
 
+def _insert_gaps(x_val, y_val):
+    """
+    Look for gaps in x_val (assuming it is a sequence of integers) and insert np.nan in the correspoding position in y
+    This should insert gaps in plots where residues are missing
+    :param x_val:
+    :param y_val:
+    :return:
+    """
+    last_x = None
+    new_x = []
+    new_y = []
+    eps = 1e-4
+    for i, x in enumerate(x_val):
+        if isinstance(x, str) or abs(np.rint(x) - x) > eps:
+            # We're note dealing with integer data
+            return x_val, y_val
+        x = int(np.rint(x))
+        if last_x is not None and x - last_x - 1 > 0:
+            # Fill gaps
+            for g in range(last_x + 1, x + 1):
+                new_x.append(g)
+                new_y.append(np.nan)
+        new_x.append(x)
+        new_y.append(y_val[i])
+        last_x = x
+    new_x = np.array(new_x)
+    new_y = np.array(new_y)
+    return new_x, new_y
+
+
 def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None,
                             show_title=True, set_ylim=True):
+    x_val, y_val = _insert_gaps(x_val, y_val)
     y_val, std_val = y_val.squeeze(), std_val.squeeze()  # Remove unnecessary unit dimensions for visualization
     ax.plot(x_val, y_val, color=color,
             # label=extractor_name,

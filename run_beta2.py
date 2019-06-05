@@ -27,6 +27,7 @@ def _get_important_residues(supervised):
     all_ligands = [109, 113, 114, 117, 193, 195, 203, 204, 207, 286, 289, 290, 293, 308, 309, 312]
     agonists = [193, 117, 109, 113, 308, 293, 289, 207]
     asp_cavity = [79]
+    tm6 = [i for i in range(266, 273)]
     # For holo the ion is most prominently bound to Cys184, Asn187 and Cys190, as it should be.
     # There is occasionally a sodium bound to Asp192 and quite often a sodium bount to Asp300 but the signal is not near as strong.
     sodium_sites = [79, 113, 184, 187, 190, 192, 300, 319]
@@ -49,7 +50,8 @@ def _get_important_residues(supervised):
         return {
             # 'G protein site': g_protein,
             'NPxxY': npxxy,
-            'YY bond': yy,
+            #'YY bond': yy,
+            'TM6': tm6
             # 'Connector': connector,
             # 'Asp79': asp_cavity,
             # all_ligands,

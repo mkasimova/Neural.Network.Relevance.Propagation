@@ -62,6 +62,7 @@ class FeatureExtractor(object):
         self.std_feature_importance = None
         self.test_set_errors = None
         self.indices_for_filtering = None
+        self.scaler = None
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
                      " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
                      " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s, shuffle_datasets %s",
@@ -124,7 +125,7 @@ class FeatureExtractor(object):
         if self.scaling:
             # Note that we must use the same scalers for all data
             # It is important for some methods (relevance propagation in NN) that all data is scaled between 0 and 1
-            self.samples = utils.scale(self.samples, remove_outliers=self.remove_outliers)
+            self.samples, self.scaler = utils.scale(self.samples, remove_outliers=self.remove_outliers)
 
         train_inds, test_inds = self.split_train_test()
         errors = np.zeros(self.n_splits * self.n_iterations)

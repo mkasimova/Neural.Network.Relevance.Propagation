@@ -78,7 +78,7 @@ def scale(data, remove_outliers=False):
 
     data_scaled = scaler.transform(data)
 
-    return data_scaled
+    return data_scaled, scaler
 
 
 def create_class_labels(clustering):

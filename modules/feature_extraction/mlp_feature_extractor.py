@@ -102,7 +102,8 @@ class MlpFeatureExtractor(FeatureExtractor):
                 other_labels = classifier.predict(self.per_frame_importance_samples) \
                     if self.per_frame_importance_labels is None \
                     else self.per_frame_importance_labels
-                frame_relevance, _ = self._perform_lrp(classifier, self.per_frame_importance_samples, other_labels)
+                other_samples = self.scaler.transform(self.per_frame_importance_samples)
+                frame_relevance, _ = self._perform_lrp(classifier, other_samples, other_labels)
             else:
                 logger.info("Using same trajectory for per frame importance as was used for training.")
                 if self.n_splits != 1:

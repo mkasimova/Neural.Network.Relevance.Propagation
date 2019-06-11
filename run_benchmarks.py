@@ -28,7 +28,7 @@ def _fix_extractor_type(extractor_types):
         elif et == "unsupervised":
             return ["PCA", "RBM", "AE", "RAND"]
         elif et == "all":
-            return ["KL", "RF", "MLP", "PCA", "RBM", "AE", "RAND"]
+            return ["PCA", "RBM", "AE", "KL", "RF", "MLP", "RAND"]
     return extractor_types
 
 

@@ -71,14 +71,17 @@ def _insert_gaps(x_val, y_val):
     return new_x, new_y
 
 
-def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None,
+def _vis_feature_importance(xvalues, importances, std_importance, ax, extractor_name, color, average=None,
+                            highlighted_residues=None,
                             show_title=True, set_ylim=True):
-    x_val, y_val = _insert_gaps(x_val, y_val)
-    y_val, std_val = y_val.squeeze(), std_val.squeeze()  # Remove unnecessary unit dimensions for visualization
+    x_val, y_val = _insert_gaps(xvalues, importances)
+    x_val, std_yval = _insert_gaps(xvalues, std_importance)
+    y_val, std_yval = y_val.squeeze(), std_yval.squeeze()  # Remove unnecessary unit dimensions for visualization
     ax.plot(x_val, y_val, color=color,
             # label=extractor_name,
             linewidth=3)
-    ax.fill_between(x_val, y_val - std_val, y_val + std_val, color=color, alpha=0.2)
+    if std_yval is not None:
+        ax.fill_between(x_val, y_val - std_yval, y_val + std_yval, color=color, alpha=0.2)
     if average is not None:
         ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:

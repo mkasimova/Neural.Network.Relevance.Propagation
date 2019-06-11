@@ -40,6 +40,8 @@ def _get_important_residues(supervised):
             # connector,
             'Ligand interactions': all_ligands,
             'Asp79': asp_cavity,
+            'Glu268': [268],
+            'Leu144': [144],
             # agonists,
             # identified_byt_not_known,
             # sodium_sites,
@@ -49,7 +51,8 @@ def _get_important_residues(supervised):
         return {
             # 'G protein site': g_protein,
             'NPxxY': npxxy,
-            'YY bond': yy,
+            'Glu268': [268],
+            #'YY bond': yy,
             # 'Connector': connector,
             # 'Asp79': asp_cavity,
             # all_ligands,
@@ -64,7 +67,8 @@ def _get_important_residues(supervised):
 def _load_trajectory_for_predictions(simu_type, ligand):
     if simu_type != "apo-holo" or ligand not in ['apo', 'holo']:
         raise NotImplementedError
-    infile = "/home/oliverfl/projects/gpcr/temp_trajs/asp79-{}-swarms-nolipid".format(ligand)
+    infile = "/home/oliverfl/MEGA/PHD/projects/relevance_propagation/results/apo-holo/trajectories/asp79-{}-swarms-nowater-nolipid".format(
+        ligand)
     traj = md.load(infile + ".xtc", top=infile + ".pdb")
     samples, feature_to_resids, pairs = tp.to_distances(traj)
     return samples, None
@@ -146,34 +150,34 @@ def run(nclusters=2,
     if load_trajectory_for_predictions:
         other_samples, other_labels = _load_trajectory_for_predictions(simu_type, ligand_type)
     else:
-        None, None
+        other_samples, other_labels = None, None
     supervised_feature_extractors = [
         # fe.ElmFeatureExtractor(
         #     activation="relu",
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        # fe.RandomForestFeatureExtractor(
-        #     one_vs_rest=False,
-        #     classifier_kwargs={'n_estimators': 1000},
-        #     **kwargs),
-        # fe.KLFeatureExtractor(**kwargs),
-        fe.MlpFeatureExtractor(
-            name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
-            classifier_kwargs={
-                # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-                'hidden_layer_sizes': (30,),
-                'max_iter': 10000,
-                'alpha': 0.01,
-                'activation': "relu"
-            },
-            per_frame_importance_samples=other_samples,
-            per_frame_importance_labels=other_labels,
-            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/trajectories"
-                                         "/mlp_perframe_importance_{}/"
-                                         "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
-                .format(ligand_type, feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        fe.RandomForestFeatureExtractor(
+            one_vs_rest=False,
+            classifier_kwargs={'n_estimators': 1000},
             **kwargs),
+        fe.KLFeatureExtractor(**kwargs),
+        # fe.MlpFeatureExtractor(
+        #     name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
+        #     classifier_kwargs={
+        #         # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+        #         'hidden_layer_sizes': (30,),
+        #         'max_iter': 10000,
+        #         'alpha': 0.01,
+        #         'activation': "relu"
+        #     },
+        #     per_frame_importance_samples=other_samples,
+        #     per_frame_importance_labels=other_labels,
+        #     per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/trajectories"
+        #                                  "/mlp_perframe_importance_{}/"
+        #                                  "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
+        #         .format(ligand_type, feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        #     **kwargs),
     ]
 
     if supervised is None:
@@ -246,11 +250,11 @@ for nclusters in range(2, 6):
         feature_type="ca_inv",
         simu_type=simu_type,
         n_iterations=30,
-        n_splits=1,
-        supervised=True,
+        n_splits=4,
+        supervised=False,
         shuffle_datasets=True,
         overwrite=False,
-        load_trajectory_for_predictions=True,
+        load_trajectory_for_predictions=False,
         ligand_type='apo',
         filter_by_distance_cutoff=False)
     if simu_type != "clustering":

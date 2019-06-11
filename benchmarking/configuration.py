@@ -90,17 +90,22 @@ def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1
     ]
 
 
-def create_RBM_feature_extractors(extractor_kwargs, n_components=[1, 3, 10, 100, 200]):
-    return [
-        fe.RbmFeatureExtractor(
-            name="{}-components".format(ncomp),
-            classifier_kwargs={
-                'n_components': ncomp
-            },
-            **extractor_kwargs
-        )
-        for ncomp in n_components
-    ]
+def create_RBM_feature_extractors(extractor_kwargs,
+                                  n_components=[1, 3, 10, 100, 200],
+                                  learning_rates=[1, 0.1, 0.01, 0.001]):
+    res = []
+    for ncomp in n_components:
+        for l in learning_rates:
+            ext = fe.RbmFeatureExtractor(
+                name="{}-components_{}-learningrate".format(ncomp, l),
+                classifier_kwargs={
+                    'n_components': ncomp,
+                    'learning_rate': l
+                },
+                **extractor_kwargs
+            )
+            res.append(ext)
+    return res
 
 
 def create_MLP_feature_extractors(extractor_kwargs,

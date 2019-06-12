@@ -31,11 +31,11 @@ class PCAFeatureExtractor(FeatureExtractor):
         logger.debug("Initializing PCA with the following parameters: variance_cutoff %s, classifier_kwargs %s",
                      variance_cutoff, classifier_kwargs)
         self.variance_cutoff = variance_cutoff
-        self._classifier_kwargs = classifier_kwargs
+        self.classifier_kwargs = classifier_kwargs
 
     def train(self, train_set, train_labels):
         logger.debug("Training PCA with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        model = PCA(**self._classifier_kwargs)
+        model = PCA(**self.classifier_kwargs)
         model.fit(train_set)
         return model
 

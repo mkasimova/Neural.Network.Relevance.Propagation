@@ -91,30 +91,43 @@ def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1
 
 
 def create_RBM_feature_extractors(extractor_kwargs,
-                                  n_components=[1, 3, 10, 100, 200],
-                                  learning_rates=[1, 0.1, 0.01, 0.001]):
+                                  n_components_learning_rates=[
+                                      # sampling components
+                                      (1, 0.1),
+                                      (3, 0.1),
+                                      (10, 0.1),
+                                      (100, 0.1),
+                                      (200, 0.1),
+                                      # Sampling learning rate
+                                      (1, 1),
+                                      (1, 0.01),
+                                      (1, 0.001),
+                                      (10, 1),
+                                      (10, 0.01),
+                                      (10, 0.001),
+
+                                  ]):
     res = []
-    for ncomp in n_components:
-        for l in learning_rates:
-            ext = fe.RbmFeatureExtractor(
-                name="{}-components_{}-learningrate".format(ncomp, l),
-                classifier_kwargs={
-                    'n_components': ncomp,
-                    'learning_rate': l
-                },
-                **extractor_kwargs
-            )
-            res.append(ext)
+    for ncomp, l in n_components_learning_rates:
+        ext = fe.RbmFeatureExtractor(
+            name="{}-components_{}-learningrate".format(ncomp, l),
+            classifier_kwargs={
+                'n_components': ncomp,
+                'learning_rate': l
+            },
+            **extractor_kwargs
+        )
+        res.append(ext)
     return res
 
 
 def create_MLP_feature_extractors(extractor_kwargs,
                                   alpha_hidden_layers=[
                                       # Benchmarking layer size
-                                      (0.0001, [10, ]),
-                                      (0.0001, [1000, ]),
                                       (0.0001, [100, ]),  # actually used in both benchmarks
+                                      (0.0001, [1000, ]),
                                       (0.0001, [50, 10]),
+                                      (0.0001, [10, ]),
                                       (0.0001, [30, 10, 5]),
                                       # benchmarking alpha
                                       (0.001, [100, ]),

@@ -52,7 +52,7 @@ def _get_important_residues(supervised):
             # 'G protein site': g_protein,
             'NPxxY': npxxy,
             'Glu268': [268],
-            #'YY bond': yy,
+            # 'YY bond': yy,
             # 'Connector': connector,
             # 'Asp79': asp_cavity,
             # all_ligands,
@@ -157,27 +157,27 @@ def run(nclusters=2,
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        fe.RandomForestFeatureExtractor(
-            one_vs_rest=False,
-            classifier_kwargs={'n_estimators': 1000},
-            **kwargs),
-        fe.KLFeatureExtractor(**kwargs),
-        # fe.MlpFeatureExtractor(
-        #     name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
-        #     classifier_kwargs={
-        #         # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-        #         'hidden_layer_sizes': (30,),
-        #         'max_iter': 10000,
-        #         'alpha': 0.01,
-        #         'activation': "relu"
-        #     },
-        #     per_frame_importance_samples=other_samples,
-        #     per_frame_importance_labels=other_labels,
-        #     per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/trajectories"
-        #                                  "/mlp_perframe_importance_{}/"
-        #                                  "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
-        #         .format(ligand_type, feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        # fe.RandomForestFeatureExtractor(
+        #     one_vs_rest=False,
+        #     classifier_kwargs={'n_estimators': 1000},
         #     **kwargs),
+        # fe.KLFeatureExtractor(**kwargs),
+        fe.MlpFeatureExtractor(
+            name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
+            classifier_kwargs={
+                # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+                'hidden_layer_sizes': (30,),
+                'max_iter': 10000,
+                'alpha': 0.01,
+                'activation': "relu"
+            },
+            per_frame_importance_samples=other_samples,
+            per_frame_importance_labels=other_labels,
+            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/trajectories"
+                                         "/mlp_perframe_importance_{}/"
+                                         "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
+                .format(ligand_type, feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+            **kwargs),
     ]
 
     if supervised is None:
@@ -249,13 +249,13 @@ for nclusters in range(2, 6):
         # feature_type="closest-heavy_inv",
         feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=30,
+        n_iterations=5,
         n_splits=4,
-        supervised=False,
-        shuffle_datasets=True,
-        overwrite=False,
-        load_trajectory_for_predictions=False,
-        ligand_type='apo',
+        supervised=True,
+        shuffle_datasets=False,
+        overwrite=True,
+        load_trajectory_for_predictions=True,
+        ligand_type='holo',
         filter_by_distance_cutoff=False)
     if simu_type != "clustering":
         break

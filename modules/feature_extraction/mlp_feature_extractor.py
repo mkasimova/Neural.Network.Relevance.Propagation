@@ -45,15 +45,15 @@ class MlpFeatureExtractor(FeatureExtractor):
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
         self.randomize = randomize
-        self._classifier_kwargs = classifier_kwargs.copy()
+        self.classifier_kwargs = classifier_kwargs.copy()
         if classifier_kwargs.get('activation', None) is not None and \
                 classifier_kwargs.get('activation') != self.activation:
             logger.warn("Conflicting activation properiies. '%s' will be overwritten with '%s'",
                         classifier_kwargs.get('activation'),
                         self.activation)
-        self._classifier_kwargs['activation'] = self.activation
+        self.classifier_kwargs['activation'] = self.activation
         if not self.randomize:
-            self._classifier_kwargs['random_state'] = 89274
+            self.classifier_kwargs['random_state'] = 89274
         self.frame_importances = None
         self.per_frame_importance_outfile = per_frame_importance_outfile
         self.per_frame_importance_samples = per_frame_importance_samples
@@ -62,7 +62,7 @@ class MlpFeatureExtractor(FeatureExtractor):
     def train(self, train_set, train_labels):
         logger.debug("Training %s with %s samples and %s features ...", self.name, train_set.shape[0],
                      train_set.shape[1])
-        classifier = sklearn.neural_network.MLPClassifier(**self._classifier_kwargs)
+        classifier = sklearn.neural_network.MLPClassifier(**self.classifier_kwargs)
         classifier.fit(train_set, train_labels)
         return classifier
 

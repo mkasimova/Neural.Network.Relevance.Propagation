@@ -239,7 +239,8 @@ def compute_mse_accuracy(measured_importance, relevant_residues=None, true_impor
         true_importance[relevant_residues.flatten()] = 1
 
     norm = np.linalg.norm(measured_importance - true_importance)
-    return 1 - norm ** 2 / (np.linalg.norm(true_importance) ** 2 + np.linalg.norm(measured_importance) ** 2)
+    tot = np.linalg.norm(true_importance) ** 2 + np.linalg.norm(measured_importance) ** 2
+    return 1 - norm ** 2 / max(1e-4, tot)
 
 
 def compute_relevant_fraction_accuracy(importance, relevant_residues):
@@ -249,7 +250,8 @@ def compute_relevant_fraction_accuracy(importance, relevant_residues):
     :param relevant_residues:
     :return:
     """
-    return importance[relevant_residues].sum() / importance.sum()
+    imp_sum = importance.sum()
+    return importance[relevant_residues].sum() / max(imp_sum, 1e-4)
 
 
 def strip_name(name):
@@ -261,6 +263,16 @@ def strip_name(name):
         n = n.replace("components", "PC")
         parts.append(n)
     return "\n".join(parts)
+
+
+def to_scientific_number_format(num):
+    if num == 1:
+        return "1"
+    f = "%.e" % (num)
+    f = f.replace("e-0", "e-")
+    f = f.replace("e+", "e")
+    f = f.replace("e0", "e")
+    return f
 
 
 def _to_numerical(postprocessors, postprocessor_to_number_func):

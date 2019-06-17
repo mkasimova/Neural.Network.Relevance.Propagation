@@ -39,9 +39,9 @@ def _get_important_residues(supervised):
             #               yy,
             # connector,
             'Ligand interactions': all_ligands,
-            'Asp79': asp_cavity,
-            'Glu268': [268],
-            'Leu144': [144],
+            'D79': asp_cavity,
+            'E268': [268],
+            'L144': [144],
             # agonists,
             # identified_byt_not_known,
             # sodium_sites,
@@ -51,7 +51,8 @@ def _get_important_residues(supervised):
         return {
             # 'G protein site': g_protein,
             'NPxxY': npxxy,
-            'Glu268': [268],
+            'End of TM6': [268, 272, 275, 279],  # Met279 6.41 , Leu275 6.37 , Leu272 6.34 , and Glu268 6.3
+            'L144': [144],
             # 'YY bond': yy,
             # 'Connector': connector,
             # 'Asp79': asp_cavity,
@@ -129,8 +130,8 @@ def run(nclusters=2,
     }
     unsupervised_feature_extractors = [
         fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
-                               # variance_cutoff='auto',
-                               variance_cutoff='1_components',
+                               variance_cutoff='auto',
+                               # variance_cutoff='1_components',
                                name='PCA',
                                **kwargs),
         # fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 1},
@@ -157,27 +158,27 @@ def run(nclusters=2,
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        # fe.RandomForestFeatureExtractor(
-        #     one_vs_rest=False,
-        #     classifier_kwargs={'n_estimators': 1000},
-        #     **kwargs),
-        # fe.KLFeatureExtractor(**kwargs),
-        fe.MlpFeatureExtractor(
-            name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
-            classifier_kwargs={
-                # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
-                'hidden_layer_sizes': (30,),
-                'max_iter': 10000,
-                'alpha': 0.01,
-                'activation': "relu"
-            },
-            per_frame_importance_samples=other_samples,
-            per_frame_importance_labels=other_labels,
-            per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/trajectories"
-                                         "/mlp_perframe_importance_{}/"
-                                         "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
-                .format(ligand_type, feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        fe.RandomForestFeatureExtractor(
+            one_vs_rest=False,
+            classifier_kwargs={'n_estimators': 1000},
             **kwargs),
+        fe.KLFeatureExtractor(**kwargs),
+        # fe.MlpFeatureExtractor(
+        #     name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
+        #     classifier_kwargs={
+        #         # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
+        #         'hidden_layer_sizes': (30,),
+        #         'max_iter': 10000,
+        #         'alpha': 0.01,
+        #         'activation': "relu"
+        #     },
+        #     per_frame_importance_samples=other_samples,
+        #     per_frame_importance_labels=other_labels,
+        #     per_frame_importance_outfile="/home/oliverfl/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/trajectories"
+        #                                  "/mlp_perframe_importance_{}/"
+        #                                  "{}_mlp_perframeimportance_{}clusters_{}cutoff.txt"
+        #         .format(ligand_type, feature_type, nclusters, "" if filter_by_distance_cutoff else "no"),
+        #     **kwargs),
     ]
 
     if supervised is None:
@@ -249,13 +250,13 @@ for nclusters in range(2, 6):
         # feature_type="closest-heavy_inv",
         feature_type="ca_inv",
         simu_type=simu_type,
-        n_iterations=5,
+        n_iterations=30,
         n_splits=4,
         supervised=True,
-        shuffle_datasets=False,
-        overwrite=True,
-        load_trajectory_for_predictions=True,
-        ligand_type='holo',
+        shuffle_datasets=True,
+        overwrite=False,
+        load_trajectory_for_predictions=False,
+        ligand_type='apo',
         filter_by_distance_cutoff=False)
     if simu_type != "clustering":
         break

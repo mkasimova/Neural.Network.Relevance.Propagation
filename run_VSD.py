@@ -70,6 +70,7 @@ for extractor in feature_extractors:
                             show_projected_data=False,
                             highlighted_residues=common_peaks,
                             outfile=working_dir + "{extractor}/importance_per_residue_{suffix}.{filetype}".format(
+                                suffix="",
                                 extractor=extractor.name,
                                 filetype=filetype))
     if do_computations:
@@ -79,6 +80,7 @@ for extractor in feature_extractors:
                                 show_projected_data=False,
                                 outfile=working_dir + "{extractor}/performance_{suffix}.{filetype}".format(
                                     extractor=extractor.name,
+                                    suffix="",
                                     filetype=filetype))
 
         visualization.visualize([[p]],
@@ -87,6 +89,7 @@ for extractor in feature_extractors:
                                 show_projected_data=True,
                                 outfile=working_dir + "{extractor}/projected_data_{suffix}.{filetype}".format(
                                     extractor=extractor.name,
+                                    suffix="",
                                     filetype=filetype))
 
 logger.info("Done")

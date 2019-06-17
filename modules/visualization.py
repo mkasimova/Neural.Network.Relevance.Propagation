@@ -363,6 +363,7 @@ def _show_performance(postprocessors,
                       xlabels=None,
                       title=None,
                       filename=None,
+                      accuracy_limits=None,
                       supervised=False,
                       output_dir=None,
                       accuracy_method=None):
@@ -399,7 +400,7 @@ def _show_performance(postprocessors,
                           patch_artist=True,
                           boxprops=_boxprops)
         axs[1, 0].set_ylabel("Accuracy\nper state")
-        # # Separation score
+        # # Separation score, not used anymore
         # ax2 = axs[2, 0]
         # ax2.boxplot(utils.to_separation_score(postprocessors),
         #             showmeans=True,
@@ -411,7 +412,8 @@ def _show_performance(postprocessors,
     for [ax] in axs:
         ax.set_xticklabels(xlabels, rotation=0, ha='center')
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-
+        if accuracy_limits is not None:
+            ax.set_ylim(accuracy_limits)
     # plt.tight_layout(pad=0.3)
     plt.savefig(output_dir + filename)
     plt.clf()
@@ -453,6 +455,7 @@ def show_all_extractors_performance(postprocessors,
                       xlabels=xlabels,
                       # title=title,
                       filename=filename,
+                      accuracy_limits=[0.2, 1.1],
                       supervised=supervised,
                       output_dir=output_dir,
                       accuracy_method=accuracy_method)

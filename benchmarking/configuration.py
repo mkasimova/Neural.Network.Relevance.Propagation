@@ -156,6 +156,10 @@ def create_MLP_feature_extractors(extractor_kwargs,
 
 def create_AE_feature_extractors(extractor_kwargs,
                                  alpha_hidden_layers=[
+                                     (0.001, [1, ]),  # new
+                                     (0.001, [10, ]),  # new
+                                     # (0.00001, [1, ]),  # new
+                                     (0.00001, [10, ]),  # new
                                      (0.01, [10, 7, 5, 2, 5, 7, 10, ]),
                                      (0.001, [10, 7, 5, 2, 5, 7, 10, ]),
                                      (0.01, [20, 10, 7, 5, 2, 5, 7, 10, 20]),

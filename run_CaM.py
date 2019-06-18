@@ -28,10 +28,6 @@ def run_CaM(parser):
 
     cluster_indices = np.loadtxt(args.cluster_indices)
 
-    # Remove samples with negative cluster labels (such points are transition points)
-    samples = samples[cluster_indices >= 0]
-    cluster_indices = cluster_indices[cluster_indices >= 0]
-
     # Shift cluster indices to start at 0
     cluster_indices -= cluster_indices.min()
 

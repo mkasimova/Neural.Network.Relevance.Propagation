@@ -20,99 +20,58 @@ utils.remove_outliers = False
 
 def _get_important_residues(supervised):
     npxxy = [322, 323, 324, 325]
-    yy = [219, 326]
-    connector = [121, 282]
-    # g_protein = [131, 266, 268, 327, 272, 124, 279]
-    # see https://www.nature.com/articles/srep34736/figures/3
-    all_ligands = [109, 113, 114, 117, 193, 195, 203, 204, 207, 286, 289, 290, 293, 308, 309, 312]
-    agonists = [193, 117, 109, 113, 308, 293, 289, 207]
-    asp_cavity = [79]
-    # For holo the ion is most prominently bound to Cys184, Asn187 and Cys190, as it should be.
-    # There is occasionally a sodium bound to Asp192 and quite often a sodium bount to Asp300 but the signal is not near as strong.
-    sodium_sites = [79, 113, 184, 187, 190, 192, 300, 319]
-    identified_byt_not_known = [144, 160, 163, 169, 179, 316]
-    other = [75, 82, 275]
+    ligand_interactions = [109, 113, 114, 117, 193, 195, 203, 204, 207, 286, 289, 290, 293, 308, 309, 312]
     if supervised:
         return {
-            # g_protein,
-            #               npxxy,
-            #               yy,
-            # connector,
-            'Ligand interactions': all_ligands,
-            'D79': asp_cavity,
+            'Ligand interactions': ligand_interactions,
+            'D79': [79],
             'E268': [268],
             'L144': [144],
-            # agonists,
-            # identified_byt_not_known,
-            # sodium_sites,
-            # other
         }
     else:
         return {
-            # 'G protein site': g_protein,
             'NPxxY': npxxy,
-            'End of TM6': [268, 272, 275, 279],  # Met279 6.41 , Leu275 6.37 , Leu272 6.34 , and Glu268 6.3
+            'End of TM6': [268, 272, 275, 279],
             'L144': [144],
-            # 'YY bond': yy,
-            # 'Connector': connector,
-            # 'Asp79': asp_cavity,
-            # all_ligands,
-            # agonists,
-            # identified_byt_not_known,
-            # sodium_sites,
-            # other
         }
-    return
 
 
-def _load_trajectory_for_predictions(simu_type, ligand):
-    if simu_type != "apo-holo" or ligand not in ['apo', 'holo']:
+def _load_trajectory_for_predictions(ligand_type):
+    if ligand_type not in ['apo', 'holo']:
         raise NotImplementedError
     infile = "/home/oliverfl/MEGA/PHD/projects/relevance_propagation/results/apo-holo/trajectories/asp79-{}-swarms-nowater-nolipid".format(
-        ligand)
+        ligand_type)
     traj = md.load(infile + ".xtc", top=infile + ".pdb")
     samples, feature_to_resids, pairs = tp.to_distances(traj)
     return samples, None
 
 
-def run(nclusters=2,
-        simu_type="apo-holo",
-        ligand_type='holo',
+def run_beta2(
+        working_dir="input/beta2/",
         n_iterations=1,
         n_splits=1,
         shuffle_datasets=True,
         overwrite=False,
         dt=10,
-        feature_type="ca_inv",  # "contacts_5_cutoff", "closest-heavy_inv" or "CA_inv", "cartesian_ca", "cartesian_noh"
+        feature_type="ca_inv",  # "closest-heavy_inv", "CA_inv", "cartesian_ca", "cartesian_noh" or "compact_ca_inv"
         filetype="svg",
         supervised=True,
-        load_trajectory_for_predictions=True,
-        filter_by_distance_cutoff=True):
-    if simu_type == "clustering":
-        working_dir = os.path.expanduser("~/projects/gpcr/mega/Result_Data/beta2-dror/clustering_D09/")
-        cluster_dir = "{}/clustering_dt{}_{}clusters/".format(working_dir, dt, nclusters)
-        results_dir = "{}{}/".format(cluster_dir, feature_type)
-        data = np.load("{}/samples/{}/samples.npz".format(working_dir, feature_type, dt))['array']
-        feature_to_resids = np.load("{}/samples/{}/feature_to_resids.npy".format(working_dir, feature_type))
-        cluster_indices = np.loadtxt(cluster_dir + "cluster_indices_.txt")
-    elif simu_type == "apo-holo":
-        working_dir = os.path.expanduser("~/projects/gpcr/mega/Result_Data/beta2-dror/apo-holo/")
-        results_dir = "{}/results/{}/{}/".format(working_dir, feature_type,
-                                                 "cutoff" if filter_by_distance_cutoff else "nocutoff")
-        data = np.load("{}/samples/{}/samples_dt{}.npz".format(working_dir, feature_type, dt))['array']
-        feature_to_resids = np.load("{}/samples/{}/feature_to_resids.npy".format(working_dir, feature_type))
-        cluster_indices = np.loadtxt("{wd}/cluster_indices/cluster_indices_dt{dt}.txt".format(wd=working_dir, dt=dt))
-    else:
-        raise Exception("Unsupported simulation type {simu_type}".format(simu_type=simu_type))
-    suffix = str(nclusters) + "clusters_" + str(n_iterations) + "iterations_" \
+        load_trajectory_for_predictions=False,
+        filter_by_distance_cutoff=False,
+        ligand_type='holo'):
+    results_dir = "{}/results/{}/{}/".format(working_dir, feature_type,
+                                             "cutoff" if filter_by_distance_cutoff else "nocutoff")
+    data = np.load("{}/samples/{}/samples_dt{}.npz".format(working_dir, feature_type, dt))['array']
+    feature_to_resids = np.load("{}/samples/{}/feature_to_resids.npy".format(working_dir, feature_type))
+    cluster_indices = np.loadtxt("{wd}/cluster_indices/cluster_indices_dt{dt}.txt".format(wd=working_dir, dt=dt))
+    suffix = str(-1) + "clusters_" + str(n_iterations) + "iterations_" \
              + ("distance-cutoff_" if filter_by_distance_cutoff else "") + feature_type
-    cluster_indices -= 1  # start at 0 instead of 1
+    cluster_indices -= 1
     if len(data) != len(cluster_indices) or data.shape[1] != len(feature_to_resids):
         raise Exception("Inconsistent input data. The number of features or the number of frames to no match")
-    logger.info("Loaded data of shape %s and %s clusters for %s clusters and feature type %s", data.shape,
-                len(set(cluster_indices)), nclusters, feature_type)
+    logger.info("Loaded data of shape %s for feature type %s", data.shape, feature_type)
+
     # ## Define the different methods to use
-    #
     # Every method is encapsulated in a so called FeatureExtractor class which all follow the same interface
     cutoff_offset = 0.2 if "closest-heavy" in feature_type else 0
     kwargs = {
@@ -149,7 +108,7 @@ def run(nclusters=2,
         #     **kwargs),
     ]
     if load_trajectory_for_predictions:
-        other_samples, other_labels = _load_trajectory_for_predictions(simu_type, ligand_type)
+        other_samples, other_labels = _load_trajectory_for_predictions(ligand_type)
     else:
         other_samples, other_labels = None, None
     supervised_feature_extractors = [
@@ -244,19 +203,13 @@ def run(nclusters=2,
                 "\nFiltering (filter_by_distance_cutoff={filter_by_distance_cutoff})".format(**kwargs))
 
 
-simu_type = "apo-holo"
-for nclusters in range(2, 6):
-    run(nclusters=nclusters,
-        # feature_type="closest-heavy_inv",
-        feature_type="ca_inv",
-        simu_type=simu_type,
-        n_iterations=30,
-        n_splits=4,
-        supervised=True,
-        shuffle_datasets=True,
-        overwrite=False,
-        load_trajectory_for_predictions=False,
-        ligand_type='apo',
-        filter_by_distance_cutoff=False)
-    if simu_type != "clustering":
-        break
+if __name__ == "__main__":
+    run_beta2(feature_type="ca_inv",
+              n_iterations=30,
+              n_splits=4,
+              supervised=True,
+              shuffle_datasets=True,
+              overwrite=False,
+              load_trajectory_for_predictions=False,
+              ligand_type='apo',
+              filter_by_distance_cutoff=False)

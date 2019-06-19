@@ -119,10 +119,18 @@ def compute(extractor_type,
                                         highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
                                         show_average=False
                                         )
+                # Delete extractor to free memory
+                feature_extractors[i_extractor] = None
+                del extractor
 
         # The we run through them another time, generate figures and loads data
         # This gives a quick check that the data has been persisted correctly and
         # saves memory since we don't risk keeping any references to the data and classifier
+        feature_extractors = configuration.create_feature_extractors(extractor_type,
+                                                                     samples=samples,
+                                                                     cluster_indices=cluster_indices,
+                                                                     n_splits=n_splits,
+                                                                     n_iterations=n_iterations)
         all_postprocessors.append([])
         for i_extractor, extractor in enumerate(feature_extractors):
             pp = extractor.postprocessing(predefined_relevant_residues=dg.moved_atoms,

@@ -5,6 +5,7 @@ This repository contains code for analyzing molecular simulations data, mainly u
 # Dependencies
  * Python 2.7
  * Scikit-learn with its standard dependencies (numpy, scipy etc.)
+ * MDTraj (only for preprocessing)
  * biopandas (only for postprocessing)
  
 We are working on upgrading the project to python 3 as well as enabling installation of dependencies via package managers such as conda, pip and similar. 

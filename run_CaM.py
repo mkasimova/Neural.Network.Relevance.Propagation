@@ -96,7 +96,13 @@ def run_CaM(parser):
 
         postprocessors.append(tmp_pp)
 
-    visualization.visualize(postprocessors, show_projected_data=False, highlighted_residues=common_peaks)
+    visualization.visualize(postprocessors,
+                            show_importance=True,
+                            show_projected_data=False,
+                            show_performance=False,
+                            highlighted_residues=common_peaks,
+                            outfile="{}/importance-per-residue.png".format(working_dir)
+                            )
     logger.info("Done")
 
 

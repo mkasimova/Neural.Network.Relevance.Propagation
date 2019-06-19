@@ -103,9 +103,10 @@ def run_CaM(parser):
 def create_arg_parser():
     parser = argparse.ArgumentParser(epilog='Feature importance extraction.')
     parser.add_argument('-od', '--out_directory', help='Folder where files are written.', default='bio_input/CaM/')
-    parser.add_argument('-y', '--cluster_indices', help='Cluster indices.', default='bio_input/CaM/')
+    parser.add_argument('-y', '--cluster_indices', help='Cluster indices.',
+                        default='bio_input/CaM/cluster_labels/cluster_indices_cterm_4cal_spectral.txt')
     parser.add_argument('-f', '--feature_list', help='Matrix with features [nSamples x nFeatures]',
-                        default='bio_input/CaM/')
+                        default='bio_input/CaM/samples/inverse_CA_cterm_cterm_holo_CaM.npy')
     parser.add_argument('-n_iter', '--number_of_iterations', help='Number of iterations to average each k-split over.',
                         type=int, default=10)
     parser.add_argument('-n_runs', '--number_of_runs', help='Number of iterations to average performance on.', type=int,
@@ -113,7 +114,7 @@ def create_arg_parser():
     parser.add_argument('-n_splits', '--number_of_k_splits', help='Number of k splits in K-fold cross-validation.',
                         type=int, default=10)
     parser.add_argument('-pdb', '--pdb_file', help='PDB file to which the results will be mapped.',
-                        default='bio_input/CaM/protein.pdb')
+                        default='bio_input/CaM/C-CaM.pdb')
     return parser
 
 

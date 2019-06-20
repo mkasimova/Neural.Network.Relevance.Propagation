@@ -28,7 +28,7 @@ def _fix_extractor_type(extractor_types):
         elif et == "unsupervised":
             return ["PCA", "RBM", "AE", "RAND"]
         elif et == "all":
-            return ["KL", "RF", "MLP", "PCA", "RBM", "AE", "RAND"]
+            return ["PCA", "RBM", "AE", "KL", "RF", "MLP", "RAND"]
     return extractor_types
 
 
@@ -112,5 +112,6 @@ def run_all(args):
 if __name__ == "__main__":
     parser = create_argparser()
     args = parser.parse_args()
+    logger.info("Starting script run_benchmarks with arguments %s", args)
     run_all(args)
     logger.info("Done!")

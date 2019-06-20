@@ -59,9 +59,9 @@ def compute(extractor_type,
 
         finished_extractors = []
         for name in extractor_names:
-            if os.path.exists(modeldir):
+            if not overwrite and os.path.exists(modeldir):
                 existing_files = glob.glob("{}/{}/importance_per_residue.npy".format(modeldir, name))
-                if len(existing_files) > 0 and not overwrite:
+                if len(existing_files) > 0:
                     logger.debug("File %s already exists. skipping computations", existing_files[0])
                     finished_extractors.append(name)
             else:
@@ -85,25 +85,62 @@ def compute(extractor_type,
                                                                      cluster_indices=cluster_indices,
                                                                      n_splits=n_splits,
                                                                      n_iterations=n_iterations)
-        all_postprocessors.append([])
+        # First we run the computations if necessary
         for i_extractor, extractor in enumerate(feature_extractors):
-            do_computations = extractor.name not in finished_extractors
-            if do_computations:
-                extractor.extract_features()
+            if extractor.name in finished_extractors:
+                continue
+
+            extractor.extract_features()
             pp = extractor.postprocessing(predefined_relevant_residues=dg.moved_atoms,
                                           rescale_results=True,
                                           filter_results=False,
                                           working_dir=modeldir,
                                           accuracy_method=accuracy_method,
                                           feature_to_resids=dg.feature_to_resids())
-            if do_computations:
-                pp.average()
-                pp.evaluate_performance()
-                logger.debug("Saving feature importance")
-                pp.persist()
-            else:
-                pp.load()
-                pp.compute_accuracy()  # Recompute performance to handle changes in the accuracy measure
+            pp.average()
+            pp.evaluate_performance()
+            logger.debug("Saving feature importance")
+            pp.persist()
+            logger.info("Accuracy for %s: %s (%s)", extractor.name, pp.accuracy, pp.accuracy_method)
+            if visualize:
+                visualization.visualize([[pp]],
+                                        show_importance=False,
+                                        show_performance=False,
+                                        show_projected_data=True,
+                                        outfile="{}/{}/projected_data.svg".format(modeldir, extractor.name),
+                                        highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
+                                        show_average=False
+                                        )
+                visualization.visualize([[pp]],
+                                        show_importance=False,
+                                        show_performance=True,
+                                        show_projected_data=False,
+                                        outfile="{}/{}/performance.svg".format(modeldir, extractor.name),
+                                        highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
+                                        show_average=False
+                                        )
+                # Delete extractor to free memory
+                feature_extractors[i_extractor] = None
+                del extractor
+
+        # The we run through them another time, generate figures and loads data
+        # This gives a quick check that the data has been persisted correctly and
+        # saves memory since we don't risk keeping any references to the data and classifier
+        feature_extractors = configuration.create_feature_extractors(extractor_type,
+                                                                     samples=samples,
+                                                                     cluster_indices=cluster_indices,
+                                                                     n_splits=n_splits,
+                                                                     n_iterations=n_iterations)
+        all_postprocessors.append([])
+        for i_extractor, extractor in enumerate(feature_extractors):
+            pp = extractor.postprocessing(predefined_relevant_residues=dg.moved_atoms,
+                                          rescale_results=True,
+                                          filter_results=False,
+                                          working_dir=modeldir,
+                                          accuracy_method=accuracy_method,
+                                          feature_to_resids=dg.feature_to_resids())
+            pp.load()
+            pp.compute_accuracy()  # Recompute performance to handle changes in the accuracy measure
             logger.info("Accuracy for %s: %s (%s)", extractor.name, pp.accuracy, pp.accuracy_method)
             if visualize:
                 visualization.visualize([[pp]],
@@ -114,23 +151,6 @@ def compute(extractor_type,
                                         highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
                                         show_average=False
                                         )
-                if do_computations:
-                    visualization.visualize([[pp]],
-                                            show_importance=False,
-                                            show_performance=False,
-                                            show_projected_data=True,
-                                            outfile="{}/{}/projected_data.svg".format(modeldir, extractor.name),
-                                            highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
-                                            show_average=False
-                                            )
-                    visualization.visualize([[pp]],
-                                            show_importance=False,
-                                            show_performance=True,
-                                            show_projected_data=False,
-                                            outfile="{}/{}/performance.svg".format(modeldir, extractor.name),
-                                            highlighted_residues=np.array(pp.predefined_relevant_residues).flatten(),
-                                            show_average=False
-                                            )
             all_postprocessors[-1].append(pp)
 
     return np.array(all_postprocessors)

@@ -36,9 +36,9 @@ class RbmFeatureExtractor(FeatureExtractor):
         self.relevance_method = relevance_method
         self.variance_cutoff = variance_cutoff
         self.randomize = randomize
-        self._classifier_kwargs = classifier_kwargs.copy()
+        self.classifier_kwargs = classifier_kwargs.copy()
         if not self.randomize:
-            self._classifier_kwargs['random_state'] = 89274
+            self.classifier_kwargs['random_state'] = 89274
         logger.debug("Initializing RBM with the following parameters: "
                      " randomize %s, relevance_method %s, relevance_method %s, variance_cutoff %s,"
                      " classifier_kwargs %s",
@@ -46,7 +46,7 @@ class RbmFeatureExtractor(FeatureExtractor):
 
     def train(self, train_set, train_labels):
         logger.debug("Training RBM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier = BernoulliRBM(**self._classifier_kwargs)
+        classifier = BernoulliRBM(**self.classifier_kwargs)
         classifier.fit(train_set)
         return classifier
 

@@ -15,7 +15,7 @@ from modules.data_generation import DataGenerator
 logger = logging.getLogger("dataGenNb")
 
 
-def run(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, variance_cutoff="1_components"):
+def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, variance_cutoff="1_components"):
     cluster_indices = labels.argmax(axis=1)
     feature_to_resids = dg.feature_to_resids()
     suffix = dg.test_model + "_" + dg.feature_type \
@@ -164,4 +164,4 @@ if __name__ == "__main__":
         xyz_output_dir=None)
     # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
     logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-    run(dg, data, labels, supervised=True, n_iterations=10)
+    run_toy_model(dg, data, labels, supervised=True, n_iterations=10)

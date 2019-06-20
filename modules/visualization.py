@@ -4,6 +4,7 @@ import logging
 import sys
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 
 plt.style.use("seaborn-colorblind")
 logging.basicConfig(
@@ -13,7 +14,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
-from . import utils
+from . import utils, feature_extraction as fe
 
 logger = logging.getLogger("visualization")
 plt.rcParams['figure.autolayout'] = True
@@ -71,14 +72,17 @@ def _insert_gaps(x_val, y_val):
     return new_x, new_y
 
 
-def _vis_feature_importance(x_val, y_val, std_val, ax, extractor_name, color, average=None, highlighted_residues=None,
+def _vis_feature_importance(xvalues, importances, std_importance, ax, extractor_name, color, average=None,
+                            highlighted_residues=None,
                             show_title=True, set_ylim=True):
-    x_val, y_val = _insert_gaps(x_val, y_val)
-    y_val, std_val = y_val.squeeze(), std_val.squeeze()  # Remove unnecessary unit dimensions for visualization
+    x_val, y_val = _insert_gaps(xvalues, importances)
+    x_val, std_yval = _insert_gaps(xvalues, std_importance)
+    y_val, std_yval = y_val.squeeze(), std_yval.squeeze()  # Remove unnecessary unit dimensions for visualization
     ax.plot(x_val, y_val, color=color,
             # label=extractor_name,
             linewidth=3)
-    ax.fill_between(x_val, y_val - std_val, y_val + std_val, color=color, alpha=0.2)
+    if std_yval is not None:
+        ax.fill_between(x_val, y_val - std_yval, y_val + std_yval, color=color, alpha=0.2)
     if average is not None:
         ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:
@@ -359,6 +363,7 @@ def _show_performance(postprocessors,
                       xlabels=None,
                       title=None,
                       filename=None,
+                      accuracy_limits=None,
                       supervised=False,
                       output_dir=None,
                       accuracy_method=None):
@@ -368,7 +373,9 @@ def _show_performance(postprocessors,
         os.makedirs(output_dir)
     nrows = 2 if supervised else 1
     fig, axs = plt.subplots(nrows, 1, sharex=True, sharey=False, squeeze=False,
-                            figsize=(int(0.5 * postprocessors.shape[0]), 2 * nrows))
+                            figsize=(int(0.5 * postprocessors.shape[0]), 2 * nrows),
+                            constrained_layout=True)
+    fig.subplots_adjust(bottom=0.2)
     accuracy = utils.to_accuracy(postprocessors)
     ax0 = axs[0, 0]
     if title is not None:
@@ -393,7 +400,7 @@ def _show_performance(postprocessors,
                           patch_artist=True,
                           boxprops=_boxprops)
         axs[1, 0].set_ylabel("Accuracy\nper state")
-        # # Separation score
+        # # Separation score, not used anymore
         # ax2 = axs[2, 0]
         # ax2.boxplot(utils.to_separation_score(postprocessors),
         #             showmeans=True,
@@ -403,9 +410,11 @@ def _show_performance(postprocessors,
         # ax2.set_ylabel("Separation score")
 
     for [ax] in axs:
-        ax.set_xticklabels(xlabels, rotation=45, ha='right')
-
-    plt.tight_layout(pad=0.3)
+        ax.set_xticklabels(xlabels, rotation=0, ha='center')
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        if accuracy_limits is not None:
+            ax.set_ylim(accuracy_limits)
+    # plt.tight_layout(pad=0.3)
     plt.savefig(output_dir + filename)
     plt.clf()
 
@@ -416,10 +425,10 @@ def show_single_extractor_performance(postprocessors,
                                       output_dir="output/benchmarking/",
                                       accuracy_method=None):
     output_dir = "{}/{}/".format(output_dir, extractor_type)
-    xlabels = [utils.strip_name(pp.extractor.name) for pp in postprocessors[0]]
+    xlabels = [_to_settings_string(pp.extractor) for pp in postprocessors[0]]
     _show_performance(postprocessors,
                       xlabels=xlabels,
-                      title=extractor_type,
+                      # title=extractor_type,
                       filename=filename,
                       supervised=postprocessors[0, 0].extractor.supervised,
                       output_dir=output_dir,
@@ -444,8 +453,46 @@ def show_all_extractors_performance(postprocessors,
     title = "Cartesian" if "cart" in feature_type else "Inverse distance"
     _show_performance(postprocessors.T,
                       xlabels=xlabels,
-                      title=title,
+                      # title=title,
                       filename=filename,
+                      accuracy_limits=[0.2, 1.1],
                       supervised=supervised,
                       output_dir=output_dir,
                       accuracy_method=accuracy_method)
+
+
+def _to_settings_string(extractor):
+    parts = []
+    if isinstance(extractor, fe.MlpFeatureExtractor):
+        alpha = extractor.classifier_kwargs.get('alpha', None)
+        if alpha is not None:
+            parts.append(utils.to_scientific_number_format(alpha))
+        layers = extractor.classifier_kwargs.get('hidden_layer_sizes', (100,))
+        ls = []
+        for idx, l in enumerate(layers):
+            if idx == 0 or l < layers[idx - 1]:  # assuming decreasing layer size here, not showing decoding layers
+                ls.append(l)
+        parts.append("x".join([str(l) for l in ls]))
+    elif isinstance(extractor, fe.RbmFeatureExtractor):
+        learning_rate = extractor.classifier_kwargs.get('learning_rate', None)
+        if learning_rate is not None:
+            parts.append(utils.to_scientific_number_format(learning_rate))
+        n_components = extractor.classifier_kwargs.get('n_components', None)
+        parts.append(str(n_components))
+    elif isinstance(extractor, fe.RandomForestFeatureExtractor):
+        nest = extractor.classifier_kwargs.get('n_estimators', None)
+        parts.append(str(nest))
+        binary = extractor.one_vs_rest
+        parts.append("BC" if binary else "MC")
+    elif isinstance(extractor, fe.PCAFeatureExtractor):
+        cutoff = extractor.variance_cutoff
+        if isinstance(cutoff, int) or isinstance(cutoff, float):
+            parts.append(str(cutoff) + " %")
+        elif "_components" in cutoff:
+            ncomp = cutoff.split("_")[0]
+            parts.append("{} {}".format(ncomp, "PC" if ncomp == "1" else "PCs"))
+        else:
+            parts.append(cutoff)
+    else:
+        return utils.strip_name(extractor.name)
+    return "\n".join(parts)

@@ -33,9 +33,9 @@ class RandomForestFeatureExtractor(FeatureExtractor):
                                   **kwargs)
         self.one_vs_rest = one_vs_rest
         self.randomize = randomize
-        self._classifier_kwargs = classifier_kwargs.copy()
+        self.classifier_kwargs = classifier_kwargs.copy()
         if not self.randomize:
-            self._classifier_kwargs['random_state'] = 89274
+            self.classifier_kwargs['random_state'] = 89274
         logger.debug("Initializing RF with the following parameters: "
                      " randomize %s, one_vs_rest %s, classifier_kwargs %s",
                      randomize, one_vs_rest, classifier_kwargs)
@@ -47,7 +47,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
         classifiers = []
 
         for i_cluster in range(n_clusters):
-            classifiers.append(RandomForestClassifier(**self._classifier_kwargs))
+            classifiers.append(RandomForestClassifier(**self.classifier_kwargs))
             tmp_labels = np.zeros(n_points)
             tmp_labels[labels[:, i_cluster] == 1] = 1
 
@@ -61,7 +61,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
         if self.one_vs_rest:
             return self._train_one_vs_rest(train_set, train_labels)
         else:
-            classifier = RandomForestClassifier(**self._classifier_kwargs)
+            classifier = RandomForestClassifier(**self.classifier_kwargs)
             classifier.fit(train_set, train_labels)
         return classifier
 

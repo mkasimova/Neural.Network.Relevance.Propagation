@@ -25,7 +25,7 @@ class ElmFeatureExtractor(MlpFeatureExtractor):
 
     def train(self, train_set, train_labels):
         logger.debug("Training ELM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        elm = SingleLayerELMClassifier(**self._classifier_kwargs)
+        elm = SingleLayerELMClassifier(**self.classifier_kwargs)
         elm.fit(train_set, train_labels)
         return elm
 

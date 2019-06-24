@@ -18,16 +18,23 @@ logger = logging.getLogger("beta2")
 utils.remove_outliers = False
 
 
-def _get_important_residues(supervised):
+def _get_important_residues(supervised, feature_type):
     npxxy = [322, 323, 324, 325]
     ligand_interactions = [109, 113, 114, 117, 193, 195, 203, 204, 207, 286, 289, 290, 293, 308, 309, 312]
     if supervised:
-        return {
-            'Ligand interactions': ligand_interactions,
-            'D79': [79],
-            'E268': [268],
-            'L144': [144],
-        }
+        if "rmsd" in feature_type:
+            return {
+                # 'Ligand interactions': ligand_interactions,
+                'Connector': [121, 282],
+                'M82-switch': [82, 286, 316]
+            }
+        else:
+            return {
+                'Ligand interactions': ligand_interactions,
+                'D79': [79],
+                'E268': [268],
+                'L144': [144],
+            }
     else:
         return {
             'NPxxY': npxxy,
@@ -47,7 +54,7 @@ def _load_trajectory_for_predictions(ligand_type):
 
 
 def run_beta2(
-        working_dir="input/beta2/",
+        working_dir="bio_input/beta2/",
         n_iterations=1,
         n_splits=1,
         shuffle_datasets=True,
@@ -117,11 +124,11 @@ def run_beta2(
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
+        fe.KLFeatureExtractor(**kwargs),
         fe.RandomForestFeatureExtractor(
             one_vs_rest=False,
             classifier_kwargs={'n_estimators': 1000},
             **kwargs),
-        fe.KLFeatureExtractor(**kwargs),
         # fe.MlpFeatureExtractor(
         #     name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
         #     classifier_kwargs={
@@ -145,7 +152,7 @@ def run_beta2(
     else:
         feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
-    highlighted_residues = _get_important_residues(supervised)
+    highlighted_residues = _get_important_residues(supervised, feature_type)
     # # Run the relevance analysis
     postprocessors = []
     for extractor in feature_extractors:
@@ -204,7 +211,7 @@ def run_beta2(
 
 
 if __name__ == "__main__":
-    run_beta2(feature_type="ca_inv",
+    run_beta2(feature_type="rmsd_local",
               n_iterations=30,
               n_splits=4,
               supervised=True,

@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 import logging
 import sys
 
@@ -8,9 +10,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 
 import mdtraj as md
-import os
 import numpy as np
-import argparse
 from . import filtering
 
 logger = logging.getLogger("trajPreprocessing")
@@ -99,7 +99,6 @@ def to_compact_distances(traj, **kwargs):
 
     feature_to_resids = feature_to_resids[indices_to_include]
     samples = samples[:, indices_to_include]
-    pairs = pairs[indices_to_include]
     return samples, feature_to_resids, pairs
 
 
@@ -110,61 +109,139 @@ def to_cartesian(traj, query="protein and name 'CA'"):
     :return: array with every frame along first axis, and xyz coordinates in sequential order for
     every atom returned by the query
     """
-    atom_indices = traj.top.select(query)
-    atoms = [traj.top.atom(a) for a in atom_indices]
+    atom_indices, atoms = _get_atoms(traj.top, query)
     xyz = traj.atom_slice(atom_indices=atom_indices).xyz
     natoms = xyz.shape[1]
     samples = np.empty((xyz.shape[0], 3 * natoms))
-    feature_to_resids = np.empty((3 * natoms, 2), dtype=int)
+    feature_to_resids = np.empty((3 * natoms, 1), dtype=int)
     for idx in range(natoms):
         start, end = 3 * idx, 3 * idx + 3
         samples[:, start:end] = xyz[:, idx, :]
         feature_to_resids[start:end] = atoms[idx].residue.resSeq
-    return samples, feature_to_resids, None
+    return samples, feature_to_resids
 
 
-def create_argparser():
-    parser = argparse.ArgumentParser(
-        epilog='Demystifying stuff since 2018. By delemottelab')
-    parser.add_argument('--working_dir', type=str, help='working directory', required=True)
-    parser.add_argument('--output_dir', type=str, help='Relative path to output directory from the working dir',
-                        required=False, default=None)
-    parser.add_argument('--traj', type=str, help='Relative path to trajectory file from the working dir', required=True)
-    parser.add_argument('--topology', type=str, help='Relative path to topology file from the working dir',
-                        required=False,
-                        default=None)
-    parser.add_argument('--feature_type', type=str, help='Choice of feature type', required=True)
-    parser.add_argument('--dt', type=int, help='Timestep between frames', default=1)
-    return parser
+def to_local_rmsd(traj, atom_query, nresidues_per_rmsd, reference_structure,
+                  alternative_reference_structure=None,
+                  only_sequential_residues=True):
+    """
+    :param traj:
+    :param atom_query:
+    :param nresidues_per_rmsd:
+    :param reference_structure: a trajectory to compute the RMSD to
+    :param alternative_reference_structure: (optional) compute the difference in RMSD between this structure and 'referencet_structure'
+    :param only_sequential_residues: if True, residues across gaps will not be taken into account
+    :return: array with every frame along first axis, and RMSDs coordinates in sequential order for
+    every atom returned by the query
+    """
+
+    atom_indices, atoms = _get_atoms(traj.top, atom_query)
+    subtraj = traj.atom_slice(atom_indices=atom_indices)
+    samples = np.empty((len(traj), nresidues_per_rmsd))
+
+    # Create groups of residues to compute rmsd for
+    residue_sets = []
+    all_residues = [a.residue.resSeq for a in atoms]
+    all_residues = [r for r in sorted(set(all_residues))]
+    for idx in range(len(all_residues)):
+        if idx + nresidues_per_rmsd >= len(all_residues):
+            break
+        # Get sequential residues
+        res_set = [all_residues[ii] for ii in range(idx, idx + nresidues_per_rmsd)]
+        is_okay_set = True
+        if only_sequential_residues:
+            for set_idx in range(1, nresidues_per_rmsd):
+                if res_set[set_idx] - res_set[set_idx - 1] != 1:
+                    is_okay_set = False
+                    break
+        if is_okay_set:
+            residue_sets.append(res_set)
+    # Compute the RMSDs in a second step
+    feature_to_resids = []
+    samples = []
+
+    def compute_rmsd(ref_traj, residues):
+        q = "{} and (resSeq {})".format(atom_query, " or resSeq ".join([str(r) for r in residues]))
+        try:
+            indices, ref_indices = _select_atoms_incommon(q, subtraj.top, ref_traj.top, exception_on_missing_atoms=True)
+        except MissingAtomException as ex:
+            logger.exception(ex)
+            return None
+        if indices is None or len(indices) < nresidues_per_rmsd:
+            return None
+        return md.rmsd(subtraj.atom_slice(indices), reference=ref_traj.atom_slice(ref_indices))
+
+    for residue_idx, residues in enumerate(residue_sets):
+        ref_rmsd = compute_rmsd(reference_structure, residues)
+        if ref_rmsd is None:
+            continue
+        elif alternative_reference_structure is None:
+            rmsd = ref_rmsd
+        else:
+            alt_rmsd = compute_rmsd(alternative_reference_structure, residues)
+            if alt_rmsd is None:
+                continue
+            rmsd = ref_rmsd - alt_rmsd
+        samples.append(rmsd)
+        feature_to_resids.append(residues)
+    samples = np.array(samples).T
+    feature_to_resids = np.array(feature_to_resids, dtype=int)
+    return samples, feature_to_resids
 
 
-if __name__ == "__main__":
-    logger.info("----------------Starting trajectory preprocessing------------")
-    parser = create_argparser()
-    args = parser.parse_args()
-    logger.info("Starting with arguments: %s", args)
-    dt = args.dt
-    traj = md.load(args.working_dir + "/" + args.traj,
-                   top=None if args.topology is None else args.working_dir + args.topology,
-                   stride=dt)
-    logger.info("Loaded trajectory %s", traj)
-    if args.feature_type == 'ca_inv':
-        samples, feature_to_resids, pairs = to_distances(traj, scheme='ca', use_inverse_distances=True)
-    elif args.feature_type == 'closest-heavy_inv':
-        samples, feature_to_resids, pairs = to_distances(traj, scheme='closest-heavy', use_inverse_distances=True)
-    elif args.feature_type == 'compact_ca_inv':
-        samples, feature_to_resids, pairs = to_compact_distances(traj, scheme='ca', use_inverse_distances=True)
-    elif args.feature_type == 'cartesian_ca':
-        samples, feature_to_resids, pairs = to_cartesian(traj)
-    elif args.feature_type == 'cartesian_noh':
-        samples, feature_to_resids, pairs = to_cartesian(traj, query="protein and element != 'H'")
-    else:
-        logger.error("feature_type %s not supported", args.feature_type)
-    out_dir = args.working_dir + "/";
-    out_dir += args.feature_type if args.output_dir is None else args.working_dir
-    out_dir += "/"
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-    np.savez_compressed(out_dir + "samples_dt%s" % dt, array=samples)
-    np.save(out_dir + "feature_to_resids", feature_to_resids)
-    logger.info("Finished. Saved results in %s", out_dir)
+def _get_atoms(top, query):
+    atom_indices = top.select(query)
+    atoms = [top.atom(a) for a in atom_indices]
+    return atom_indices, atoms
+
+
+class MissingAtomException(Exception):
+    pass
+
+
+def _select_atoms_incommon(query, top, ref_top, exception_on_missing_atoms=False):
+    """
+    Matches atoms returned by the query for both topologies by name and returns the atom indices for the respective topology
+    """
+    _, atoms = _get_atoms(top, query)
+    _, ref_atoms = _get_atoms(ref_top, query)
+    ref_atoms, missing_atoms = _filter_atoms(ref_atoms, atoms)
+    if len(missing_atoms) > 0 and exception_on_missing_atoms:
+        raise MissingAtomException("%s atoms in reference not found topology. They will be ignored. %s" %
+                                   (len(missing_atoms), missing_atoms))
+    atoms, missing_atoms = _filter_atoms(atoms, ref_atoms)
+    if len(missing_atoms) > 0 and exception_on_missing_atoms:
+        raise MissingAtomException("%s atoms in topology not found reference. They will be ignored. %s" %
+                                   (len(missing_atoms), missing_atoms))
+    duplicate_atoms = _find_duplicates(atoms)
+    if len(duplicate_atoms) > 0 and exception_on_missing_atoms:
+        raise MissingAtomException("%s duplicates found in topology %s" % (len(duplicate_atoms), duplicate_atoms))
+    duplicate_atoms = _find_duplicates(ref_atoms)
+    if len(duplicate_atoms) > 0 and exception_on_missing_atoms:
+        raise MissingAtomException("%s duplicates found in reference %s" % (len(duplicate_atoms), duplicate_atoms))
+    if len(atoms) != len(ref_atoms) and exception_on_missing_atoms:
+        raise MissingAtomException("number of atoms in result differ: %s vs %s" % (len(atoms), len(ref_atoms)))
+    return np.array([a.index for a in atoms]), np.array([a.index for a in ref_atoms])
+
+
+def _filter_atoms(atoms, ref_atoms):
+    """
+    Returns atoms which name matched the name i ref_atoms as well as the once which did not match.
+    Matching is done on name, i.e. str(atom)
+    TODO speed up with a search tree or hashmap
+    """
+    ref_atom_names = [str(a) for a in ref_atoms]
+    missing_atoms = []
+    matching_atoms = []
+    # Atoms in inactive not in simu
+    for atom in atoms:
+        if str(atom) not in ref_atom_names:
+            missing_atoms.append(atom)
+        else:
+            matching_atoms.append(atom)
+    return matching_atoms, missing_atoms
+
+
+def _find_duplicates(atoms):
+    atom_names = [str(a) for a in atoms]
+    return [a for a in atoms if atom_names.count(str(a)) > 1]

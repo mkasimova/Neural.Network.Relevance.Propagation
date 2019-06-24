@@ -220,15 +220,15 @@ class PostProcessor(object):
         _importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
         _std_importance_mapped_to_resids = np.zeros((self.nresidues, self.feature_importances.shape[1]))
         for feature_idx, rel in enumerate(self.feature_importances):
-            res1, res2 = self.feature_to_resids[feature_idx]
-            res1 = res_id_to_index[res1]
-            res2 = res_id_to_index[res2]
-            _importance_mapped_to_resids[res1, :] += rel
-            _importance_mapped_to_resids[res2, :] += rel
-            _std_importance_mapped_to_resids[res1, :] += self.std_feature_importances[feature_idx, :] ** 2
-            _std_importance_mapped_to_resids[res2, :] += self.std_feature_importances[feature_idx, :] ** 2
+            corresponding_residues = self.feature_to_resids[feature_idx]
+            if isinstance(corresponding_residues, np.number):
+                # Object not iterable, i.e. we only have one residue per features
+                corresponding_residues = [corresponding_residues]
+            for res_seq in corresponding_residues:
+                r_idx = res_id_to_index[res_seq]
+                _importance_mapped_to_resids[r_idx, :] += rel
+                _std_importance_mapped_to_resids[r_idx, :] += self.std_feature_importances[feature_idx, :] ** 2
         _std_importance_mapped_to_resids = np.sqrt(_std_importance_mapped_to_resids)
-
         self._importance_mapped_to_resids = _importance_mapped_to_resids
         self._std_importance_mapped_to_resids = _std_importance_mapped_to_resids
 

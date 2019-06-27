@@ -75,8 +75,8 @@ def run_preprocessing(args):
     else:
         raise NotImplementedError("feature_type %s not supported" % args.feature_type)
 
-    out_dir = args.working_dir + "/";
-    out_dir += args.feature_type if args.output_dir is None else args.working_dir
+    out_dir = (args.working_dir if args.output_dir is None else args.output_dir) + "/"
+    out_dir += args.feature_type
     out_dir += "/"
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)

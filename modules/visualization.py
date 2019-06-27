@@ -270,7 +270,7 @@ def extract_metrics(postprocessors):
     """
     n_runs = len(postprocessors[0])
     n_estimators = len(postprocessors)
-    n_clusters = postprocessors[0][0].data_projector.n_clusters
+    n_clusters = postprocessors[0][0].nclusters
 
     x_vals = np.arange(n_estimators)
     standard_devs = np.zeros((n_estimators, n_runs))
@@ -306,10 +306,14 @@ def visualize(postprocessors,
               show_projected_data=False,
               outfile=None,
               highlighted_residues=None,
+              mixed_classes=False,
               show_average=False):
     """
     Plots the feature per residue.
     TODO visualize features too with std etc
+    :param show_average:
+    :param highlighted_residues:
+    :type mixed_classes: bool if frames can belong to multiple clusters/clusters
     :param postprocessors:
     :param show_importance:
     :param show_performance:
@@ -322,7 +326,7 @@ def visualize(postprocessors,
     # colors = np.array(plt.rcParams["axes.prop_cycle"].by_key()["color"])
     colors = np.array([_gray]) * n_feature_extractors
     markers = ['o', 's', '>', '^', 'd', 'v', '<']
-    if show_performance:
+    if show_performance and not mixed_classes:
         x_vals, metrics, metric_labels, per_cluster_projection_entropies, extractor_names = extract_metrics(
             postprocessors)
 
@@ -343,7 +347,7 @@ def visualize(postprocessors,
                                     average=ave_feats if show_average else None)
             counter += 1
 
-    if show_projected_data:
+    if show_projected_data and not mixed_classes:
         fig_counter = 4
         for pp in postprocessors:
             dp = pp[i_run].data_projector

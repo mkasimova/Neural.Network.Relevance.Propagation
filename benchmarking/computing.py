@@ -82,7 +82,7 @@ def compute(extractor_type,
 
         feature_extractors = configuration.create_feature_extractors(extractor_type,
                                                                      samples=samples,
-                                                                     cluster_indices=cluster_indices,
+                                                                     labels=cluster_indices,
                                                                      n_splits=n_splits,
                                                                      n_iterations=n_iterations)
         # First we run the computations if necessary
@@ -128,7 +128,7 @@ def compute(extractor_type,
         # saves memory since we don't risk keeping any references to the data and classifier
         feature_extractors = configuration.create_feature_extractors(extractor_type,
                                                                      samples=samples,
-                                                                     cluster_indices=cluster_indices,
+                                                                     labels=cluster_indices,
                                                                      n_splits=n_splits,
                                                                      n_iterations=n_iterations)
         all_postprocessors.append([])

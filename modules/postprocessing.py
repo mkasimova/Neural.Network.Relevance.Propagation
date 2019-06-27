@@ -46,7 +46,7 @@ class PostProcessor(object):
         self.std_feature_importances = extractor.std_feature_importance
         self.supervised = extractor.supervised
         self.cluster_indices = extractor.cluster_indices
-        self.nclusters = len(list(set(self.cluster_indices)))
+        self.nclusters = extractor.labels.shape[1]
         self.working_dir = working_dir
         if self.working_dir is None:
             self.working_dir = os.getcwd()
@@ -121,7 +121,6 @@ class PostProcessor(object):
                  -projection classification entropy
                  -classification score (for toy model only)
         """
-
         self._compute_average_std()
         self._compute_projection_classification_entropy()
 
@@ -168,7 +167,10 @@ class PostProcessor(object):
 
             if self.importance_per_residue_and_cluster is not None:
                 for cluster_idx, importance in enumerate(self.importance_per_residue_and_cluster.T):
-                    self._save_to_pdb(pdb, directory + "cluster_{}_importance.pdb".format(cluster_idx),
+                    cluster_name = "cluster_{}".format(cluster_idx) \
+                        if self.extractor.label_names is None else \
+                        self.extractor.label_names[cluster_idx]
+                    self._save_to_pdb(pdb, directory + "{}_importance.pdb".format(cluster_name),
                                       self._map_to_correct_residues(importance))
 
         return self
@@ -269,7 +271,12 @@ class PostProcessor(object):
         """
         Computes separation of clusters in the projected space given by the feature importances
         """
-        self.data_projector = dp.DataProjector(self.extractor.samples, self.cluster_indices)
+        if self.extractor.mixed_classes:
+            logger.info(
+                "Cannot compute projection classification entropy for dataset where not all frames belong to a unique cluster/state.")
+            return
+
+        self.data_projector = dp.DataProjector(self.extractor.samples, self.extractor.labels)
 
         if self.supervised:
             self.data_projector.project(self.feature_importances).score_projection(use_GMM=self.use_GMM_estimator)

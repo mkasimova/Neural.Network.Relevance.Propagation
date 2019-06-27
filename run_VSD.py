@@ -21,7 +21,7 @@ def run_VSD(working_dir="bio_input/VSD/"):
 
     kwargs = {
         'samples': data,
-        'cluster_indices': cluster_indices,
+        'labels': cluster_indices,
         'filter_by_distance_cutoff': True,
         'use_inverse_distances': True,
         'n_splits': 5,

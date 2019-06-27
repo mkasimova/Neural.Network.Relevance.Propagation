@@ -18,10 +18,10 @@ def get_feature_extractors_names(extractor_type, n_splits, n_iterations):
                                                n_iterations)])
 
 
-def create_feature_extractors(extractor_type, samples, cluster_indices, n_splits, n_iterations):
+def create_feature_extractors(extractor_type, samples, labels, n_splits, n_iterations):
     extractor_kwargs = {
         'samples': samples,
-        'cluster_indices': cluster_indices,
+        'labels': labels,
         'filter_by_distance_cutoff': False,
         'use_inverse_distances': True,
         'n_splits': n_splits,

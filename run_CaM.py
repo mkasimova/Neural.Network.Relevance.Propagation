@@ -55,7 +55,7 @@ def run_CaM(parser):
     if len(samples.shape) != 2:
         sys.exit("Matrix with features should have 2 dimensions")
 
-    kwargs = {'samples': samples, 'cluster_indices': labels,
+    kwargs = {'samples': samples, 'labels': labels,
               'filter_by_distance_cutoff': True, 'lower_bound_distance_cutoff': lower_distance_cutoff,
               'upper_bound_distance_cutoff': upper_distance_cutoff, 'use_inverse_distances': True,
               'n_splits': args.number_of_k_splits, 'n_iterations': args.number_of_iterations, 'scaling': True}
@@ -100,6 +100,7 @@ def run_CaM(parser):
                             outfile="{}/importance-per-residue.png".format(working_dir)
                             )
     logger.info("Done")
+
 
 
 def create_arg_parser():

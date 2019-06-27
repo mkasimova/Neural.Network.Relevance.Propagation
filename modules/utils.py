@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import collections
 import logging
 import sys
 
@@ -81,15 +82,47 @@ def scale(data, remove_outliers=False):
     return data_scaled, scaler
 
 
-def create_class_labels(clustering):
+def format_labels(labels):
+    if labels is None:
+        return None, None
+    elif isinstance(labels, list) or len(labels.shape) == 1:
+        labels = create_class_labels(labels)
+        cluster_indices = np.copy(labels)
+        return labels, cluster_indices
+    elif len(labels.shape) == 2:
+        labels = np.copy(labels)
+        cluster_indices = []
+        for frame_idx, cluster in enumerate(labels):
+            frame_clusters = [c_idx for c_idx in range(labels.shape[1]) if cluster[c_idx] == 1]
+            cluster_indices.append(frame_clusters)
+        cluster_indices = np.array(cluster_indices)
+        return labels, cluster_indices
+    else:
+        raise Exception("Invalid format of lablels. Must be list or 2D np array")
+
+
+def create_class_labels(cluster_indices):
     """
     Transforms a vector of cluster indices to a matrix where a 1 on the ij element means that the ith frame was in cluster state j+1
     """
-    number_of_clusters = len(set([t for t in clustering]))
-    T = np.zeros((len(clustering), number_of_clusters), dtype=int)
-    for i in range(0, len(clustering)):
-        T[i, int(clustering[i])] = 1
-    return T
+    all_cluster_labels = set()
+    for t in cluster_indices:
+        if isinstance(t, collections.Iterable):
+            # We a frame that may belong to mutliple clusters
+            for t2 in t:
+                all_cluster_labels.add(t2)
+        else:
+            all_cluster_labels.add(t)
+    nclusters = len(all_cluster_labels)
+    nframes = len(cluster_indices)
+    labels = np.zeros((nframes, nclusters), dtype=int)
+    for i, t in enumerate(cluster_indices):
+        if isinstance(t, collections.Iterable):
+            t = [int(t2) for t2 in t]
+        else:
+            t = int(t)
+        labels[i, t] = 1
+    return labels
 
 
 def check_for_overfit(data_scaled, clustering_prob, classifier):

@@ -62,6 +62,8 @@ class KLFeatureExtractor(FeatureExtractor):
                 tmp_bin_width = np.std(x[:, i_feature])
                 if tmp_bin_width == 0:
                     tmp_bin_width = 0.1  # Set arbitrary bin width if zero
+            else:
+                tmp_bin_width = self.bin_width
 
             if tmp_bin_width >= (bin_max - bin_min):
                 DKL[i_feature] = 0

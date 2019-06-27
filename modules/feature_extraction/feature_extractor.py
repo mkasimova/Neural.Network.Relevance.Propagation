@@ -20,7 +20,7 @@ class FeatureExtractor(object):
 
     def __init__(self,
                  samples=None,
-                 cluster_indices=None,
+                 labels=None,
                  scaling=True,
                  filter_by_distance_cutoff=True,
                  lower_bound_distance_cutoff=filtering.lower_bound_distance_cutoff_default,
@@ -32,17 +32,14 @@ class FeatureExtractor(object):
                  error_limit=None,
                  supervised=True,
                  remove_outliers=False,
+                 label_names=None,
                  shuffle_datasets=False):
         if samples is None:
             raise Exception("Samples cannot be None")
         self.samples = samples
-        self.cluster_indices = cluster_indices
-        self.n_clusters = len(list(set(self.cluster_indices)))
-        if len(self.cluster_indices.shape) == 1:
-            self.labels = utils.create_class_labels(self.cluster_indices)
-        elif len(self.cluster_indices.shape) == 2:
-            self.labels = np.copy(self.cluster_indices)
-            self.cluster_indices = self.labels.argmax(axis=1)
+        self.labels, self.cluster_indices = utils.format_labels(labels)
+        self.mixed_classes = self.labels is not None and np.any(self.labels.sum(axis=1).max() != 1)
+        self.n_clusters = self.labels.shape[1]
         self.n_splits = n_splits
         self.n_iterations = n_iterations
         self.scaling = scaling
@@ -63,6 +60,7 @@ class FeatureExtractor(object):
         self.test_set_errors = None
         self.indices_for_filtering = None
         self.scaler = None
+        self.label_names = label_names
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
                      " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
                      " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s, shuffle_datasets %s",

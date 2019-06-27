@@ -66,36 +66,40 @@ class MlpFeatureExtractor(FeatureExtractor):
         classifier.fit(train_set, train_labels)
         return classifier
 
+    def _normalize_relevance_per_frame(self, relevance_per_frame):
+        for i in range(relevance_per_frame.shape[0]):
+            ind_negative = np.where(relevance_per_frame[i, :] < 0)[0]
+            relevance_per_frame[i, ind_negative] = 0
+            relevance_per_frame[i, :] = (relevance_per_frame[i, :] - np.min(relevance_per_frame[i, :])) / \
+                                        (np.max(relevance_per_frame[i, :]) - np.min(relevance_per_frame[i, :]) + 1e-9)
+        return relevance_per_frame
+
     def _perform_lrp(self, classifier, data, labels):
-        layers = self._create_layers(classifier)
-        # Calculate relevance
-        propagator = relprop.RelevancePropagator(layers)
-        relevance = propagator.propagate(data, labels)
-        # Average relevance per cluster
         nclusters = labels.shape[1]
-        nfeatures = relevance.shape[1]
-        result = np.zeros((nfeatures, nclusters))
-        frames_per_cluster = np.zeros((nclusters))
-        # Rescale relevance according to min and max relevance in each frame
-        logger.debug("Rescaling feature importance extracted using MLP in each frame between min and max ...")
-        for i in range(relevance.shape[0]):
-            ind_negative = np.where(relevance[i, :] < 0)[0]
-            relevance[i, ind_negative] = 0
-            relevance[i, :] = (relevance[i, :] - np.min(relevance[i, :])) / (
-                    np.max(relevance[i, :]) - np.min(relevance[i, :]) + 1e-9)
-
-        for frame_idx, frame in enumerate(labels):
-            cluster_idx = labels[frame_idx].argmax()
-            frames_per_cluster[cluster_idx] += 1
-        for frame_idx, rel in enumerate(relevance):
-            cluster_idx = labels[frame_idx].argmax()
-            result[:, cluster_idx] += rel / frames_per_cluster[cluster_idx]
-
-        return relevance, result
+        nfeatures = data.shape[1]
+        relevance_per_cluster = np.empty((nfeatures, nclusters))
+        per_frame_relevance = np.zeros(data.shape)
+        for c_idx in range(nclusters):
+            # Get all frames belonging to a cluster
+            frame_indices = labels[:, c_idx] == 1
+            cluster_data = data[frame_indices]
+            cluster_labels = np.zeros((len(cluster_data), nclusters))
+            cluster_labels[:, c_idx] = 1  # Only look at one class at the time
+            # Now see what makes these frames belong to that class
+            # Time for LRP
+            layers = self._create_layers(classifier)
+            propagator = relprop.RelevancePropagator(layers)
+            cluster_frame_relevance = propagator.propagate(cluster_data, cluster_labels)
+            # Rescale relevance according to min and max relevance in each frame
+            cluster_frame_relevance = self._normalize_relevance_per_frame(cluster_frame_relevance)
+            relevance_per_cluster[:, c_idx] = cluster_frame_relevance.mean(axis=0)
+            per_frame_relevance[frame_indices] += cluster_frame_relevance
+        per_frame_relevance = self._normalize_relevance_per_frame(per_frame_relevance)
+        return per_frame_relevance, relevance_per_cluster
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP ...")
-        relevance, result = self._perform_lrp(classifier, data, labels)
+        relevance_per_frame, relevance_per_cluster = self._perform_lrp(classifier, data, labels)
 
         if self.per_frame_importance_outfile is not None:
             if self.per_frame_importance_samples is not None:
@@ -112,12 +116,12 @@ class MlpFeatureExtractor(FeatureExtractor):
                         self.n_splits)
                 if self.shuffle_datasets:
                     logger.error("Data set has been shuffled, per frame importance will not be properly mapped")
-                frame_relevance = relevance
+                frame_relevance = relevance_per_frame
             # for every feature in every frame...
-            self.frame_importances = np.zeros(relevance.shape)
+            self.frame_importances = np.zeros(relevance_per_frame.shape)
             for frame_idx, rel in enumerate(frame_relevance):
                 self.frame_importances[frame_idx] += rel / self.n_iterations
-        return result
+        return relevance_per_cluster
 
     def _create_layers(self, classifier):
         weights = classifier.coefs_

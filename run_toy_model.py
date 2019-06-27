@@ -23,7 +23,7 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
              + ("_var-cutoff=" + str(variance_cutoff) if not supervised else "")
     kwargs = {
         'samples': data,
-        'cluster_indices': cluster_indices,
+        'labels': cluster_indices,
         'filter_by_distance_cutoff': False,
         'use_inverse_distances': True,
         'n_splits': 1,
@@ -52,8 +52,8 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
         #     **kwargs),
         fe.KLFeatureExtractor(**kwargs),
         fe.RandomForestFeatureExtractor(
-            one_vs_rest=False,
-            classifier_kwargs={'n_estimators': 1000},
+            one_vs_rest=True,
+            classifier_kwargs={'n_estimators': 100},
             **kwargs),
     ]
     unsupervised_feature_extractors = [
@@ -74,14 +74,14 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
             use_reconstruction_for_lrp=True,
             activation="logistic",
             **kwargs),
-        fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
-                               variance_cutoff=variance_cutoff,
-                               name='PCA',
-                               **kwargs),
-        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
-                               relevance_method='from_lrp',
-                               name='RBM',
-                               **kwargs),
+        # fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
+        #                        variance_cutoff=variance_cutoff,
+        #                        name='PCA',
+        #                        **kwargs),
+        # fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
+        #                        relevance_method='from_lrp',
+        #                        name='RBM',
+        #                        **kwargs),
     ]
     feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
@@ -109,7 +109,6 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
                              filter_results=filter_results)
         p.average()
         p.evaluate_performance()
-        # p.persist()
         postprocessors.append([p])
     logger.info("Done")
 
@@ -143,25 +142,25 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
 
 if __name__ == "__main__":
     dg = DataGenerator(
-        natoms=30,
-        nclusters=3,
-        natoms_per_cluster=[1, 1, 1],
-        moved_atoms=[[10], [12], [14]],
+        natoms=32,
+        nclusters=4,
+        natoms_per_cluster=[1, 1, 1, 1],
+        moved_atoms=[[5], [13], [20], [28]],
         # natoms=200,
         # nclusters=4,
         # natoms_per_cluster=[1, 1, 1, 1],
         # moved_atoms=[[10], [60], [110], [130]],
-        nframes_per_cluster=2000,
+        nframes_per_cluster=500,
         noise_level=0.001,  # 1e-2, #1e-2,
         displacement=0.1,
         noise_natoms=0,
         # feature_type='inv-dist',
-        feature_type='cartesian_rot',
-        test_model='non-linear'
+        feature_type='compact-dist',
+        test_model='linear',
         # test_model='non-linear'
     )
     data, labels = dg.generate_data(
         xyz_output_dir=None)
     # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
     logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-    run_toy_model(dg, data, labels, supervised=True, n_iterations=10)
+    run_toy_model(dg, data, labels, supervised=True, n_iterations=5)

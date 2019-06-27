@@ -71,7 +71,7 @@ def run_beta2(
         load_trajectory_for_predictions=False,
         filter_by_distance_cutoff=False,
         ligand_type='holo'):
-    results_dir = "{}/results/{}/{}/".format(working_dir, classtype, feature_type,
+    results_dir = "{}/results/{}/{}/{}/".format(working_dir, classtype, feature_type,
                                              "cutoff" if filter_by_distance_cutoff else "nocutoff")
     samples_dir = "{}/samples/{}/{}".format(working_dir, classtype, feature_type)
     data = np.load("{}/samples_dt{}.npz".format(samples_dir, dt))['array']
@@ -139,18 +139,18 @@ def run_beta2(
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        fe.KLFeatureExtractor(**kwargs),
-        fe.RandomForestFeatureExtractor(
-            one_vs_rest=False,
-            classifier_kwargs={'n_estimators': 1000},
-            **kwargs),
+        # fe.KLFeatureExtractor(**kwargs),
+        # fe.RandomForestFeatureExtractor(
+        #     one_vs_rest=True,
+        #     classifier_kwargs={'n_estimators': 1000},
+        #     **kwargs),
         fe.MlpFeatureExtractor(
             name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
             classifier_kwargs={
                 # 'hidden_layer_sizes': [int(min(100, data.shape[1]) / (i + 1)) + 1 for i in range(3)],
                 'hidden_layer_sizes': (30,),
-                'max_iter': 10000,
-                'alpha': 0.01,
+                # 'max_iter': 10000,
+                'alpha': 0.1,
                 'activation': "relu"
             },
             # per_frame_importance_samples=other_samples,
@@ -229,12 +229,12 @@ def run_beta2(
 
 
 if __name__ == "__main__":
-    run_beta2(feature_type="closest-heavy_inv",
+    run_beta2(feature_type="rmsd_local_full",
               n_iterations=10,
               n_splits=4,
               supervised=True,
               shuffle_datasets=True,
-              overwrite=False,
+              overwrite=True,
               load_trajectory_for_predictions=False,
               ligand_type='apo',
-              filter_by_distance_cutoff=True)
+              filter_by_distance_cutoff=False)

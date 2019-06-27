@@ -24,7 +24,7 @@ class DataProjector():
         :param samples:
         """
         self.samples = samples
-        self.labels = labels - labels.min()
+        self.cluster_indices = labels.argmax(axis=1)
 
         self.n_clusters = labels.shape[1]
 
@@ -83,7 +83,7 @@ class DataProjector():
                 new_classes[i_point] = np.argmax(posteriors)
 
             # Compute separation score
-            correct_separation = new_classes == self.labels
+            correct_separation = new_classes == self.cluster_indices
             if projection is None:
                 self.separation_score = correct_separation.sum() / n_points
                 self.projection_class_entropy = class_entropies.mean()
@@ -102,7 +102,7 @@ class DataProjector():
         # Compute per-cluster projection entropy
         self.cluster_projection_class_entropy = np.zeros(self.n_clusters)
         for i_cluster in range(self.n_clusters):
-            inds = self.labels == i_cluster
+            inds = self.cluster_indices == i_cluster
             self.cluster_projection_class_entropy[i_cluster] = class_entropies[inds].mean()
 
         return self
@@ -191,7 +191,7 @@ class DataProjector():
         models = []
 
         for i_cluster in range(self.n_clusters):
-            cluster = proj[self.labels == i_cluster]
+            cluster = proj[self.cluster_indices == i_cluster]
 
             GMM = self._estimate_GMM(cluster, n_component_lim)
             models.append(GMM)
@@ -208,7 +208,7 @@ class DataProjector():
         n_dims = proj.shape[1]
 
         for i_cluster in range(self.n_clusters):
-            cluster = proj[self.labels == i_cluster, :]
+            cluster = proj[self.cluster_indices == i_cluster, :]
             means.append(cluster.mean(axis=0))
             covs.append(np.cov(cluster.T, rowvar=True) + 1e-7 * np.eye(n_dims))
 
@@ -218,7 +218,7 @@ class DataProjector():
         prior = np.zeros(self.n_clusters)
 
         for i_cluster in range(self.n_clusters):
-            prior[i_cluster] = np.sum(self.labels == i_cluster)
+            prior[i_cluster] = np.sum(self.cluster_indices == i_cluster)
         return prior
 
     def _project_on_relevance_basis_vectors(self, distances, relevance_basis_vectors):

@@ -72,7 +72,7 @@ def run_beta2(
         filter_by_distance_cutoff=False,
         ligand_type='holo'):
     results_dir = "{}/results/{}/{}/{}/".format(working_dir, classtype, feature_type,
-                                             "cutoff" if filter_by_distance_cutoff else "nocutoff")
+                                                "cutoff" if filter_by_distance_cutoff else "nocutoff")
     samples_dir = "{}/samples/{}/{}".format(working_dir, classtype, feature_type)
     data = np.load("{}/samples_dt{}.npz".format(samples_dir, dt))['array']
     feature_to_resids = np.load("{}/feature_to_resids.npy".format(samples_dir, feature_type))
@@ -115,10 +115,10 @@ def run_beta2(
                                # variance_cutoff='1_components',
                                name='PCA',
                                **kwargs),
-        # fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 1},
-        #                        relevance_method='from_lrp',
-        #                        name='RBM',
-        #                        **kwargs),
+        fe.RbmFeatureExtractor(classifier_kwargs={'n_components': 1},
+                               relevance_method='from_lrp',
+                               name='RBM',
+                               **kwargs),
         # fe.MlpAeFeatureExtractor(
         #     classifier_kwargs={
         #         'hidden_layer_sizes': (100, 30, 2, 30, 100,),  # int(data.shape[1]/2),),
@@ -139,11 +139,11 @@ def run_beta2(
         #     n_nodes=data.shape[1] * 2,
         #     alpha=0.1,
         #     **kwargs),
-        # fe.KLFeatureExtractor(**kwargs),
-        # fe.RandomForestFeatureExtractor(
-        #     one_vs_rest=True,
-        #     classifier_kwargs={'n_estimators': 1000},
-        #     **kwargs),
+        fe.KLFeatureExtractor(**kwargs),
+        fe.RandomForestFeatureExtractor(
+            one_vs_rest=True,
+            classifier_kwargs={'n_estimators': 500},
+            **kwargs),
         fe.MlpFeatureExtractor(
             name="MLP" if other_samples is None else "MLP_predictor_{}".format(ligand_type),
             classifier_kwargs={
@@ -232,9 +232,9 @@ if __name__ == "__main__":
     run_beta2(feature_type="rmsd_local_full",
               n_iterations=10,
               n_splits=4,
-              supervised=True,
+              supervised=False,
               shuffle_datasets=True,
-              overwrite=True,
+              overwrite=False,
               load_trajectory_for_predictions=False,
               ligand_type='apo',
               filter_by_distance_cutoff=False)

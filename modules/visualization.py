@@ -352,7 +352,7 @@ def visualize(postprocessors,
         for pp in postprocessors:
             dp = pp[i_run].data_projector
             if dp.projection is not None:
-                _vis_projected_data(dp.projection, dp.labels, plt.figure(fig_counter),
+                _vis_projected_data(dp.projection, dp.cluster_indices, plt.figure(fig_counter),
                                     "Projection " + pp[i_run].extractor.name)
                 fig_counter += 1
     if outfile is None:

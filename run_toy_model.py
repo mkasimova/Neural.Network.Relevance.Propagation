@@ -60,8 +60,8 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
         fe.MlpAeFeatureExtractor(
             classifier_kwargs={
                 # hidden_layer_sizes=(int(data.shape[1]/2),),
-                # 'hidden_layer_sizes': (200, 100, 30, dg.nclusters, 30, 100, 200,),
-                'hidden_layer_sizes': (10, 5, 1, 5, 10,),
+                'hidden_layer_sizes': (dg.nclusters,),
+                # 'hidden_layer_sizes': (10, 5, 1, 5, 10,),
                 # hidden_layer_sizes=(100, 1, 100,),
                 # hidden_layer_sizes=(200, 50, 10, 1, 10, 50, 200, ),
                 'max_iter': 100000,
@@ -74,10 +74,10 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
             use_reconstruction_for_lrp=True,
             activation="logistic",
             **kwargs),
-        # fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
-        #                        variance_cutoff=variance_cutoff,
-        #                        name='PCA',
-        #                        **kwargs),
+        fe.PCAFeatureExtractor(classifier_kwargs={'n_components': None},
+                               variance_cutoff=variance_cutoff,
+                               name='PCA',
+                               **kwargs),
         # fe.RbmFeatureExtractor(classifier_kwargs={'n_components': dg.nclusters},
         #                        relevance_method='from_lrp',
         #                        name='RBM',
@@ -163,4 +163,4 @@ if __name__ == "__main__":
         xyz_output_dir=None)
     # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
     logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-    run_toy_model(dg, data, labels, supervised=True, n_iterations=5)
+    run_toy_model(dg, data, labels, supervised=False, n_iterations=5)

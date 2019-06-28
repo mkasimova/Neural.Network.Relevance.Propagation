@@ -75,16 +75,22 @@ class MlpFeatureExtractor(FeatureExtractor):
         return relevance_per_frame
 
     def _perform_lrp(self, classifier, data, labels):
-        nclusters = labels.shape[1]
+        nclusters = labels.shape[1] if self.supervised else 1
         nfeatures = data.shape[1]
         relevance_per_cluster = np.empty((nfeatures, nclusters))
         per_frame_relevance = np.zeros(data.shape)
         for c_idx in range(nclusters):
             # Get all frames belonging to a cluster
-            frame_indices = labels[:, c_idx] == 1
-            cluster_data = data[frame_indices]
-            cluster_labels = np.zeros((len(cluster_data), nclusters))
-            cluster_labels[:, c_idx] = 1  # Only look at one class at the time
+            if self.supervised:
+                frame_indices = labels[:, c_idx] == 1
+                cluster_data = data[frame_indices]
+                cluster_labels = np.zeros((len(cluster_data), nclusters))
+                cluster_labels[:, c_idx] = 1  # Only look at one class at the time
+            else:
+                # TODO refactor to break unsupervised code out of here. Unsupervised method have no concept of clusters/labels
+                cluster_labels = labels
+                frame_indices = [i for i in range(len(data))]
+                cluster_data = data
             # Now see what makes these frames belong to that class
             # Time for LRP
             layers = self._create_layers(classifier)

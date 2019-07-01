@@ -31,7 +31,7 @@ def to_distances(traj,
     top = traj.topology
     if scheme == 'all-heavy':
         atoms = traj.top.select("{} and element != 'H'".format("protein" if ignore_nonprotein else "all"))
-        if pairs is None or pairs == 'all':
+        if pairs is None or 'all' in pairs:
             pairs = []
             for idx1, a1 in enumerate(atoms):
                 for idx2 in range(idx1 + 1, len(atoms)):
@@ -48,9 +48,17 @@ def to_distances(traj,
         chunk_size = 1000  # To use less memory, don't process entire traj at once
         start = 0
         samples = None
+        if "all-residues" == pairs:
+            # Unlike MDtrajs 'all' option, this also includes neightbours
+            contacts = []
+            for r1 in range(traj.top.n_residues):
+                for r2 in range(r1 + 1, traj.top.n_residues):
+                    contacts.append((r1, r2))
+        else:
+            contacts = pairs
         while start < len(traj):
             end = start + chunk_size
-            s, pairs = md.compute_contacts(traj[start:end], contacts=pairs, scheme=scheme,
+            s, pairs = md.compute_contacts(traj[start:end], contacts=contacts, scheme=scheme,
                                            ignore_nonprotein=ignore_nonprotein,
                                            periodic=periodic)
             if samples is None:

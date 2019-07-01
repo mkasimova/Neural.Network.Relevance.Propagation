@@ -14,7 +14,6 @@ import sklearn.neural_network
 from .. import relevance_propagation as relprop
 from .feature_extractor import FeatureExtractor
 from ..postprocessing import PerFrameImportancePostProcessor
-from .. import filtering
 
 logger = logging.getLogger("mlp")
 
@@ -109,10 +108,15 @@ class MlpFeatureExtractor(FeatureExtractor):
 
         if self.per_frame_importance_outfile is not None:
             if self.per_frame_importance_samples is not None:
-                other_labels = classifier.predict(self.per_frame_importance_samples) \
-                    if self.per_frame_importance_labels is None \
-                    else self.per_frame_importance_labels
-                other_samples = self.scaler.transform(self.per_frame_importance_samples)
+                if self.indices_for_filtering is None:
+                    other_samples = self.per_frame_importance_samples
+                else:
+                    other_samples = self.per_frame_importance_samples[:, self.indices_for_filtering]
+                if self.per_frame_importance_labels is None:
+                    other_labels = classifier.predict(other_samples)
+                else:
+                    other_labels = self.per_frame_importance_labels
+                other_samples = self.scaler.transform(other_samples)
                 frame_relevance, _ = self._perform_lrp(classifier, other_samples, other_labels)
             else:
                 logger.info("Using same trajectory for per frame importance as was used for training.")
@@ -124,9 +128,14 @@ class MlpFeatureExtractor(FeatureExtractor):
                     logger.error("Data set has been shuffled, per frame importance will not be properly mapped")
                 frame_relevance = relevance_per_frame
             # for every feature in every frame...
-            self.frame_importances = np.zeros(relevance_per_frame.shape)
+            if self.frame_importances is None:
+                self.frame_importances = np.zeros(self.per_frame_importance_samples.shape) - 1
+            niters = self.n_iterations * self.n_splits
             for frame_idx, rel in enumerate(frame_relevance):
-                self.frame_importances[frame_idx] += rel / self.n_iterations
+                if self.indices_for_filtering is None:
+                    self.frame_importances[frame_idx] += rel / niters
+                else:
+                    self.frame_importances[frame_idx, self.indices_for_filtering] += rel / niters
         return relevance_per_cluster
 
     def _create_layers(self, classifier):
@@ -161,17 +170,6 @@ class MlpFeatureExtractor(FeatureExtractor):
                     raise Exception("Unsupported MLP backend {}".format(self.backend))
 
         return layers
-
-    def _on_all_features_extracted(self, feats, errors, n_features):
-        FeatureExtractor._on_all_features_extracted(self, feats, errors, n_features)
-
-        if self.filter_by_distance_cutoff and self.frame_importances is not None:
-            # Note Transpose so we pretend that one frame is one cluster
-            imps, _ = filtering.remap_after_filtering(self.frame_importances.T,
-                                                      None,
-                                                      n_features,
-                                                      self.indices_for_filtering)
-            self.frame_importances = imps.T
 
     def postprocessing(self, **kwargs):
         return PerFrameImportancePostProcessor(extractor=self,

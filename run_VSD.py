@@ -9,13 +9,13 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-
-from modules import feature_extraction as fe, visualization
+import mdtraj as md
+from modules import feature_extraction as fe, visualization, traj_preprocessing as tp
 
 logger = logging.getLogger("VSD")
 
 
-def run_VSD(working_dir="bio_input/VSD/"):
+def run_VSD(working_dir="bio_input/VSD/", cluster_for_prediction=None, dt_for_prediction=10):
     data = np.load(working_dir + 'frame_i_j_contacts_dt1.npy')
     cluster_indices = np.loadtxt(working_dir + 'clusters_indices.dat')
 
@@ -24,24 +24,44 @@ def run_VSD(working_dir="bio_input/VSD/"):
         'labels': cluster_indices,
         'filter_by_distance_cutoff': True,
         'use_inverse_distances': True,
-        'n_splits': 5,
-        'n_iterations': 3,
+        'n_splits': 3,
+        'n_iterations': 5,
         'scaling': True,
         'shuffle_datasets': True
     }
 
+    if cluster_for_prediction is not None:
+        cluster_traj = md.load("{}/{}_dt{}.xtc".format(working_dir, cluster_for_prediction, dt_for_prediction),
+                               top=working_dir + "alpha.pdb")
+        other_samples, _, _ = tp.to_distances(
+            traj=cluster_traj,
+            scheme="closest-heavy",
+            pairs="all-residues",
+            use_inverse_distances=True,
+            ignore_nonprotein=True,
+            periodic=True)
+        logger.debug("Loaded cluster samples for prediction of shape %s", other_samples.shape)
+        cluster_traj = None  # free memory
+    else:
+        other_samples = False
     feature_extractors = [
-        fe.RandomForestFeatureExtractor(
-            classifier_kwargs={
-                'n_estimators': 100},
-            **kwargs),
-        fe.KLFeatureExtractor(bin_width=0.1, **kwargs),
+        # fe.RandomForestFeatureExtractor(
+        #     classifier_kwargs={
+        #         'n_estimators': 100},
+        #     **kwargs),
+        # fe.KLFeatureExtractor(bin_width=0.1, **kwargs),
         fe.MlpFeatureExtractor(
             classifier_kwargs={
                 'hidden_layer_sizes': [100, ],
                 'max_iter': 100000,
                 'alpha': 0.0001},
             activation="relu",
+            per_frame_importance_samples=other_samples,
+            per_frame_importance_labels=None,  # If None the method will use predicted labels for LRP
+            per_frame_importance_outfile="{}/mlp_perframe_importance/"
+                                         "VSD_mlp_perframeimportance_{}_dt{}.txt".format(working_dir,
+                                                                                         cluster_for_prediction,
+                                                                                         dt_for_prediction),
             **kwargs)
     ]
 
@@ -50,7 +70,6 @@ def run_VSD(working_dir="bio_input/VSD/"):
         "K5": [306],
         "R6": [309],
     }
-    postprocessors = []
     do_computations = True
     filetype = "svg"
     for extractor in feature_extractors:
@@ -98,4 +117,4 @@ def run_VSD(working_dir="bio_input/VSD/"):
 
 
 if __name__ == "__main__":
-    run_VSD()
+    run_VSD(cluster_for_prediction="delta")

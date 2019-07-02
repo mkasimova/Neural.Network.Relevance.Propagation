@@ -9,7 +9,7 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-from modules import feature_extraction as fe, postprocessing as pp, visualization
+from modules import feature_extraction as fe, visualization
 from modules.data_generation import DataGenerator
 
 logger = logging.getLogger("dataGenNb")
@@ -42,6 +42,8 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
                 'max_iter': 10000,
                 'alpha': 0.001,
             },
+            per_frame_importance_outfile="output/toy_model_perframe.txt",
+            one_vs_rest=True,
             **kwargs),
         # fe.ElmFeatureExtractor(
         #     activation="relu",
@@ -85,30 +87,20 @@ def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iteration
     ]
     feature_extractors = supervised_feature_extractors if supervised else unsupervised_feature_extractors
     logger.info("Done. using %s feature extractors", len(feature_extractors))
+    postprocessors = []
+    filter_results = False
 
-    results = []
     for extractor in feature_extractors:
         extractor.error_limit = 50
         logger.info("Computing relevance for extractors %s", extractor.name)
         extractor.extract_features()
-        test_set_errors = extractor.test_set_errors
-        feature_importance = extractor.feature_importance
-        std_feature_importance = extractor.std_feature_importance
-
-        # logger.info("Get feature_importance and std of shapes %s, %s", feature_importance.shape, std_feature_importance.shape)
-        results.append((extractor, feature_importance, std_feature_importance, test_set_errors))
-    logger.info("Done")
-
-    postprocessors = []
-    filter_results = True
-    for (extractor, feature_importance, std_feature_importance, errors) in results:
-        p = pp.PostProcessor(extractor,
-                             working_dir=".",
-                             pdb_file=None,
-                             feature_to_resids=feature_to_resids,
-                             filter_results=filter_results)
+        p = extractor.postprocessing(working_dir="./{}".format(extractor.name),
+                                     pdb_file=None,
+                                     feature_to_resids=feature_to_resids,
+                                     filter_results=filter_results)
         p.average()
         p.evaluate_performance()
+        p.persist()
         postprocessors.append([p])
     logger.info("Done")
 
@@ -163,4 +155,4 @@ if __name__ == "__main__":
         xyz_output_dir=None)
     # "output/xyz/{}_{}_{}atoms_{}clusters".format(dg.test_model, dg.feature_type, dg.natoms, dg.nclusters))
     logger.info("Generated data of shape %s and %s clusters", data.shape, labels.shape[1])
-    run_toy_model(dg, data, labels, supervised=False, n_iterations=5)
+    run_toy_model(dg, data, labels, supervised=True, n_iterations=5)

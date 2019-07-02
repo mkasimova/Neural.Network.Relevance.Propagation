@@ -25,6 +25,7 @@ class MlpFeatureExtractor(FeatureExtractor):
                  activation=relprop.relu,
                  randomize=True,
                  supervised=True,
+                 one_vs_rest=False,
                  per_frame_importance_outfile=None,
                  per_frame_importance_samples=None,
                  per_frame_importance_labels=None,
@@ -37,9 +38,9 @@ class MlpFeatureExtractor(FeatureExtractor):
         self.backend = "scikit-learn"  # Only available option for now, more to come probably
         logger.debug("Initializing MLP with the following parameters:"
                      " activation function %s, randomize %s, classifier_kwargs %s,"
-                     " per_frame_importance_outfile %s, backend %s, per_frame_importance_samples %s",
+                     " per_frame_importance_outfile %s, backend %s, per_frame_importance_samples %s, one_vs_rest %s",
                      activation, randomize, classifier_kwargs, per_frame_importance_outfile, self.backend,
-                     per_frame_importance_samples)
+                     None if per_frame_importance_samples is None else per_frame_importance_samples.shape, one_vs_rest)
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
@@ -57,12 +58,38 @@ class MlpFeatureExtractor(FeatureExtractor):
         self.per_frame_importance_outfile = per_frame_importance_outfile
         self.per_frame_importance_samples = per_frame_importance_samples
         self.per_frame_importance_labels = per_frame_importance_labels
+        self.one_vs_rest = one_vs_rest
+
+    def _train_one_vs_rest(self, data, labels):
+        n_clusters = labels.shape[1]
+        n_points = data.shape[0]
+
+        classifiers = []
+
+        for i_cluster in range(n_clusters):
+            classifiers.append(sklearn.neural_network.MLPClassifier(**self.classifier_kwargs))
+            binary_labels = np.zeros((n_points, 2))
+            binary_labels[labels[:, i_cluster] == 1, 0] = 1
+            binary_labels[labels[:, i_cluster] != 1, 1] = 1
+            classifiers[i_cluster].fit(data, binary_labels)
+
+        return classifiers
 
     def train(self, train_set, train_labels):
+        """
+        TODO code duplication below for on_vs_the_rest logic, refactor with KL and RF into common superclass
+        :param train_set:
+        :param train_labels:
+        :return:
+        """
+        # Construct and train classifier
         logger.debug("Training %s with %s samples and %s features ...", self.name, train_set.shape[0],
                      train_set.shape[1])
-        classifier = sklearn.neural_network.MLPClassifier(**self.classifier_kwargs)
-        classifier.fit(train_set, train_labels)
+        if self.one_vs_rest:
+            return self._train_one_vs_rest(train_set, train_labels)
+        else:
+            classifier = sklearn.neural_network.MLPClassifier(**self.classifier_kwargs)
+            classifier.fit(train_set, train_labels)
         return classifier
 
     def _normalize_relevance_per_frame(self, relevance_per_frame):
@@ -104,39 +131,79 @@ class MlpFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using MLP ...")
+        if self.one_vs_rest:
+            return self._get_feature_importance_binaryclass(classifier, data, labels)
+        else:
+            return self._get_feature_importance_multiclass(classifier, data, labels)
+
+    def _get_feature_importance_binaryclass(self, classifiers, data, labels):
+        n_features = data.shape[1]
+        n_frames = data.shape[0]
+        n_states = labels.shape[1] if len(labels.shape) > 1 else 1
+        feature_importances = np.zeros((n_features, self.n_clusters))
+        for i_cluster in range(n_states):
+            cluster_frames = labels[:, i_cluster] == 1
+            binary_labels = np.zeros((n_frames, 2))
+            binary_labels[cluster_frames, 0] = 1
+            binary_labels[~cluster_frames, 1] = 1
+            relevance_per_frame, relevance_per_cluster = self._perform_lrp(classifiers[i_cluster], data, binary_labels)
+            feature_importances[:, i_cluster] = relevance_per_cluster[:, 0]
+            # TODO compute relevance per frame if necessary
+            if self.per_frame_importance_outfile is not None:
+                cluster_frame_importances, other_labels = self._compute_frame_relevance(classifiers[i_cluster],
+                                                                                        relevance_per_frame,
+                                                                                        data,
+                                                                                        labels)
+                if self.frame_importances is None:
+                    self.frame_importances = np.zeros((len(other_labels), n_features))
+                other_cluster_frames = other_labels[:, 0] == 1
+                nclusters_per_frame = other_labels[other_cluster_frames].sum(axis=1)[:, np.newaxis]
+                self.frame_importances[other_cluster_frames, :] += cluster_frame_importances[
+                                                                       other_cluster_frames] / nclusters_per_frame
+        return feature_importances
+
+    def _get_feature_importance_multiclass(self, classifier, data, labels):
         relevance_per_frame, relevance_per_cluster = self._perform_lrp(classifier, data, labels)
 
         if self.per_frame_importance_outfile is not None:
-            if self.per_frame_importance_samples is not None:
-                if self.indices_for_filtering is None:
-                    other_samples = self.per_frame_importance_samples
-                else:
-                    other_samples = self.per_frame_importance_samples[:, self.indices_for_filtering]
-                if self.per_frame_importance_labels is None:
-                    other_labels = classifier.predict(other_samples)
-                else:
-                    other_labels = self.per_frame_importance_labels
-                other_samples = self.scaler.transform(other_samples)
-                frame_relevance, _ = self._perform_lrp(classifier, other_samples, other_labels)
-            else:
-                logger.info("Using same trajectory for per frame importance as was used for training.")
-                if self.n_splits != 1:
-                    logger.error(
-                        "Cannot average frame importance to outfile if n_splits != 1. n_splits is now set to %s",
-                        self.n_splits)
-                if self.shuffle_datasets:
-                    logger.error("Data set has been shuffled, per frame importance will not be properly mapped")
-                frame_relevance = relevance_per_frame
-            # for every feature in every frame...
-            if self.frame_importances is None:
-                self.frame_importances = np.zeros(self.per_frame_importance_samples.shape) - 1
-            niters = self.n_iterations * self.n_splits
-            for frame_idx, rel in enumerate(frame_relevance):
-                if self.indices_for_filtering is None:
-                    self.frame_importances[frame_idx] += rel / niters
-                else:
-                    self.frame_importances[frame_idx, self.indices_for_filtering] += rel / niters
+            frame_importances, _ = self._compute_frame_relevance(classifier, relevance_per_frame, data, labels)
+            self.frame_importances = frame_importances if self.frame_importances is None else self.frame_importances + frame_importances
         return relevance_per_cluster
+
+    def _compute_frame_relevance(self, classifier, relevance_per_frame, data, labels):
+        if self.per_frame_importance_samples is not None:
+            if self.indices_for_filtering is None:
+                other_samples = self.per_frame_importance_samples
+            else:
+                other_samples = self.per_frame_importance_samples[:, self.indices_for_filtering]
+            if self.per_frame_importance_labels is None:
+                other_labels = classifier.predict(other_samples)
+            else:
+                other_labels = self.per_frame_importance_labels
+            other_samples = self.scaler.transform(other_samples)
+            frame_relevance, _ = self._perform_lrp(classifier, other_samples, other_labels)
+        else:
+            logger.info("Using same trajectory for per frame importance as was used for training.")
+            if self.n_splits != 1:
+                logger.error(
+                    "Cannot average frame importance to outfile if n_splits != 1. n_splits is now set to %s",
+                    self.n_splits)
+            if self.shuffle_datasets:
+                logger.error("Data set has been shuffled, per frame importance will not be properly mapped")
+            frame_relevance = relevance_per_frame
+            other_labels = labels
+        # for every feature in every frame...
+        frame_importances = np.zeros(
+            (data if self.per_frame_importance_samples is None else self.per_frame_importance_samples).shape) - 1
+        if self.indices_for_filtering is not None:
+            frame_importances[:, self.indices_for_filtering] = 0
+        niters = self.n_iterations * self.n_splits
+        for frame_idx, rel in enumerate(frame_relevance):
+            if self.indices_for_filtering is None:
+                frame_importances[frame_idx] += rel / niters
+            else:
+                frame_importances[frame_idx, self.indices_for_filtering] += rel / niters
+        return frame_importances, other_labels
 
     def _create_layers(self, classifier):
         weights = classifier.coefs_

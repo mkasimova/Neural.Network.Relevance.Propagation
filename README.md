@@ -55,3 +55,43 @@ Either cite the code (__doi to come__) and/or our paper (__doi to come__).
 
 # Support
 Please open an issue or contact oliver.fleetwood (at) gmail.com it you have any questions or comments about the code. 
+
+# Checklist for interpreting molecular simulations with machine learning 
+1. Identify the problem to investigate
+
+2. Decide if you should use supervised or unsupervised machine learning (or both)
+
+    a. The best choice depends on what data is available and the problem at hand
+
+    b. If you chose unsupervised learning, consider also clustering the simulation frames to label them and perform supervised learning 
+
+3. Select a set of features and scale them
+
+    a. For many processes, protein internal coordinates are adequate. To reduce the number of features, consider filtering distances with a cutoff
+    
+    b. Consider other features that can be expressed as a function of internal coordinates you suspect to be important for the process of interest (dihedral angles, cavity or pore hydration, ion or ligand binding etc...)
+
+4. Chose a set of ML methods to derive feature importance
+
+    a. To quickly get a clear importance profile with little noise, consider RF or KL for supervised learning. RF may perform better for noisy data.  
+
+    b. For unsupervised learning, consider PCA, which is relatively robust when conducted on internal coordinates
+
+    c. To find all important features, including those requiring nonlinear transformations of input features, also use neural network based approaches such as MLP. This may come at the cost of more peaks in the importance distribution
+
+    d. Decide if you seek the average importance across the entire dataset (all methods), the importance per state (KL, a set of binary RF classifiers or MLP), or the importance per single configuration (MLP, RBM, AE) 
+
+    e. Chose a set of hyperparameters which gives as reasonable trade off between performance and model prediction accuracy
+
+5. Ensure that the selected methods and hyperparameter choice perform well under cross-validation
+
+6. Average the importance per feature over many iterations
+
+7. Check that the distribution of importance has distinguishable peaks
+
+8. To select low-dimensional, interpretable CVs for plotting and enhanced sampling, inspect the top-ranked features 
+
+9. For a holistic view, average the importance per residue or atom and visualize the projection on the 3d system 
+
+10. If necessary, iterate over steps 3-9 with different features, ML methods and hyperparameters 
+

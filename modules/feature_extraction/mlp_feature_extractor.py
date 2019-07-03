@@ -103,7 +103,7 @@ class MlpFeatureExtractor(FeatureExtractor):
     def _perform_lrp(self, classifier, data, labels):
         nclusters = labels.shape[1] if self.supervised else 1
         nfeatures = data.shape[1]
-        relevance_per_cluster = np.empty((nfeatures, nclusters))
+        relevance_per_cluster = np.zeros((nfeatures, nclusters))
         per_frame_relevance = np.zeros(data.shape)
         for c_idx in range(nclusters):
             # Get all frames belonging to a cluster
@@ -117,6 +117,8 @@ class MlpFeatureExtractor(FeatureExtractor):
                 cluster_labels = labels
                 frame_indices = [i for i in range(len(data))]
                 cluster_data = data
+            if len(cluster_data) == 0:
+                continue
             # Now see what makes these frames belong to that class
             # Time for LRP
             layers = self._create_layers(classifier)
@@ -142,21 +144,24 @@ class MlpFeatureExtractor(FeatureExtractor):
         n_states = labels.shape[1] if len(labels.shape) > 1 else 1
         feature_importances = np.zeros((n_features, self.n_clusters))
         for i_cluster in range(n_states):
+            # TODO a bit inefficent approach below where we consistenly compute LRP for all other clusters and don't use those results.
             cluster_frames = labels[:, i_cluster] == 1
             binary_labels = np.zeros((n_frames, 2))
             binary_labels[cluster_frames, 0] = 1
             binary_labels[~cluster_frames, 1] = 1
             relevance_per_frame, relevance_per_cluster = self._perform_lrp(classifiers[i_cluster], data, binary_labels)
             feature_importances[:, i_cluster] = relevance_per_cluster[:, 0]
-            # TODO compute relevance per frame if necessary
             if self.per_frame_importance_outfile is not None:
                 cluster_frame_importances, other_labels = self._compute_frame_relevance(classifiers[i_cluster],
                                                                                         relevance_per_frame,
                                                                                         data,
                                                                                         labels)
                 if self.frame_importances is None:
-                    self.frame_importances = np.zeros((len(other_labels), n_features))
+                    self.frame_importances = np.zeros((len(other_labels), cluster_frame_importances.shape[1]))
                 other_cluster_frames = other_labels[:, 0] == 1
+                if len(other_labels[other_cluster_frames]) == 0:
+                    # No frames in this state, just move on
+                    continue
                 nclusters_per_frame = other_labels[other_cluster_frames].sum(axis=1)[:, np.newaxis]
                 self.frame_importances[other_cluster_frames, :] += cluster_frame_importances[
                                                                        other_cluster_frames] / nclusters_per_frame

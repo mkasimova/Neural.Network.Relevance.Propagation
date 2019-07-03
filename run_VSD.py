@@ -24,7 +24,7 @@ def run_VSD(working_dir="bio_input/VSD/", cluster_for_prediction=None, dt_for_pr
         'labels': cluster_indices,
         'filter_by_distance_cutoff': True,
         'use_inverse_distances': True,
-        'n_splits': 1,
+        'n_splits': 3,
         'n_iterations': 5,
         'scaling': True,
         'shuffle_datasets': True
@@ -46,12 +46,12 @@ def run_VSD(working_dir="bio_input/VSD/", cluster_for_prediction=None, dt_for_pr
     else:
         other_samples = False
     feature_extractors = [
-        # fe.RandomForestFeatureExtractor(
-        #     classifier_kwargs={
-        #         'n_estimators': 100},
-        # one_vs_rest = not multiclass,
-        #     **kwargs),
-        # fe.KLFeatureExtractor(bin_width=0.1, **kwargs),
+        fe.RandomForestFeatureExtractor(
+            classifier_kwargs={
+                'n_estimators': 100},
+            one_vs_rest=not multiclass,
+            **kwargs),
+        fe.KLFeatureExtractor(bin_width=0.1, **kwargs),
         fe.MlpFeatureExtractor(
             classifier_kwargs={
                 'hidden_layer_sizes': [100, ],
@@ -63,7 +63,7 @@ def run_VSD(working_dir="bio_input/VSD/", cluster_for_prediction=None, dt_for_pr
             per_frame_importance_labels=None,  # If None the method will use predicted labels for LRP
             per_frame_importance_outfile="{}/mlp_perframe_importance_{}/"
                                          "VSD_mlp_perframeimportance_{}_dt{}.txt".format(working_dir,
-                                                                                         "multiclass" if multiclass else "binary",
+                                                                                         "multiclass" if multiclass else "binaryclass",
                                                                                          cluster_for_prediction,
                                                                                          dt_for_prediction),
             **kwargs)
@@ -121,4 +121,4 @@ def run_VSD(working_dir="bio_input/VSD/", cluster_for_prediction=None, dt_for_pr
 
 
 if __name__ == "__main__":
-    run_VSD(cluster_for_prediction="alpha")
+    run_VSD(cluster_for_prediction="gamma")
